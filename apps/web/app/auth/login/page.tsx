@@ -1,0 +1,94 @@
+'use client'
+
+import { useState } from 'react'
+import { Eye, EyeOff, Zap } from 'lucide-react'
+import Link from 'next/link'
+
+export default function LoginPage() {
+  const [showPass, setShowPass] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({ email: '', password: '' })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    // In production: call POST /api/v1/auth/login, store JWT in httpOnly cookie
+    await new Promise(r => setTimeout(r, 1000))
+    setLoading(false)
+  }
+
+  return (
+    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4">
+      <div className="w-full max-w-md space-y-6">
+        {/* Logo */}
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center mx-auto shadow-xl shadow-green-900/40">
+            <Zap className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white">Welcome back</h1>
+          <p className="text-gray-400 text-sm">Sign in to your TRUF GAMING account</p>
+        </div>
+
+        {/* Form */}
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Email Address</label>
+              <input
+                type="email"
+                required
+                placeholder="arjun@example.com"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Password</label>
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pr-11 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="flex justify-end mt-1">
+                <Link href="/auth/forgot-password" className="text-xs text-green-400 hover:text-green-300 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-black font-bold transition-all shadow-lg shadow-green-900/30"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div className="relative text-center text-xs text-gray-600 before:content-[''] before:absolute before:left-0 before:top-1/2 before:w-[42%] before:h-px before:bg-white/8 after:content-[''] after:absolute after:right-0 after:top-1/2 after:w-[42%] after:h-px after:bg-white/8">
+            or
+          </div>
+
+          <p className="text-center text-sm text-gray-400">
+            Don't have an account?{' '}
+            <Link href="/auth/register" className="text-green-400 hover:text-green-300 font-medium transition-colors">
+              Create one →
+            </Link>
+          </p>
+        </div>
+      </div>
+    </main>
+  )
+}

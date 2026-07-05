@@ -1,159 +1,150 @@
-# Turborepo starter
+# TRUF GAMING 🏏
 
-This Turborepo starter is maintained by the Turborepo core team.
+> **Premium Cricket Box Booking Marketplace**
+> Connects cricket players with cricket box owners. Built like Airbnb, for cricket.
 
-## Using this example
+---
 
-Run the following command:
+## Tech Stack
 
-```sh
-npx create-turbo@latest
+| Layer | Technology |
+|---|---|
+| Monorepo | Turborepo + npm workspaces |
+| Frontend | Next.js 14 (App Router), Tailwind CSS, Zustand, Framer Motion |
+| Backend | Express.js + TypeScript |
+| Database | PostgreSQL + Prisma ORM |
+| Cache / Locks | Redis |
+| Background Jobs | BullMQ |
+| Payments | Razorpay |
+| Real-time | Socket.IO |
+| Media | Cloudinary |
+| SMS | Twilio |
+| Auth | JWT (Access + Refresh Tokens) |
+| Containerization | Docker + Docker Compose |
+
+---
+
+## Project Structure
+
+```
+truf-gaming/
+├── apps/
+│   ├── web/          # Next.js customer + owner + admin UI
+│   └── api/          # Express REST API
+├── packages/
+│   ├── database/     # Prisma schema & migrations
+│   ├── ui/           # Shared component library
+│   ├── eslint-config/
+│   └── typescript-config/
+├── docker-compose.yml
+├── turbo.json
+└── .env.example
 ```
 
-## What's inside?
+---
 
-This Turborepo includes the following packages/apps:
+## Getting Started
 
-### Apps and Packages
+### 1. Prerequisites
+- Node.js 18+
+- Docker Desktop (for PostgreSQL & Redis)
+- npm
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+### 2. Clone & Install
+```bash
+git clone https://github.com/your-org/truf-gaming.git
+cd truf-gaming
+npm install
 ```
 
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo build
-npm dlx turbo build
-npm exec turbo build
+### 3. Set Up Environment
+```bash
+cp .env.example apps/api/.env
+# Edit apps/api/.env with your credentials
+cp .env.example apps/web/.env.local
+# Edit apps/web/.env.local with NEXT_PUBLIC_ keys only
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
+### 4. Start Infrastructure (Docker)
+```bash
+docker-compose up -d
+# Starts PostgreSQL on :5432 and Redis on :6379
 ```
 
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-npm exec turbo build --filter=docs
-npm exec turbo build --filter=docs
+### 5. Run Database Migrations
+```bash
+npm run db:migrate -w @truf-gaming/database
 ```
 
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
+### 6. Start Development Servers
+```bash
+npm run dev
+# Starts both Next.js (:3000) and Express API (:3001) simultaneously
 ```
 
-Without global `turbo`, use your package manager:
+---
 
-```sh
-cd my-turborepo
-npx turbo dev
-npm exec turbo dev
-npm exec turbo dev
+## API Reference
+
+Base URL: `http://localhost:3001/api/v1`
+
+All responses follow the contract:
+```json
+{ "success": true, "message": "...", "data": {} }
+{ "success": false, "error": { "code": "ERR_CODE", "message": "..." } }
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/auth/register` | — | Register customer or owner |
+| POST | `/auth/login` | — | Login, receive JWT |
+| GET | `/venues` | — | List approved venues |
+| POST | `/venues` | OWNER | Create venue draft |
+| PATCH | `/venues/:id/status` | SUPER_ADMIN | Approve / reject venue |
+| GET | `/slots/available` | — | Get available slots |
+| POST | `/bookings/lock` | CUSTOMER | Lock a slot (10 min TTL) |
+| POST | `/bookings` | CUSTOMER | Create booking (after lock) |
+| POST | `/payments/verify` | CUSTOMER | Verify Razorpay payment |
+| GET | `/healthz` | — | API health check |
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+---
 
-```sh
-turbo dev --filter=web
+## Booking Flow
+
+```
+Customer selects slot
+       ↓
+POST /bookings/lock  →  Redis SETNX lock:slot:{id} (10 min TTL)
+       ↓
+POST /bookings       →  Booking created (status: PENDING)
+       ↓
+Razorpay checkout in browser
+       ↓
+Razorpay Webhook     →  Signature verified → Booking (status: CONFIRMED)
+       ↓
+BullMQ Worker        →  Commission calculated, SMS/Email sent
 ```
 
-Without global `turbo`:
+---
 
-```sh
-npx turbo dev --filter=web
-npm exec turbo dev --filter=web
-npm exec turbo dev --filter=web
-```
+## Available Routes (Frontend)
 
-### Remote Caching
+| Route | Description |
+|---|---|
+| `/` | Customer landing page |
+| `/venues` | Browse all cricket boxes |
+| `/owner` | Owner dashboard |
+| `/admin` | Super Admin CRM |
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+---
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+## Commission Model
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+TRUF GAMING earns **10%** of every booking as a platform commission.
+The remaining **90%** is settled to the venue owner's bank account.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+---
 
-```sh
-cd my-turborepo
-turbo login
-```
+## License
 
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-npm exec turbo login
-npm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-npm exec turbo link
-npm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+UNLICENSED — Private. All rights reserved © TRUF GAMING.

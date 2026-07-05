@@ -1,102 +1,99 @@
-import Image, { type ImageProps } from "next/image";
-import { Button } from "@repo/ui/button";
-import styles from "./page.module.css";
+import React from 'react'
+import { MapPin, Calendar, Clock, Search } from 'lucide-react'
 
-type Props = Omit<ImageProps, "src"> & {
-  srcLight: string;
-  srcDark: string;
-};
-
-const ThemeImage = (props: Props) => {
-  const { srcLight, srcDark, ...rest } = props;
-
+export default function HomePage() {
   return (
-    <>
-      <Image {...rest} src={srcLight} className="imgLight" />
-      <Image {...rest} src={srcDark} className="imgDark" />
-    </>
-  );
-};
-
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <ThemeImage
-          className={styles.logo}
-          srcLight="turborepo-dark.svg"
-          srcDark="turborepo-light.svg"
-          alt="Turborepo logo"
-          width={180}
-          height={38}
-          priority
+    <main className="flex min-h-screen flex-col items-center">
+      {/* Hero Section */}
+      <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
+        {/* Background Image/Gradient Mock */}
+        <div className="absolute inset-0 bg-gradient-to-br from-green-900/40 to-black z-0" />
+        <div 
+          className="absolute inset-0 opacity-30 bg-cover bg-center z-[-1]"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=2067&auto=format&fit=crop')" }}
         />
-        <ol>
-          <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new/clone?demo-description=Learn+to+implement+a+monorepo+with+a+two+Next.js+sites+that+has+installed+three+local+packages.&demo-image=%2F%2Fimages.ctfassets.net%2Fe5382hct74si%2F4K8ZISWAzJ8X1504ca0zmC%2F0b21a1c6246add355e55816278ef54bc%2FBasic.png&demo-title=Monorepo+with+Turborepo&demo-url=https%3A%2F%2Fexamples-basic-web.vercel.sh%2F&from=templates&project-name=Monorepo+with+Turborepo&repository-name=monorepo-turborepo&repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fturborepo%2Ftree%2Fmain%2Fexamples%2Fbasic&root-directory=apps%2Fdocs&skippable-integrations=1&teamSlug=vercel&utm_source=create-turbo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://turborepo.dev/docs?utm_source"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+        <div className="relative z-10 flex flex-col items-center text-center space-y-6 px-4">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-xl">
+            Book Your Next <span className="text-primary">Innings</span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-300 max-w-2xl font-light">
+            Premium cricket boxes, instant booking, and world-class turf experiences waiting for you.
+          </p>
+
+          {/* Search Glass Panel */}
+          <div className="mt-8 p-4 glass-panel rounded-2xl w-full max-w-4xl flex flex-col md:flex-row gap-4 items-center">
+            
+            {/* Location */}
+            <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full">
+              <MapPin className="text-primary w-5 h-5 mr-3" />
+              <input 
+                type="text" 
+                placeholder="Where do you want to play?" 
+                className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400"
+              />
+            </div>
+
+            {/* Date */}
+            <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full">
+              <Calendar className="text-primary w-5 h-5 mr-3" />
+              <input 
+                type="date" 
+                className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400"
+              />
+            </div>
+
+            {/* Time */}
+            <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full">
+              <Clock className="text-primary w-5 h-5 mr-3" />
+              <select className="bg-transparent border-none outline-none text-white w-full appearance-none">
+                <option value="" className="text-black">Any Time</option>
+                <option value="morning" className="text-black">Morning (6 AM - 12 PM)</option>
+                <option value="evening" className="text-black">Evening (4 PM - 10 PM)</option>
+              </select>
+            </div>
+
+            {/* Search Button */}
+            <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-semibold transition-all flex items-center justify-center w-full md:w-auto">
+              <Search className="w-5 h-5 mr-2" />
+              Search
+            </button>
+          </div>
         </div>
-        <Button appName="web" className={styles.secondary}>
-          Open alert
-        </Button>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com/templates?search=turborepo&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://turborepo.dev?utm_source=create-turbo"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to turborepo.dev →
-        </a>
-      </footer>
-    </div>
-  );
+      </section>
+
+      {/* Featured Venues Section */}
+      <section className="w-full max-w-7xl px-4 py-20">
+        <h2 className="text-3xl font-bold mb-8 text-white">Top Rated Boxes Near You</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Mock Card 1 */}
+          <div className="group rounded-2xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-all cursor-pointer">
+            <div className="h-48 bg-gray-800 overflow-hidden relative">
+              <img src="https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop" alt="Turf" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-primary border border-primary/20">
+                ₹1,200/hr
+              </div>
+            </div>
+            <div className="p-5">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-xl font-semibold text-white">Olympia Turf</h3>
+                <div className="flex items-center text-yellow-500 text-sm">
+                  ★ 4.9
+                </div>
+              </div>
+              <p className="text-muted-foreground text-sm flex items-center mb-4">
+                <MapPin className="w-4 h-4 mr-1" /> Madhapur, Hyderabad
+              </p>
+              <button className="w-full bg-white/5 hover:bg-primary hover:text-primary-foreground border border-white/10 py-2 rounded-lg transition-colors font-medium text-white">
+                View Availability
+              </button>
+            </div>
+          </div>
+          
+          {/* Add more mock cards as needed for visual design */}
+        </div>
+      </section>
+    </main>
+  )
 }
