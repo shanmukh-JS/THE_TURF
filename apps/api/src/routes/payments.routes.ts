@@ -1,9 +1,9 @@
-import { Router } from 'express';
-import { processPayment } from '../controllers/payments.controller';
-import { requireAuth } from '../middleware/auth';
+import express, { Router } from 'express'
+import { processPayment } from '../controllers/payments.controller'
+import { requireAuth } from '../middleware/auth'
 
-const router = Router();
+const router: express.Router = Router()
 
-router.post('/verify', requireAuth, processPayment);
+router.post('/verify', requireAuth, processPayment)
 
-export default router;
+export default router

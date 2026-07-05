@@ -1,57 +1,87 @@
-import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/AppError';
-import prisma from '@truf-gaming/database';
+import { Request, Response, NextFunction } from 'express'
+import { AppError } from '../utils/AppError'
+import { AuthRequest } from '../middleware/auth'
+import prisma from '@truf-gaming/database'
 
-export const getVenueSlots = async (req: Request, res: Response, next: NextFunction) => {
+export const createSlots = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { venueId } = req.params;
-    const { date } = req.query; // YYYY-MM-DD
+    const venueId = String(req.params.venueId)
+    const { date, startTime, endTime, price } = req.body
 
-    if (!date) {
-      throw new AppError(400, 'VALIDATION_001', 'Date parameter is required (YYYY-MM-DD)');
+    if (!venueId || !date || !startTime || !endTime || !price) {
+      throw new AppError(
+        400,
+        'VALIDATION_001',
+        'venueId, date, startTime, endTime, and price are required.'
+      )
     }
 
-    const startDate = new Date(`${date}T00:00:00.000Z`);
-    const endDate = new Date(`${date}T23:59:59.999Z`);
+    const venue = await prisma.venue.findUnique({
+      where: { id: venueId },
+      include: { owner: true },
+    })
+
+    if (!venue) {
+      throw new AppError(404, 'NOT_FOUND', 'Venue not found.')
+    }
+
+    if (venue.owner.userId !== req.user!.id) {
+      throw new AppError(403, 'AUTH_004', 'You can only create slots for your own venues.')
+    }
+
+    const slot = await prisma.slot.create({
+      data: {
+        venueId,
+        date: new Date(date),
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        price: Number(price),
+      },
+    })
+
+    res.status(201).json({
+      success: true,
+      message: 'Slot created successfully.',
+      data: { slot },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getSlotsByVenue = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const venueId = String(req.params.venueId)
+    const date = String(req.query.date)
+
+    if (!venueId) {
+      throw new AppError(400, 'VALIDATION_001', 'venueId is required.')
+    }
+
+    const where: any = { venueId }
+
+    if (req.query.date) {
+      const targetDate = new Date(date)
+      const nextDay = new Date(targetDate)
+      nextDay.setDate(targetDate.getDate() + 1)
+
+      where.date = {
+        gte: targetDate,
+        lt: nextDay,
+      }
+    }
 
     const slots = await prisma.slot.findMany({
-      where: {
-        venueId: String(venueId),
-        startTime: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      include: {
-        bookings: {
-          where: {
-            status: { in: ['CONFIRMED', 'CHECKED_IN', 'COMPLETED'] }
-          }
-        }
-      },
-      orderBy: { startTime: 'asc' }
-    });
-
-    const enrichedSlots = slots.map((slot: any) => {
-      const isBooked = slot.bookings.length > 0;
-      const isLocked = slot.isLocked && slot.lockExpires && new Date() < new Date(slot.lockExpires);
-      
-      return {
-        id: slot.id,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        isAvailable: !isBooked && !isLocked,
-        isLocked,
-        price: 1000 // In a real app, calculate from VenuePricing rules
-      };
-    });
+      where,
+      orderBy: { startTime: 'asc' },
+    })
 
     res.status(200).json({
       success: true,
       message: 'Slots fetched successfully.',
-      data: { slots: enrichedSlots },
-    });
+      data: { slots },
+    })
   } catch (error) {
-    next(error);
+    next(error)
   }
-};
+}
