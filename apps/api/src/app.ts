@@ -15,7 +15,7 @@ import { globalLimiter, authLimiter, bookingLimiter } from './middleware/rateLim
 
 dotenv.config()
 
-const app = express()
+const app: express.Express = express()
 
 // ─── Security ───────────────────────────────────────────────────────────────
 app.use(helmet())
