@@ -11,7 +11,7 @@ export default function NotFound() {
         <h1 className="text-7xl font-black text-white mb-2">404</h1>
         <h2 className="text-2xl font-semibold text-white mb-2">Page Not Found</h2>
         <p className="text-gray-400 max-w-sm">
-          Looks like this venue has left the pitch. The page you're looking for doesn't exist.
+          Looks like this venue has left the pitch. The page you&apos;re looking for doesn&apos;t exist.
         </p>
       </div>
       <div className="flex gap-3">

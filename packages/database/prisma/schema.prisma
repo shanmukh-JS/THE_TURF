@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  phone           String?          @unique
+  password        String
+  role            String           // e.g., 'OWNER' | 'CUSTOMER' | 'ADMIN'
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  customerProfile CustomerProfile?
+  ownerProfile    OwnerProfile?
+  bookings        Booking[]
+  reviews         Review[]
+}
+
+model CustomerProfile {
+  id        String @id @default(uuid())
+  userId    String @unique
+  fullName  String
+  user      User   @relation(fields: [userId], references: [id])
+}
+
+model OwnerProfile {
+  id           String @id @default(uuid())
+  userId       String @unique
+  fullName     String
+  businessName String
+  user         User   @relation(fields: [userId], references: [id])
+  venues       Venue[]
+  commissions  Commission[]
+  settlements  Settlement[]
+}
+
+model Venue {
+  id                 String   @id @default(uuid())
+  ownerId            String
+  name               String
+  description        String?
+  address            String
+  cityId             String?
+  areaId             String?
+  verificationStatus String   // e.g., 'DRAFT' | 'APPROVED'
+  pitches            Int      @default(1)
+  isIndoor           Boolean  @default(false)
+  turfType           String?
+  owner              OwnerProfile @relation(fields: [ownerId], references: [id])
+  city               City?    @relation(fields: [cityId], references: [id])
+  area               Area?    @relation(fields: [areaId], references: [id])
+  slots              Slot[]
+  reviews            Review[]
+  bookings           Booking[]
+  images             VenueImage[]
+  pricing            VenuePricing?
+}
+
+model VenueImage {
+  id       String  @id @default(uuid())
+  venueId  String
+  url      String
+  isCover  Boolean @default(false)
+  venue    Venue   @relation(fields: [venueId], references: [id])
+}
+
+model VenuePricing {
+  id        String @id @default(uuid())
+  venueId   String @unique
+  price     Float
+  venue     Venue  @relation(fields: [venueId], references: [id])
+}
+
+model City {
+  id      String  @id @default(uuid())
+  name    String
+  state   String?
+  venues  Venue[]
+  areas   Area[]
+}
+
+model Area {
+  id      String  @id @default(uuid())
+  name    String
+  cityId  String
+  city    City    @relation(fields: [cityId], references: [id])
+  venues  Venue[]
+}
+
+model Slot {
+  id          String   @id @default(uuid())
+  venueId     String
+  date        DateTime
+  startTime   DateTime
+  endTime     DateTime
+  price       Float
+  isBooked    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  lockExpires DateTime?
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  bookings    Booking[]
+}
+
+model Booking {
+  id          String   @id @default(uuid())
+  slotId      String   @unique
+  venueId     String
+  customerId  String
+  totalAmount Float    @default(0)
+  advancePaid Float    @default(0)
+  status      String   // e.g., 'CONFIRMED'
+  paymentId   String?
+  qrCode      String?
+  slot        Slot     @relation(fields: [slotId], references: [id])
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  customer    User     @relation(fields: [customerId], references: [id])
+  commission  Commission?
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  venueId    String
+  customerId String
+  rating     Float
+  comment    String?
+  createdAt  DateTime @default(now())
+  venue      Venue    @relation(fields: [venueId], references: [id])
+  customer   User     @relation(fields: [customerId], references: [id])
+}
+
+model Commission {
+  id           String      @id @default(uuid())
+  bookingId    String      @unique
+  ownerId      String
+  amount       Float
+  status       String
+  settlementId String?
+  booking      Booking     @relation(fields: [bookingId], references: [id])
+  owner        OwnerProfile @relation(fields: [ownerId], references: [id])
+  settlement   Settlement?  @relation(fields: [settlementId], references: [id])
+}
+
+model Settlement {
+  id          String       @id @default(uuid())
+  ownerId     String
+  amount      Float
+  status      String       // 'PENDING' | 'COMPLETED'
+  transferId  String?
+  owner       OwnerProfile @relation(fields: [ownerId], references: [id])
+  commissions Commission[]
+}

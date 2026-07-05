@@ -62,7 +62,7 @@ export const getVenueReviews = async (req: Request, res: Response, next: NextFun
     const { venueId } = req.params;
 
     const reviews = await prisma.review.findMany({
-      where: { venueId },
+      where: { venueId: String(venueId) },
       include: {
         customer: {
           select: { customerProfile: { select: { fullName: true } } }
@@ -72,7 +72,7 @@ export const getVenueReviews = async (req: Request, res: Response, next: NextFun
     });
 
     const aggregate = await prisma.review.aggregate({
-      where: { venueId },
+      where: { venueId: String(venueId) },
       _avg: { rating: true },
       _count: true
     });
@@ -81,7 +81,7 @@ export const getVenueReviews = async (req: Request, res: Response, next: NextFun
       success: true,
       data: {
         venueId,
-        avgRating: aggregate._avg.rating ? Math.round(aggregate._avg.rating * 10) / 10 : 0,
+        avgRating: aggregate._avg?.rating ? Math.round(aggregate._avg.rating * 10) / 10 : 0,
         totalReviews: aggregate._count,
         reviews: reviews.map((r: any) => ({
           id: r.id,

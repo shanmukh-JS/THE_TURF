@@ -31,7 +31,7 @@ export default function OwnerDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Good evening, Rajesh 👋</h1>
-          <p className="text-gray-400 mt-1">Here's how your venues are performing today.</p>
+          <p className="text-gray-400 mt-1">Here&apos;s how your venues are performing today.</p>
         </div>
         <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-xl">
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -156,7 +156,7 @@ export default function OwnerDashboardPage() {
 
           {/* Today's Schedule */}
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 space-y-3">
-            <h2 className="text-sm font-semibold text-white">Today's Slots</h2>
+            <h2 className="text-sm font-semibold text-white">Today&apos;s Slots</h2>
             {[
               { time: '07:00 PM', customer: 'Arjun M.', status: 'booked' },
               { time: '08:00 PM', customer: '—', status: 'free' },

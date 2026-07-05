@@ -1,4 +1,4 @@
-import { SkeletonCard, SkeletonStat } from '@/components/ui/Skeleton'
+import { SkeletonCard } from '@/components/ui/Skeleton'
 
 export default function VenuesLoading() {
   return (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Building2, FileText, CreditCard, CheckCircle, ChevronRight, Upload } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 const steps = [
@@ -62,7 +63,7 @@ export default function OwnerOnboardingPage() {
                 <input
                   type="text"
                   placeholder={placeholder}
-                  value={(biz as any)[field]}
+                  value={biz[field as keyof typeof biz]}
                   onChange={e => setBiz({ ...biz, [field]: e.target.value })}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
                 />
@@ -123,7 +124,7 @@ export default function OwnerOnboardingPage() {
                 <input
                   type="text"
                   placeholder={placeholder}
-                  value={(bank as any)[field]}
+                  value={bank[field as keyof typeof bank]}
                   onChange={e => setBank({ ...bank, [field]: e.target.value })}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
                 />
@@ -150,14 +151,14 @@ export default function OwnerOnboardingPage() {
             </div>
             <h2 className="text-xl font-bold text-white">Application Submitted!</h2>
             <p className="text-gray-400 text-sm max-w-sm mx-auto">
-              Our team will review your documents and activate your owner account within <strong className="text-white">24-48 hours</strong>. You'll receive an SMS confirmation.
+              Our team will review your documents and activate your owner account within <strong className="text-white">24-48 hours</strong>. You&apos;ll receive an SMS confirmation.
             </p>
             <div className="inline-block px-4 py-2 rounded-xl bg-black/40 border border-green-500/20 font-mono text-green-400 text-xs font-bold tracking-widest">
               APPLICATION #KYC{Date.now().toString().slice(-6)}
             </div>
-            <a href="/" className="block mt-2 text-sm text-green-400 hover:text-green-300 transition-colors">
+            <Link href="/" className="block mt-2 text-sm text-green-400 hover:text-green-300 transition-colors">
               Return to Home →
-            </a>
+            </Link>
           </div>
         )}
       </div>

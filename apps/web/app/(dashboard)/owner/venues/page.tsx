@@ -1,4 +1,4 @@
-import { MapPin, Star, Edit3, Trash2, Eye, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { MapPin, Edit3, Trash2, Eye, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
 const venues = [

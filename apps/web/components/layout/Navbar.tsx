@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Zap, Menu, X, User, LogIn, ChevronDown, LayoutDashboard, CalendarCheck, LogOut } from 'lucide-react'
+import { Zap, Menu, X, User, ChevronDown, LayoutDashboard, CalendarCheck, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navLinks = [

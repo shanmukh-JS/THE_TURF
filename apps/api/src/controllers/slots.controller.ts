@@ -16,7 +16,7 @@ export const getVenueSlots = async (req: Request, res: Response, next: NextFunct
 
     const slots = await prisma.slot.findMany({
       where: {
-        venueId,
+        venueId: String(venueId),
         startTime: {
           gte: startDate,
           lte: endDate,

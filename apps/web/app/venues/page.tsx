@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import { MapPin, Star, Clock, Wifi, Car, Zap, Filter, Search } from 'lucide-react'

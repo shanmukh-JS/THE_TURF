@@ -1,4 +1,5 @@
-import { MapPin, Star, Clock, Wifi, Car, Zap, Shield, ChevronRight } from 'lucide-react'
+/* eslint-disable @next/next/no-img-element */
+import { MapPin, Star, Clock, Zap, Shield, ChevronRight } from 'lucide-react'
 
 // In production, this would fetch from the API: /api/v1/venues/:id
 const venue = {
@@ -30,7 +31,7 @@ const reviews = [
   { id: 'r3', name: 'Kiran B.', rating: 5, comment: 'Booked for my company team. Absolutely worth it!', date: 'Jun 2026' },
 ]
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
+export async function generateMetadata() {
   return {
     title: `${venue.name} — Cricket Box Booking | TRUF GAMING`,
     description: venue.description,
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   }
 }
 
-export default function VenueDetailPage({ params }: { params: { id: string } }) {
+export default function VenueDetailPage() {
   return (
     <main className="min-h-screen bg-[#060d06] text-white">
       {/* Image Gallery */}

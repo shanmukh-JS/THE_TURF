@@ -56,7 +56,7 @@ export const updateVenueStatus = async (req: Request, res: Response, next: NextF
     // Must be SUPER_ADMIN (enforced by route middleware)
     
     const venue = await prisma.venue.update({
-      where: { id },
+      where: { id: String(id) },
       data: { verificationStatus: status }
     });
 

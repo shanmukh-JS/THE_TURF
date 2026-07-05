@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { CheckCircle, CreditCard, Calendar, User, ChevronRight, Lock, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 const steps = [
@@ -44,7 +45,7 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
       <div className="w-full max-w-2xl mb-8">
         <div className="flex items-center justify-between relative">
           <div className="absolute top-5 left-0 right-0 h-px bg-white/10 z-0" />
-          {steps.map((s, i) => {
+          {steps.map((s) => {
             const Icon = s.icon
             const done = step > s.id
             const active = step === s.id
@@ -127,7 +128,7 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
                 <input
                   type={field === 'phone' ? 'tel' : 'text'}
                   placeholder={field === 'phone' ? '+91 98765 43210' : 'Arjun Mehta'}
-                  value={(details as any)[field]}
+                  value={details[field as keyof typeof details]}
                   onChange={(e) => setDetails({ ...details, [field]: e.target.value })}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors"
                 />
@@ -179,7 +180,7 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
             <label className="flex items-start gap-3 cursor-pointer group">
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 accent-green-500" />
               <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                I agree to the venue rules and TRUF GAMING's <a href="#" className="text-green-400 underline">Terms of Service</a> and <a href="#" className="text-green-400 underline">Cancellation Policy</a>.
+                I agree to the venue rules and TRUF GAMING&apos;s <a href="#" className="text-green-400 underline">Terms of Service</a> and <a href="#" className="text-green-400 underline">Cancellation Policy</a>.
               </span>
             </label>
 
@@ -214,8 +215,8 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
             </div>
             <p className="text-xs text-gray-500">A confirmation SMS has been sent to {details.phone}. See you on the pitch! 🎯</p>
             <div className="flex gap-3 justify-center mt-4">
-              <a href="/" className="px-6 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 text-sm transition-colors">Back to Home</a>
-              <a href="/venues" className="px-6 py-2.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium transition-colors hover:bg-green-500/25">Browse More Venues</a>
+              <Link href="/" className="px-6 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 text-sm transition-colors">Back to Home</Link>
+              <Link href="/venues" className="px-6 py-2.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium transition-colors hover:bg-green-500/25">Browse More Venues</Link>
             </div>
           </div>
         )}

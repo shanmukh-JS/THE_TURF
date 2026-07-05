@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Zap, User, Building2 } from 'lucide-react'
+import { Zap, User, Building2, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -33,7 +33,7 @@ export default function RegisterPage() {
 
         {/* Role Toggle */}
         <div className="flex gap-2 bg-white/5 rounded-xl p-1 border border-white/8">
-          {([['CUSTOMER', User, 'I want to play'], ['OWNER', Building2, 'I own a venue']] as [Role, any, string][]).map(([r, Icon, label]) => (
+          {([['CUSTOMER', User, 'I want to play'], ['OWNER', Building2, 'I own a venue']] as [Role, LucideIcon, string][]).map(([r, Icon, label]) => (
             <button
               key={r}
               onClick={() => setRole(r)}
@@ -64,7 +64,7 @@ export default function RegisterPage() {
                   type={type}
                   required
                   placeholder={placeholder}
-                  value={(form as any)[field]}
+                  value={form[field as keyof typeof form]}
                   onChange={e => setForm({ ...form, [field]: e.target.value })}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
                 />
@@ -73,7 +73,7 @@ export default function RegisterPage() {
 
             {role === 'OWNER' && (
               <div className="rounded-xl bg-green-500/5 border border-green-500/20 px-4 py-3 text-sm text-green-300">
-                🏏 After registration, you'll complete KYC verification before listing your venue.
+                🏏 After registration, you&apos;ll complete KYC verification before listing your venue.
               </div>
             )}
 

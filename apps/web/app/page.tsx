@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import React from 'react'
 import { MapPin, Calendar, Clock, Search } from 'lucide-react'
 
