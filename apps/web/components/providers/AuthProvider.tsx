@@ -5,7 +5,6 @@ import { useAuthStore } from '../../store/useAuthStore'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false)
-  const { token, logout } = useAuthStore()
 
   useEffect(() => {
     setIsMounted(true)
