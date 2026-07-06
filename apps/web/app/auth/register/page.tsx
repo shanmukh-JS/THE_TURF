@@ -3,21 +3,49 @@
 import { useState } from 'react'
 import { Zap, User, Building2, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 type Role = 'CUSTOMER' | 'OWNER'
 
 export default function RegisterPage() {
+  const supabase = createClient()
   const [role, setRole] = useState<Role>('CUSTOMER')
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    // In production: call POST /api/v1/auth/register with { ...form, role }
-    await new Promise(r => setTimeout(r, 1000))
+    setError(null)
+
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          full_name: form.name,
+          role: role,
+        },
+      },
+    })
+
     setLoading(false)
+
+    if (signUpError) {
+      setError(signUpError.message)
+      return
+    }
+
+    if (data.session) {
+      // User created and logged in automatically (if email confirmation is off)
+      router.push(role === 'OWNER' ? '/owner' : '/')
+    } else {
+      setError('Registration successful! Please check your email to confirm.')
+    }
   }
 
   return (
@@ -33,15 +61,18 @@ export default function RegisterPage() {
 
         {/* Role Toggle */}
         <div className="flex gap-2 bg-white/5 rounded-xl p-1 border border-white/8">
-          {([['CUSTOMER', User, 'I want to play'], ['OWNER', Building2, 'I own a venue']] as [Role, LucideIcon, string][]).map(([r, Icon, label]) => (
+          {(
+            [
+              ['CUSTOMER', User, 'I want to play'],
+              ['OWNER', Building2, 'I own a venue'],
+            ] as [Role, LucideIcon, string][]
+          ).map(([r, Icon, label]) => (
             <button
               key={r}
               onClick={() => setRole(r)}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all',
-                role === r
-                  ? 'bg-green-500 text-black shadow-lg'
-                  : 'text-gray-400 hover:text-white'
+                role === r ? 'bg-green-500 text-black shadow-lg' : 'text-gray-400 hover:text-white'
               )}
             >
               <Icon className="w-4 h-4" />
@@ -54,9 +85,24 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {[
               { field: 'name', label: 'Full Name', type: 'text', placeholder: 'Arjun Mehta' },
-              { field: 'email', label: 'Email Address', type: 'email', placeholder: 'arjun@example.com' },
-              { field: 'phone', label: 'Phone Number', type: 'tel', placeholder: '+91 98765 43210' },
-              { field: 'password', label: 'Password', type: 'password', placeholder: 'Min. 8 characters' },
+              {
+                field: 'email',
+                label: 'Email Address',
+                type: 'email',
+                placeholder: 'arjun@example.com',
+              },
+              {
+                field: 'phone',
+                label: 'Phone Number',
+                type: 'tel',
+                placeholder: '+91 98765 43210',
+              },
+              {
+                field: 'password',
+                label: 'Password',
+                type: 'password',
+                placeholder: 'Min. 8 characters',
+              },
             ].map(({ field, label, type, placeholder }) => (
               <div key={field}>
                 <label className="block text-sm text-gray-400 mb-2">{label}</label>
@@ -65,7 +111,7 @@ export default function RegisterPage() {
                   required
                   placeholder={placeholder}
                   value={form[field as keyof typeof form]}
-                  onChange={e => setForm({ ...form, [field]: e.target.value })}
+                  onChange={(e) => setForm({ ...form, [field]: e.target.value })}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
                 />
               </div>
@@ -73,7 +119,14 @@ export default function RegisterPage() {
 
             {role === 'OWNER' && (
               <div className="rounded-xl bg-green-500/5 border border-green-500/20 px-4 py-3 text-sm text-green-300">
-                🏏 After registration, you&apos;ll complete KYC verification before listing your venue.
+                🏏 After registration, you&apos;ll complete KYC verification before listing your
+                venue.
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                {error}
               </div>
             )}
 
@@ -82,13 +135,20 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full py-3.5 rounded-xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-black font-bold transition-all shadow-lg shadow-green-900/30"
             >
-              {loading ? 'Creating account...' : role === 'OWNER' ? 'Create Owner Account →' : 'Create Account →'}
+              {loading
+                ? 'Creating account...'
+                : role === 'OWNER'
+                  ? 'Create Owner Account →'
+                  : 'Create Account →'}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-400 mt-4">
             Already have an account?{' '}
-            <Link href="/auth/login" className="text-green-400 hover:text-green-300 font-medium transition-colors">
+            <Link
+              href="/auth/login"
+              className="text-green-400 hover:text-green-300 font-medium transition-colors"
+            >
               Sign in
             </Link>
           </p>

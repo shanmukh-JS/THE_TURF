@@ -3,18 +3,38 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Zap } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
+  const supabase = createClient()
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    // In production: call POST /api/v1/auth/login, store JWT in httpOnly cookie
-    await new Promise(r => setTimeout(r, 1000))
+    setError(null)
+
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    })
+
     setLoading(false)
+
+    if (signInError) {
+      setError(signInError.message)
+      return
+    }
+
+    if (data.session) {
+      const role = data.session.user.user_metadata?.role
+      router.push(role === 'OWNER' ? '/owner' : '/')
+    }
   }
 
   return (
@@ -39,7 +59,7 @@ export default function LoginPage() {
                 required
                 placeholder="arjun@example.com"
                 value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
               />
             </div>
@@ -51,7 +71,7 @@ export default function LoginPage() {
                   required
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 pr-11 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
                 />
                 <button
@@ -63,11 +83,21 @@ export default function LoginPage() {
                 </button>
               </div>
               <div className="flex justify-end mt-1">
-                <Link href="/auth/forgot-password" className="text-xs text-green-400 hover:text-green-300 transition-colors">
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs text-green-400 hover:text-green-300 transition-colors"
+                >
                   Forgot password?
                 </Link>
               </div>
             </div>
+
+            {error && (
+              <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -83,7 +113,10 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-gray-400">
             Don&apos;t have an account?{' '}
-            <Link href="/auth/register" className="text-green-400 hover:text-green-300 font-medium transition-colors">
+            <Link
+              href="/auth/register"
+              className="text-green-400 hover:text-green-300 font-medium transition-colors"
+            >
               Create one →
             </Link>
           </p>
