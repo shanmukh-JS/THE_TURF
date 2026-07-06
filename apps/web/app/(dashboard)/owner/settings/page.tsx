@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   Building2,
   CalendarClock,
@@ -15,25 +16,25 @@ import {
   RefreshCw,
 } from 'lucide-react'
 
-// Dummy initial data to simulate fetching from DB
-const initialData = {
+const defaultSettings = {
   business: {
-    turfName: 'Olympia Turf',
-    ownerName: 'Shanmukh Kadali',
-    email: 'shanmukh@example.com',
-    phone: '+91 98765 43210',
-    address: '123, Sports Avenue, Madhapur, Hyderabad',
+    turfName: '',
+    ownerName: '',
+    email: '',
+    phone: '',
+    address: '',
+    logoUrl: '',
   },
   booking: {
     autoAccept: true,
-    cancellationPolicy: '24_hours',
-    bufferTime: '30_mins',
+    cancellationPolicy: 'flexible',
+    bufferTime: '0',
   },
   bank: {
-    accountName: 'SHANMUKH KADALI',
-    accountNumber: '********4589',
-    ifsc: 'HDFC0001234',
-    upi: 'shanmukh@okhdfc',
+    accountName: '',
+    accountNumber: '',
+    ifsc: '',
+    upi: '',
   },
   notifications: {
     booking: true,
@@ -44,16 +45,83 @@ const initialData = {
 }
 
 export default function OwnerSettingsPage() {
-  const [formData, setFormData] = useState(initialData)
+  const [formData, setFormData] = useState(defaultSettings)
+  const [initialData, setInitialData] = useState(defaultSettings)
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function loadSettings() {
+      setIsLoading(true)
+      try {
+        const { data: userData } = await supabase.auth.getUser()
+        if (!userData.user) return
+
+        const { data: profile } = await supabase
+          .from('owner_profiles')
+          .select('id, full_name, business_name')
+          .eq('user_id', userData.user.id)
+          .single()
+
+        if (!profile) return
+
+        const { data: settings } = await supabase
+          .from('owner_settings')
+          .select('*')
+          .eq('owner_id', profile.id)
+          .single()
+
+        const mappedData = {
+          business: {
+            turfName: profile.business_name || '',
+            ownerName: profile.full_name || '',
+            email: settings?.business_email || userData.user.email || '',
+            phone: settings?.business_phone || userData.user.phone || '',
+            address: settings?.business_address || '',
+            logoUrl: settings?.business_logo_url || '',
+          },
+          booking: {
+            autoAccept: settings ? settings.auto_accept_bookings : true,
+            cancellationPolicy: settings?.cancellation_policy || 'flexible',
+            bufferTime: settings?.booking_buffer_time || '0',
+          },
+          bank: {
+            accountName: settings?.bank_account_name || '',
+            accountNumber: settings?.bank_account_number || '',
+            ifsc: settings?.bank_ifsc || '',
+            upi: settings?.bank_upi || '',
+          },
+          notifications: {
+            booking: settings ? settings.notify_bookings : true,
+            payment: settings ? settings.notify_payments : true,
+            email: settings ? settings.notify_email : true,
+            sms: settings ? settings.notify_sms : false,
+          },
+        }
+
+        setFormData(mappedData)
+        setInitialData(mappedData)
+      } catch (e) {
+        console.error('Error loading settings:', e)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadSettings()
+  }, [])
 
   // Track changes to show the sticky save bar
   useEffect(() => {
-    const isChanged = JSON.stringify(formData) !== JSON.stringify(initialData)
-    setHasChanges(isChanged)
-  }, [formData])
+    if (!isLoading) {
+      const isChanged = JSON.stringify(formData) !== JSON.stringify(initialData)
+      setHasChanges(isChanged)
+    }
+  }, [formData, initialData, isLoading])
 
   // Auto-hide toast
   useEffect(() => {
@@ -65,11 +133,74 @@ export default function OwnerSettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setHasChanges(false)
-    setToast({ message: 'Settings saved successfully', type: 'success' })
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) throw new Error('Not logged in')
+
+      const { data: profile } = await supabase
+        .from('owner_profiles')
+        .select('id')
+        .eq('user_id', userData.user.id)
+        .single()
+
+      if (!profile) throw new Error('Profile not found')
+
+      // First update the profile for turfName / ownerName
+      await supabase
+        .from('owner_profiles')
+        .update({
+          full_name: formData.business.ownerName,
+          business_name: formData.business.turfName,
+        })
+        .eq('id', profile.id)
+
+      // Then upsert settings
+      const settingsPayload = {
+        owner_id: profile.id,
+        business_email: formData.business.email,
+        business_phone: formData.business.phone,
+        business_address: formData.business.address,
+        business_logo_url: formData.business.logoUrl,
+
+        auto_accept_bookings: formData.booking.autoAccept,
+        cancellation_policy: formData.booking.cancellationPolicy,
+        booking_buffer_time: formData.booking.bufferTime,
+
+        bank_account_name: formData.bank.accountName,
+        bank_account_number: formData.bank.accountNumber,
+        bank_ifsc: formData.bank.ifsc,
+        bank_upi: formData.bank.upi,
+
+        notify_bookings: formData.notifications.booking,
+        notify_payments: formData.notifications.payment,
+        notify_email: formData.notifications.email,
+        notify_sms: formData.notifications.sms,
+
+        updated_at: new Date().toISOString(),
+      }
+
+      // Check if row exists
+      const { data: existingSettings } = await supabase
+        .from('owner_settings')
+        .select('id')
+        .eq('owner_id', profile.id)
+        .single()
+
+      if (existingSettings) {
+        await supabase.from('owner_settings').update(settingsPayload).eq('id', existingSettings.id)
+      } else {
+        await supabase.from('owner_settings').insert([settingsPayload])
+      }
+
+      setInitialData(formData)
+      setHasChanges(false)
+      setToast({ message: 'Settings saved successfully', type: 'success' })
+    } catch (e: any) {
+      console.error(e)
+      setToast({ message: e.message || 'Error saving settings', type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const updateSection = (section: keyof typeof formData, field: string, value: any) => {
@@ -118,6 +249,17 @@ export default function OwnerSettingsPage() {
       </button>
     </div>
   )
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] w-full">
+        <RefreshCw className="w-8 h-8 text-green-500 animate-spin" />
+        <p className="mt-4 text-sm text-gray-400 font-medium tracking-wide animate-pulse">
+          Loading settings...
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="relative pb-24">
