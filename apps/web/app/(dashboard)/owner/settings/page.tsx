@@ -373,43 +373,6 @@ export default function OwnerSettingsPage() {
           </div>
         </section>
 
-        {/* 3. Payment & Bank Details */}
-        <section className="bg-[#0a0f0a] border border-white/8 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CreditCard className="w-5 h-5 text-amber-400" />
-              <h2 className="text-lg font-semibold text-white">Payment & Bank Details</h2>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 text-xs font-semibold border border-green-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              Payouts Active
-            </div>
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InputField
-              label="Bank Account Name"
-              value={formData.bank.accountName}
-              onChange={(v: any) => updateSection('bank', 'accountName', v)}
-            />
-            <InputField
-              label="Account Number"
-              value={formData.bank.accountNumber}
-              onChange={(v: any) => updateSection('bank', 'accountNumber', v)}
-              type="password"
-            />
-            <InputField
-              label="IFSC Code"
-              value={formData.bank.ifsc}
-              onChange={(v: any) => updateSection('bank', 'ifsc', v)}
-            />
-            <InputField
-              label="UPI ID"
-              value={formData.bank.upi}
-              onChange={(v: any) => updateSection('bank', 'upi', v)}
-            />
-          </div>
-        </section>
-
         {/* 4. Notifications */}
         <section className="bg-[#0a0f0a] border border-white/8 rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-white/8 flex items-center gap-3">
