@@ -24,19 +24,30 @@ export default async function OwnerVenuesPage() {
   let venues: any[] = []
 
   if (user) {
-    const { data: realVenues } = await supabase.from('venues').select('*').eq('owner_id', user.id)
+    const { data: ownerProfile } = await supabase
+      .from('owner_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
 
-    if (realVenues) {
-      venues = realVenues.map((v) => ({
-        id: v.id,
-        name: v.name,
-        area: `${v.city}, India`,
-        pitches: v.number_of_grounds || 1,
-        rating: 0,
-        bookings: 0,
-        revenue: 0,
-        status: v.status || 'UNDER_REVIEW',
-      }))
+    if (ownerProfile) {
+      const { data: realVenues } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('owner_id', ownerProfile.id)
+
+      if (realVenues) {
+        venues = realVenues.map((v) => ({
+          id: v.id,
+          name: v.name,
+          area: `${v.city_id || v.area_id || 'India'}`, // we'd need city join ideally but fallback for now
+          pitches: v.pitches || 1,
+          rating: 0,
+          bookings: 0,
+          revenue: 0,
+          status: v.verification_status || 'UNDER_REVIEW',
+        }))
+      }
     }
   }
 
