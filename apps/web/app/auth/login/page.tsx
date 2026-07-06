@@ -5,6 +5,8 @@ import { Eye, EyeOff, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
+import ScrollExpandMedia from '@/components/ui/scroll-expansion-hero'
 
 export default function LoginPage() {
   const supabase = createClient()
@@ -13,6 +15,9 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [targetDashboard, setTargetDashboard] = useState<string>('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,19 +38,53 @@ export default function LoginPage() {
 
     if (data.session) {
       const role = data.session.user.user_metadata?.role
+      let target = '/'
       if (role === 'ADMIN') {
-        router.push('/admin')
+        target = '/admin'
       } else if (role === 'OWNER') {
-        router.push('/owner')
+        target = '/owner'
       } else {
-        router.push('/')
+        target = '/'
       }
+      setTargetDashboard(target)
+      setIsTransitioning(true)
     }
   }
 
+  const handleAnimationComplete = () => {
+    router.push(targetDashboard)
+  }
+
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-6">
+    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Cinematic Transition Overlay */}
+      <AnimatePresence>
+        {isTransitioning && (
+          <motion.div
+            className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <ScrollExpandMedia
+              mediaType="image"
+              mediaSrc="/images/turf-bg.png"
+              bgImageSrc="/images/turf-bg.png"
+              autoPlay={true}
+              duration={2500}
+              onComplete={handleAnimationComplete}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        className="w-full max-w-md space-y-6 relative z-10"
+        initial={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: isTransitioning ? 0 : 1, scale: isTransitioning ? 0.95 : 1 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Logo */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center mx-auto shadow-xl shadow-green-900/40">
@@ -106,10 +145,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isTransitioning}
               className="w-full py-3.5 rounded-xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-black font-bold transition-all shadow-lg shadow-green-900/30"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in...' : isTransitioning ? 'Preparing...' : 'Sign In'}
             </button>
           </form>
 
@@ -127,7 +166,7 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-      </div>
+      </motion.div>
     </main>
   )
 }
