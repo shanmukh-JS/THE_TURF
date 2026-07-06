@@ -149,6 +149,7 @@ export default async function OwnerDashboardPage() {
 
               recentList.push({
                 id: b.id,
+                customer_id: b.customer_id,
                 customer: 'Customer', // Would require joining customer_profiles
                 venue: b.venue && !Array.isArray(b.venue) ? b.venue.name : 'Unknown Venue',
                 date: dateStr,
@@ -158,9 +159,24 @@ export default async function OwnerDashboardPage() {
               })
             }
           }
+          const customerIds = Array.from(customers)
+          const { data: customerProfiles } = await supabase
+            .from('customer_profiles')
+            .select('user_id, full_name')
+            .in('user_id', customerIds as string[])
+
+          const customerMap = new Map()
+          if (customerProfiles) {
+            customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+          }
+
           uniqueCustomers = customers.size
           revenue = revSum
-          recentBookings = recentList
+
+          recentBookings = recentList.map((b) => ({
+            ...b,
+            customer: customerMap.get(b.customer_id) || 'Customer',
+          }))
         }
 
         // 4. Get ratings
@@ -178,7 +194,7 @@ export default async function OwnerDashboardPage() {
         const todayStr = new Date().toISOString().split('T')[0]
         const { data: tSlots } = await supabase
           .from('slots')
-          .select('start_time, is_booked')
+          .select('id, start_time, is_booked')
           .in('venue_id', venueIds)
           .eq('date', todayStr)
           .order('start_time', { ascending: true })
@@ -190,9 +206,20 @@ export default async function OwnerDashboardPage() {
               hour: '2-digit',
               minute: '2-digit',
             })
+
+            let customerName = 'Booked'
+            if (s.is_booked && bookings) {
+              const booking = bookings.find(
+                (b: any) => b.status === 'CONFIRMED' && b.slot?.start_time === s.start_time
+              )
+              if (booking) {
+                customerName = customerMap.get(booking.customer_id) || 'Booked'
+              }
+            }
+
             return {
               time,
-              customer: s.is_booked ? 'Booked' : '—',
+              customer: s.is_booked ? customerName : '—',
               status: s.is_booked ? 'booked' : 'free',
             }
           })
@@ -266,9 +293,12 @@ export default async function OwnerDashboardPage() {
         <div className="xl:col-span-2 rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
           <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">Recent Bookings</h2>
-            <button className="text-xs text-green-400 hover:text-green-300 transition-colors font-medium">
+            <a
+              href="/owner/bookings"
+              className="text-xs text-green-400 hover:text-green-300 transition-colors font-medium"
+            >
               View all →
-            </button>
+            </a>
           </div>
           <div className="overflow-x-auto min-h-[300px]">
             {recentBookings.length === 0 ? (
@@ -357,7 +387,7 @@ export default async function OwnerDashboardPage() {
                   label: 'Manage Slots',
                   sub: 'Edit availability calendar',
                   color: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-                  href: '/owner/bookings',
+                  href: '/owner/slots',
                 },
                 {
                   label: 'View Revenue',
