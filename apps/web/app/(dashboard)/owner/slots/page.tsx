@@ -68,9 +68,16 @@ export default function ManageSlotsPage() {
   // Calendar date navigator
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
     const d = new Date()
+    d.setHours(0, 0, 0, 0)
     const day = d.getDay()
     const diff = d.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
     return new Date(d.setDate(diff))
+  })
+
+  // Min date for forms
+  const [todayStr] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
 
   // Auto-hide toast
@@ -694,7 +701,7 @@ export default function ManageSlotsPage() {
             {/* Grid Schedule */}
             <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
               {getWeekDates().map((date, idx) => {
-                const dateKey = date.toISOString().split('T')[0]
+                const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
                 const dailySlots = filteredSlots.filter((s) => s.date === dateKey)
 
                 return (
@@ -817,6 +824,7 @@ export default function ManageSlotsPage() {
                   <label className="block text-xs text-gray-500 mb-1">Date</label>
                   <input
                     type="date"
+                    min={todayStr}
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     required
