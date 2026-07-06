@@ -213,22 +213,99 @@ export function Navbar() {
                 {l.label}
               </Link>
             ))}
-            <div className="border-t border-white/8 pt-3 mt-3 flex flex-col gap-2">
-              <Link
-                href="/auth/login"
-                onClick={() => setMobileOpen(false)}
-                className="block px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:bg-white/5 transition-all text-center border border-white/10"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/auth/register"
-                onClick={() => setMobileOpen(false)}
-                className="block px-4 py-2.5 rounded-xl bg-green-500 text-black text-sm font-semibold transition-all text-center"
-              >
-                Get Started
-              </Link>
-            </div>
+            {!user ? (
+              <div className="border-t border-white/8 pt-3 mt-3 flex flex-col gap-2">
+                <Link
+                  href="/auth/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:bg-white/5 transition-all text-center border border-white/10"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth/register"
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-2.5 rounded-xl bg-green-500 text-black text-sm font-semibold transition-all text-center"
+                >
+                  Get Started
+                </Link>
+              </div>
+            ) : (
+              <div className="border-t border-white/8 pt-3 mt-3 space-y-2">
+                <div className="px-4 py-2 flex items-center gap-3">
+                  {user.logoUrl ? (
+                    <div className="w-9 h-9 rounded-full overflow-hidden border border-white/20">
+                      <img src={user.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-sm font-bold text-white">
+                      {displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex flex-col text-left">
+                    <span className="text-sm font-semibold text-white">{displayName}</span>
+                    <span className="text-xs text-gray-500">{user.email}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  {/* Customer specific links */}
+                  {user.role === 'CUSTOMER' && (
+                    <>
+                      <Link
+                        href="/profile"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                      >
+                        <User className="w-4 h-4" /> My Profile
+                      </Link>
+                      <Link
+                        href="/profile/bookings"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                      >
+                        <CalendarCheck className="w-4 h-4" /> My Bookings
+                      </Link>
+                    </>
+                  )}
+
+                  {/* Owner/Admin specific links */}
+                  {user.role === 'OWNER' && (
+                    <Link
+                      href="/owner"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                    >
+                      <LayoutDashboard className="w-4 h-4" /> Owner Dashboard
+                    </Link>
+                  )}
+
+                  {user.role === 'ADMIN' && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                    >
+                      <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
+                    </Link>
+                  )}
+
+                  <button
+                    onClick={async () => {
+                      setMobileOpen(false)
+                      setProfileOpen(false)
+                      setSigningOut(true)
+                      await new Promise((r) => setTimeout(r, 500))
+                      await logout()
+                      router.push('/auth/login')
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 rounded-xl transition-all"
+                  >
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </motion.header>

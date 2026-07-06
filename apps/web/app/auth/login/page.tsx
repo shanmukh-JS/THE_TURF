@@ -61,7 +61,7 @@ export default function LoginPage() {
       <AnimatePresence>
         {isTransitioning && (
           <motion.div
-            className="fixed inset-0 z-50 bg-[#060d06] flex flex-col items-center justify-center"
+            className="fixed inset-0 left-0 top-0 w-screen h-screen z-[9999] bg-[#060d06] flex flex-col items-center justify-center px-4 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -75,12 +75,12 @@ export default function LoginPage() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1.1, opacity: 1 }}
               transition={{ duration: 1, ease: 'easeOut' }}
-              className="flex flex-col items-center gap-4"
+              className="flex flex-col items-center justify-center gap-4 text-center w-full"
             >
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-[0_0_40px_rgba(74,222,128,0.4)]">
                 <Zap className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-3xl font-black text-white tracking-widest uppercase">
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-widest uppercase text-center w-full block">
                 TRUF GAMING
               </h1>
             </motion.div>

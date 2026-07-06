@@ -66,7 +66,16 @@ if (typeof window !== 'undefined') {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Re-fetch from server to get full user profile including logoUrl
+        // Set local user details immediately to make UI responsive
+        const localUser = {
+          id: session.user.id,
+          email: session.user.email!,
+          role: session.user.user_metadata?.role || 'CUSTOMER',
+          fullName: session.user.user_metadata?.full_name,
+        }
+        useAuthStore.getState().setUser(localUser)
+
+        // Re-fetch from server to get full user profile including logoUrl in background
         const res = await fetch('/api/auth/session')
         const { user } = await res.json()
         if (user) {
