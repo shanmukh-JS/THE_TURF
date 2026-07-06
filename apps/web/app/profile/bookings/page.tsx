@@ -83,7 +83,7 @@ export default async function CustomerBookingsPage({
   })
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] px-4 md:px-8 py-10 max-w-4xl mx-auto space-y-8">
+    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] px-6 md:px-12 lg:px-20 py-10 space-y-8 w-full">
       <div>
         <h1 className="text-2xl font-bold text-white">My Bookings</h1>
         <p className="text-gray-400 mt-1">All your cricket box reservations in one place.</p>
