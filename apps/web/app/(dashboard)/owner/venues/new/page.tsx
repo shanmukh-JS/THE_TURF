@@ -179,7 +179,7 @@ export default function NewVenuePage() {
           .single()
 
         if (createError || !newProfile) {
-          throw new Error('Owner profile not found and could not be created.')
+          throw new Error(`Creation failed: ${createError?.message || 'Unknown error'}`)
         }
         ownerProfileId = newProfile.id
       }

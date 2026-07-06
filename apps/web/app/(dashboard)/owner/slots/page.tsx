@@ -121,7 +121,10 @@ export default function ManageSlotsPage() {
           .single()
 
         if (createError || !newProfile) {
-          setToast({ message: 'Owner profile not found and could not be created.', type: 'error' })
+          setToast({
+            message: `Creation failed: ${createError?.message || 'Unknown error'}`,
+            type: 'error',
+          })
           setLoading(false)
           return
         }
