@@ -56,7 +56,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 relative overflow-hidden">
+    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 py-8 relative">
       {/* Cinematic Transition Overlay */}
       <AnimatePresence>
         {isTransitioning && (
