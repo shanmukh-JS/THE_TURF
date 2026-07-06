@@ -79,7 +79,11 @@ export function OwnerSidebar() {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map(({ href, icon: Icon, label }) => {
-            const active = pathname === href || pathname.startsWith(href + '/')
+            const active =
+              href === '/owner'
+                ? pathname === '/owner'
+                : pathname === href || pathname.startsWith(href + '/')
+
             return (
               <Link
                 key={href}
