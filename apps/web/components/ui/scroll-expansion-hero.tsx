@@ -94,13 +94,17 @@ const ScrollExpandMedia = ({
     }
 
     const handleTouchStart = (e: TouchEvent) => {
-      setTouchStartY(e.touches[0].clientY)
+      const touch = e.touches[0]
+      if (touch) {
+        setTouchStartY(touch.clientY)
+      }
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!touchStartY) return
+      const touch = e.touches[0]
+      if (!touchStartY || !touch) return
 
-      const touchY = e.touches[0].clientY
+      const touchY = touch.clientY
       const deltaY = touchStartY - touchY
 
       if (mediaFullyExpanded && deltaY < -20 && window.scrollY <= 5) {
