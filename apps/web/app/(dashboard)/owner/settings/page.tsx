@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Building2,
@@ -46,6 +46,8 @@ export default function OwnerSettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
 
@@ -197,6 +199,55 @@ export default function OwnerSettingsPage() {
     }))
   }
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setIsUploading(true)
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      if (file.size > 2 * 1024 * 1024) {
+        setToast({ message: 'Image must be smaller than 2MB', type: 'error' })
+        return
+      }
+
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) throw new Error('Not logged in')
+
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${userData.user.id}-${Date.now()}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('business_logos')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        if (uploadError.message.includes('Bucket not found')) {
+          throw new Error('Please run the storage_setup.sql in Supabase first!')
+        }
+        throw uploadError
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('business_logos').getPublicUrl(filePath)
+
+      updateSection('business', 'logoUrl', publicUrl)
+      setToast({
+        message: 'Logo uploaded successfully. Make sure to click Save Changes!',
+        type: 'success',
+      })
+    } catch (e: any) {
+      console.error(e)
+      setToast({ message: e.message || 'Error uploading image', type: 'error' })
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   const InputField = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
     <div className="space-y-1.5">
       <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -261,17 +312,47 @@ export default function OwnerSettingsPage() {
           </div>
           <div className="p-6 space-y-6">
             <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 border-dashed flex flex-col items-center justify-center text-gray-500 hover:bg-white/10 hover:text-white transition-all cursor-pointer group">
-                <Upload className="w-6 h-6 mb-2 group-hover:-translate-y-1 transition-transform" />
-                <span className="text-xs font-medium">Logo</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 border-dashed flex flex-col items-center justify-center text-gray-500 hover:bg-white/10 hover:text-white transition-all cursor-pointer group relative overflow-hidden"
+              >
+                {formData.business.logoUrl ? (
+                  <img
+                    src={formData.business.logoUrl}
+                    alt="Logo"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <>
+                    {isUploading ? (
+                      <RefreshCw className="w-6 h-6 animate-spin text-green-500" />
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 mb-2 group-hover:-translate-y-1 transition-transform" />
+                        <span className="text-xs font-medium">Logo</span>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
               <div>
                 <h3 className="text-sm font-medium text-white">Business Logo</h3>
                 <p className="text-xs text-gray-400 mt-1 mb-3">
                   Recommended size: 512x512px. Max 2MB.
                 </p>
-                <button className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all">
-                  Upload Image
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all disabled:opacity-50"
+                >
+                  {isUploading ? 'Uploading...' : 'Upload Image'}
                 </button>
               </div>
             </div>
