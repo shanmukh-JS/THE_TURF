@@ -2,9 +2,11 @@ import { OwnerSidebar } from '@/components/layout/OwnerSidebar'
 
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-[#060d06]">
+    <div className="min-h-[calc(100vh-64px)] bg-[#060d06] relative">
       <OwnerSidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="md:pl-64 w-full min-h-[calc(100vh-64px)] transition-all duration-300">
+        {children}
+      </main>
     </div>
   )
 }
