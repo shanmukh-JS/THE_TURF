@@ -363,7 +363,7 @@ const ScrollExpandMedia = ({
                         </svg>
                       </div>
                       <h1 className="text-2xl sm:text-4xl font-black text-white tracking-widest uppercase text-center w-full block select-none mix-blend-overlay">
-                        TRUF GAMING
+                        TURF GAMING
                       </h1>
                     </div>
                   </motion.div>

@@ -14,7 +14,7 @@ const statusMap = {
 }
 
 export const metadata = {
-  title: 'My Bookings | TRUF GAMING',
+  title: 'My Bookings | TURF GAMING',
 }
 
 export default async function CustomerBookingsPage({

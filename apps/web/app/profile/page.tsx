@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
-  title: 'My Profile | TRUF GAMING',
+  title: 'My Profile | TURF GAMING',
 }
 
 export default async function CustomerProfilePage() {

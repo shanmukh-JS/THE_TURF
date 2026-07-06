@@ -21,7 +21,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">1. Venue Listing & Accuracy</h2>
             <p className="leading-relaxed">
-              By listing your venue on TRUF GAMING, you confirm that all provided information,
+              By listing your venue on TURF GAMING, you confirm that all provided information,
               including pricing, amenities, and photographs, is accurate and truly represents the
               physical state of your venue. Any discrepancies reported by users may result in
               temporary suspension of your listing.
@@ -31,7 +31,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">2. Bookings & Cancellations</h2>
             <p className="leading-relaxed">
-              Venue owners are required to honor all confirmed bookings made through the TRUF GAMING
+              Venue owners are required to honor all confirmed bookings made through the TURF GAMING
               platform. If you need to cancel a booking due to unforeseen circumstances (e.g.,
               extreme weather, maintenance), you must notify the customer and the platform
               immediately. Repeated unexcused cancellations may affect your venue's ranking.
@@ -41,7 +41,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">3. Payments & Payouts</h2>
             <p className="leading-relaxed">
-              TRUF GAMING collects payments on behalf of the venue owner via secure payment
+              TURF GAMING collects payments on behalf of the venue owner via secure payment
               gateways. Payouts are processed on a weekly basis, subject to standard banking delays
               and the deduction of applicable platform convenience fees.
             </p>
@@ -50,7 +50,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">4. Platform Fees</h2>
             <p className="leading-relaxed">
-              TRUF GAMING reserves the right to charge a platform fee or commission on successful
+              TURF GAMING reserves the right to charge a platform fee or commission on successful
               bookings. The exact fee structure will be communicated to you upon final account
               verification and activation.
             </p>

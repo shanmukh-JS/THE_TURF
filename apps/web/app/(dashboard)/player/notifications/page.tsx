@@ -7,13 +7,13 @@ import {
 } from '@/components/ui/DashboardAnimationWrapper'
 
 export const metadata = {
-  title: 'Notifications | TRUF GAMING',
+  title: 'Notifications | TURF GAMING',
 }
 
 const mockNotifications = [
   {
     id: 1,
-    title: 'Welcome to TRUF GAMING!',
+    title: 'Welcome to TURF GAMING!',
     description: 'Explore the best cricket boxes in your city and book your slots instantly.',
     time: 'Just now',
     type: 'welcome',

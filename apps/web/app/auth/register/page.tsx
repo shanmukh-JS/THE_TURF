@@ -63,7 +63,7 @@ export default function RegisterPage() {
             <Zap className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Create your account</h1>
-          <p className="text-gray-400 text-sm">Join TRUF GAMING in under 2 minutes</p>
+          <p className="text-gray-400 text-sm">Join TURF GAMING in under 2 minutes</p>
         </div>
 
         {/* Role Toggle */}

@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/DashboardAnimationWrapper'
 
 export const metadata = {
-  title: 'My Profile | TRUF GAMING',
+  title: 'My Profile | TURF GAMING',
 }
 
 export default async function CustomerProfilePage() {

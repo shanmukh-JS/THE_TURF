@@ -41,12 +41,15 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
             <Zap className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="font-bold text-white text-sm tracking-wide">TRUF GAMING</p>
+            <p className="font-bold text-white text-sm tracking-wide">TURF GAMING</p>
             <p className="text-[11px] text-rose-400 font-medium">Super Admin</p>
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} className="md:hidden p-2 text-gray-400 hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="md:hidden p-2 text-gray-400 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         )}
@@ -87,7 +90,7 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">Super Admin</p>
-            <p className="text-xs text-gray-500 truncate">admin@trufgaming.com</p>
+            <p className="text-xs text-gray-500 truncate">admin@turfgaming.com</p>
           </div>
           <LogOut className="w-4 h-4 text-gray-600 group-hover:text-red-400 transition-colors flex-shrink-0" />
         </div>

@@ -11,7 +11,7 @@ const gmvData = [
   { month: 'Jul', gmv: 248500 },
 ]
 
-const maxGmv = Math.max(...gmvData.map(d => d.gmv))
+const maxGmv = Math.max(...gmvData.map((d) => d.gmv))
 
 const topVenues = [
   { name: 'Champions Arena', city: 'Hyderabad', bookings: 211, revenue: 316500, growth: '+22%' },
@@ -20,7 +20,7 @@ const topVenues = [
   { name: 'Stadium Hub', city: 'Chennai', bookings: 76, revenue: 114000, growth: '+9%' },
 ]
 
-export const metadata = { title: 'Platform Analytics | TRUF GAMING Admin' }
+export const metadata = { title: 'Platform Analytics | TURF GAMING Admin' }
 
 export default function AdminAnalyticsPage() {
   return (
@@ -31,10 +31,38 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        <StatCard label="Total GMV (Jul)" value="₹2,48,500" change="+22%" trend="up" accent="green" icon={<TrendingUp className="w-5 h-5" />} />
-        <StatCard label="Platform Revenue (10%)" value="₹24,850" change="+22%" trend="up" accent="blue" icon={<DollarSign className="w-5 h-5" />} />
-        <StatCard label="Active Venues" value="24" change="+4" trend="up" accent="amber" icon={<Building2 className="w-5 h-5" />} />
-        <StatCard label="Total Users" value="1,204" change="+58" trend="up" accent="purple" icon={<Users className="w-5 h-5" />} />
+        <StatCard
+          label="Total GMV (Jul)"
+          value="₹2,48,500"
+          change="+22%"
+          trend="up"
+          accent="green"
+          icon={<TrendingUp className="w-5 h-5" />}
+        />
+        <StatCard
+          label="Platform Revenue (10%)"
+          value="₹24,850"
+          change="+22%"
+          trend="up"
+          accent="blue"
+          icon={<DollarSign className="w-5 h-5" />}
+        />
+        <StatCard
+          label="Active Venues"
+          value="24"
+          change="+4"
+          trend="up"
+          accent="amber"
+          icon={<Building2 className="w-5 h-5" />}
+        />
+        <StatCard
+          label="Total Users"
+          value="1,204"
+          change="+58"
+          trend="up"
+          accent="purple"
+          icon={<Users className="w-5 h-5" />}
+        />
       </div>
 
       {/* GMV Chart */}
@@ -52,7 +80,9 @@ export default function AdminAnalyticsPage() {
             const isLatest = d.month === 'Jul'
             return (
               <div key={d.month} className="flex-1 flex flex-col items-center gap-2">
-                <span className="text-xs text-gray-500 font-mono">₹{Math.round(d.gmv / 1000)}k</span>
+                <span className="text-xs text-gray-500 font-mono">
+                  ₹{Math.round(d.gmv / 1000)}k
+                </span>
                 <div
                   className={`w-full rounded-t-xl transition-all duration-700 ${isLatest ? 'bg-gradient-to-t from-green-700 to-green-400 shadow-lg shadow-green-900/40' : 'bg-white/8 hover:bg-white/15'}`}
                   style={{ height: `${(h / 100) * 180}px` }}
@@ -73,8 +103,10 @@ export default function AdminAnalyticsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/5">
-                {['Venue', 'City', 'Bookings', 'Revenue', 'Growth'].map(h => (
-                  <th key={h} className="text-left px-6 py-3 text-xs text-gray-500 font-medium">{h}</th>
+                {['Venue', 'City', 'Bookings', 'Revenue', 'Growth'].map((h) => (
+                  <th key={h} className="text-left px-6 py-3 text-xs text-gray-500 font-medium">
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -89,9 +121,13 @@ export default function AdminAnalyticsPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-400">{v.city}</td>
                   <td className="px-6 py-4 text-sm text-gray-300">{v.bookings}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-white">₹{v.revenue.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-white">
+                    ₹{v.revenue.toLocaleString()}
+                  </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs font-semibold text-green-400 bg-green-400/10 px-2 py-1 rounded-full">{v.growth}</span>
+                    <span className="text-xs font-semibold text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
+                      {v.growth}
+                    </span>
                   </td>
                 </tr>
               ))}

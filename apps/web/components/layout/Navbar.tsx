@@ -72,7 +72,7 @@ export function Navbar() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-900/40">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-white tracking-wide text-sm">TRUF GAMING</span>
+            <span className="font-bold text-white tracking-wide text-sm">TURF GAMING</span>
           </Link>
 
           {/* Desktop Nav */}

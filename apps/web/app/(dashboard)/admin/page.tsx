@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/DashboardAnimationWrapper'
 
 export const metadata = {
-  title: 'Super Admin Dashboard | TRUF GAMING',
+  title: 'Super Admin Dashboard | TURF GAMING',
 }
 
 export default async function AdminDashboardPage() {
@@ -87,7 +87,7 @@ export default async function AdminDashboardPage() {
       <DashboardAnimationItem className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Super Admin Dashboard</h1>
-          <p className="text-gray-400 mt-1">Real-time oversight of TRUF GAMING marketplace.</p>
+          <p className="text-gray-400 mt-1">Real-time oversight of TURF GAMING marketplace.</p>
         </div>
         <div className="flex items-center gap-3">
           {(pendingApprovalsCount || 0) > 0 && (

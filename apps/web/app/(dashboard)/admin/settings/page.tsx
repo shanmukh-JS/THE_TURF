@@ -12,9 +12,9 @@ export default function AdminSettingsPage() {
 
   const [form, setForm] = useState({
     id: '',
-    platform_name: 'TRUF GAMING',
+    platform_name: 'TURF GAMING',
     commission_percentage: 10,
-    support_email: 'support@trufgaming.com',
+    support_email: 'support@turfgaming.com',
     maintenance_mode: false,
   })
 

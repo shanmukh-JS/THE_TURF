@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/DashboardAnimationWrapper'
 
 export const metadata = {
-  title: 'My Favorites | TRUF GAMING',
+  title: 'My Favorites | TURF GAMING',
 }
 
 export default async function CustomerFavoritesPage() {

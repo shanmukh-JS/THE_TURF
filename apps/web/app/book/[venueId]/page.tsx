@@ -240,7 +240,7 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
                 className="mt-0.5 accent-green-500"
               />
               <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                I agree to the venue rules and TRUF GAMING&apos;s{' '}
+                I agree to the venue rules and TURF GAMING&apos;s{' '}
                 <a href="#" className="text-green-400 underline">
                   Terms of Service
                 </a>{' '}
@@ -254,7 +254,7 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
 
             <div className="flex items-center gap-2 text-xs text-gray-500 bg-white/5 rounded-xl px-4 py-3 border border-white/8">
               <Lock className="w-4 h-4 text-green-400 flex-shrink-0" />
-              Your payment is secured by Razorpay. TRUF GAMING never stores card details.
+              Your payment is secured by Razorpay. TURF GAMING never stores card details.
             </div>
 
             <div className="flex gap-3">

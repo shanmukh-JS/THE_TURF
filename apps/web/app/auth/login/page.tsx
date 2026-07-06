@@ -85,7 +85,7 @@ export default function LoginPage() {
                 <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
               </div>
               <h1 className="text-2xl sm:text-4xl font-black text-white tracking-widest uppercase text-center w-full block select-none">
-                TRUF GAMING
+                TURF GAMING
               </h1>
             </motion.div>
           </motion.div>
@@ -108,7 +108,7 @@ export default function LoginPage() {
             <Zap className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Welcome back</h1>
-          <p className="text-gray-400 text-sm">Sign in to your TRUF GAMING account</p>
+          <p className="text-gray-400 text-sm">Sign in to your TURF GAMING account</p>
         </div>
 
         {/* Form */}

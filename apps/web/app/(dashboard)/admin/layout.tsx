@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Zap className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="font-bold text-white text-sm tracking-wide">TRUF GAMING</p>
+            <p className="font-bold text-white text-sm tracking-wide">TURF GAMING</p>
             <p className="text-[10px] text-rose-400 font-medium">Super Admin</p>
           </div>
         </div>
@@ -26,13 +26,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
 
       {/* Sidebar Overlay (Mobile) */}
-      <div 
-        className={`fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity md:hidden ${sidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
-        onClick={() => setSidebarOpen(false)} 
+      <div
+        className={`fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity md:hidden ${sidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+        onClick={() => setSidebarOpen(false)}
       />
-      
+
       {/* Sidebar Container */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
         <AdminSidebar onClose={() => setSidebarOpen(false)} />
       </div>
 

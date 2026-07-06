@@ -193,7 +193,7 @@ export default function OwnerOnboardingPage() {
             <p>Your venue has been submitted successfully.</p>
             <p>Our team will review your venue within 24 hours.</p>
             <p>
-              Once approved, your venue will become visible to thousands of players on TRUF GAMING.
+              Once approved, your venue will become visible to thousands of players on TURF GAMING.
             </p>
           </div>
 
@@ -215,7 +215,7 @@ export default function OwnerOnboardingPage() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-white">List Your Venue</h1>
           <p className="text-gray-400 text-sm">
-            Join TRUF GAMING and start accepting bookings in minutes.
+            Join TURF GAMING and start accepting bookings in minutes.
           </p>
         </div>
 
