@@ -248,6 +248,30 @@ export default function OwnerSettingsPage() {
     }
   }
 
+  const handleUpdatePassword = async () => {
+    const newPassword = window.prompt('Enter your new password (minimum 6 characters):')
+    if (!newPassword) return
+    if (newPassword.length < 6) {
+      setToast({ message: 'Password must be at least 6 characters long', type: 'error' })
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setToast({ message: 'Password updated successfully!', type: 'success' })
+    } catch (e: any) {
+      setToast({ message: e.message || 'Error updating password', type: 'error' })
+    }
+  }
+
+  const handleNotImplemented = (feature: string) => {
+    setToast({
+      message: `${feature} is coming soon! Please contact support for manual processing.`,
+      type: 'error',
+    })
+  }
+
   const InputField = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
     <div className="space-y-1.5">
       <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -500,7 +524,10 @@ export default function OwnerSettingsPage() {
                   Change your account password securely.
                 </p>
               </div>
-              <button className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all whitespace-nowrap">
+              <button
+                onClick={handleUpdatePassword}
+                className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all whitespace-nowrap"
+              >
                 Update Password
               </button>
             </div>
@@ -511,7 +538,10 @@ export default function OwnerSettingsPage() {
                   Add an extra layer of security to your account.
                 </p>
               </div>
-              <button className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all whitespace-nowrap">
+              <button
+                onClick={() => handleNotImplemented('2FA Setup')}
+                className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all whitespace-nowrap"
+              >
                 Enable 2FA
               </button>
             </div>
@@ -533,7 +563,10 @@ export default function OwnerSettingsPage() {
                   Temporarily hide your venue from customers.
                 </p>
               </div>
-              <button className="px-4 py-2 rounded-lg border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-all whitespace-nowrap">
+              <button
+                onClick={() => handleNotImplemented('Listing pause functionality')}
+                className="px-4 py-2 rounded-lg border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-all whitespace-nowrap"
+              >
                 Disable Listing
               </button>
             </div>
@@ -544,7 +577,10 @@ export default function OwnerSettingsPage() {
                   Permanently remove your account and all data.
                 </p>
               </div>
-              <button className="px-4 py-2 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-all whitespace-nowrap">
+              <button
+                onClick={() => handleNotImplemented('Account deletion')}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-all whitespace-nowrap"
+              >
                 Delete Account
               </button>
             </div>
