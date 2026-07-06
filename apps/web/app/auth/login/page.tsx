@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import ScrollExpandMedia from '@/components/ui/scroll-expansion-hero'
 
 export default function LoginPage() {
@@ -57,6 +58,18 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 relative overflow-hidden">
+      {/* Background Image for Login Page */}
+      <div className="absolute inset-0 z-0 opacity-20">
+        <Image
+          src="/images/turf-bg.png"
+          alt="Turf Background"
+          fill
+          className="object-cover"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#060d06] via-transparent to-[#060d06]/80" />
+      </div>
+
       {/* Cinematic Transition Overlay */}
       <AnimatePresence>
         {isTransitioning && (
@@ -85,6 +98,10 @@ export default function LoginPage() {
         animate={{ opacity: isTransitioning ? 0 : 1, scale: isTransitioning ? 0.95 : 1 }}
         transition={{ duration: 0.5 }}
       >
+        {/* Decorative Background Element */}
+        <div className="absolute -z-10 -top-20 -left-20 w-72 h-72 bg-green-500/20 rounded-full blur-[100px]" />
+        <div className="absolute -z-10 -bottom-20 -right-20 w-72 h-72 bg-emerald-500/20 rounded-full blur-[100px]" />
+
         {/* Logo */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center mx-auto shadow-xl shadow-green-900/40">

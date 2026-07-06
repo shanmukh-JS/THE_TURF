@@ -171,8 +171,12 @@ const ScrollExpandMedia = ({
     return () => window.removeEventListener('resize', checkIfMobile)
   }, [])
 
-  const mediaWidth = 300 + scrollProgress * (isMobileState ? 650 : 1250)
-  const mediaHeight = 400 + scrollProgress * (isMobileState ? 200 : 400)
+  const mediaWidth = autoPlay
+    ? `calc(300px + ${scrollProgress} * (100vw - 300px))`
+    : 300 + scrollProgress * (isMobileState ? 650 : 1250)
+  const mediaHeight = autoPlay
+    ? `calc(400px + ${scrollProgress} * (100vh - 400px))`
+    : 400 + scrollProgress * (isMobileState ? 200 : 400)
   const textTranslateX = scrollProgress * (isMobileState ? 180 : 150)
 
   const firstWord = title ? title.split(' ')[0] : ''
@@ -208,10 +212,11 @@ const ScrollExpandMedia = ({
               <div
                 className="absolute z-0 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-none rounded-2xl"
                 style={{
-                  width: `${mediaWidth}px`,
-                  height: `${mediaHeight}px`,
-                  maxWidth: '95vw',
-                  maxHeight: '85vh',
+                  width: typeof mediaWidth === 'number' ? `${mediaWidth}px` : mediaWidth,
+                  height: typeof mediaHeight === 'number' ? `${mediaHeight}px` : mediaHeight,
+                  maxWidth: autoPlay ? '100vw' : '95vw',
+                  maxHeight: autoPlay ? '100vh' : '85vh',
+                  borderRadius: autoPlay && scrollProgress > 0.95 ? 0 : '1rem',
                   boxShadow: '0px 0px 50px rgba(0, 0, 0, 0.3)',
                 }}
               >
