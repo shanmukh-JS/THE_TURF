@@ -155,9 +155,6 @@ export default function AdminTurfManagementPage() {
                   <td className="px-6 py-4 text-gray-400">
                     {v.owner_profiles?.full_name || 'N/A'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-300">
-                    {v.created_at ? new Date(v.created_at).toLocaleDateString() : 'N/A'}
-                  </td>
                   <td className="px-6 py-4 text-gray-400">{v.cities?.name || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <span
