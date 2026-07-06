@@ -68,17 +68,6 @@ export function OwnerSidebar() {
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-white/8">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-900/40">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-white text-sm tracking-wide">TRUF GAMING</p>
-            <p className="text-[11px] text-green-400 font-medium">Owner Portal</p>
-          </div>
-        </div>
-
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map(({ href, icon: Icon, label }) => {
