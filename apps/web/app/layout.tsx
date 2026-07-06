@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import { AuthProvider } from '@/components/providers/AuthProvider'
+import { PageTransition } from '@/components/providers/PageTransition'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${inter.className} min-h-screen bg-background antialiased overflow-x-hidden`}
       >
         <Navbar />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <PageTransition>{children}</PageTransition>
+        </AuthProvider>
       </body>
     </html>
   )
