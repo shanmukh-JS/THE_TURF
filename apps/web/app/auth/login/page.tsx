@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import ScrollExpandMedia from '@/components/ui/scroll-expansion-hero'
 
 export default function LoginPage() {
   const supabase = createClient()
@@ -57,33 +58,36 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 py-8 relative">
+      {/* Background Image for Login Page */}
+      <div className="absolute inset-0 z-0 opacity-25 pointer-events-none select-none overflow-hidden">
+        <Image
+          src="/images/turf-bg.png"
+          alt="Turf Background"
+          fill
+          className="object-cover"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#060d06] via-transparent to-[#060d06]/85" />
+      </div>
+
       {/* Cinematic Transition Overlay */}
       <AnimatePresence>
         {isTransitioning && (
           <motion.div
-            className="fixed inset-0 left-0 top-0 w-screen h-screen z-[9999] bg-[#060d06] flex flex-col items-center justify-center px-4 text-center"
+            className="fixed inset-0 left-0 top-0 w-screen h-screen z-[9999] bg-[#060d06] overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            onAnimationComplete={() => {
-              // Wait a bit, then redirect
-              setTimeout(() => handleAnimationComplete(), 1000)
-            }}
           >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1.1, opacity: 1 }}
-              transition={{ duration: 1, ease: 'easeOut' }}
-              className="flex flex-col items-center justify-center gap-4 text-center w-full"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-[0_0_40px_rgba(74,222,128,0.4)]">
-                <Zap className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-widest uppercase text-center w-full block">
-                TRUF GAMING
-              </h1>
-            </motion.div>
+            <ScrollExpandMedia
+              mediaType="image"
+              mediaSrc="/images/turf-bg.png"
+              bgImageSrc="/images/turf-bg.png"
+              autoPlay={true}
+              duration={2500}
+              onComplete={handleAnimationComplete}
+            />
           </motion.div>
         )}
       </AnimatePresence>

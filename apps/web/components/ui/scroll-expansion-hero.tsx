@@ -342,10 +342,10 @@ const ScrollExpandMedia = ({
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2, duration: 0.8, ease: 'easeOut' }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none px-4 text-center"
                     style={{ zIndex: 50 }}
                   >
-                    <div className="flex flex-col items-center gap-4">
+                    <div className="flex flex-col items-center justify-center gap-4 w-full">
                       <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-[2rem] bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-900/50">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -362,7 +362,7 @@ const ScrollExpandMedia = ({
                           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                         </svg>
                       </div>
-                      <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tighter mix-blend-overlay">
+                      <h1 className="text-2xl sm:text-4xl font-black text-white tracking-widest uppercase text-center w-full block select-none mix-blend-overlay">
                         TRUF GAMING
                       </h1>
                     </div>
