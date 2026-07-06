@@ -35,47 +35,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }))
 
-const fetchUserLogo = async (user: any) => {
-  if (user.user_metadata?.role !== 'OWNER') return undefined
-  try {
-    const { data: profile } = await supabase
-      .from('owner_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
-    if (!profile) return undefined
-
-    const { data: settings } = await supabase
-      .from('owner_settings')
-      .select('business_logo_url')
-      .eq('owner_id', profile.id)
-      .maybeSingle()
-
-    return settings?.business_logo_url || undefined
-  } catch (e) {
-    return undefined
-  }
-}
-
-// Initialize auth listener
+// Initialize auth by calling a server-side API route.
+// This bypasses the HttpOnly cookie restriction that prevents the browser
+// Supabase client from reading the session on Vercel deployments.
 if (typeof window !== 'undefined') {
   const initAuth = async () => {
     try {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser()
-      if (error) throw error
+      const res = await fetch('/api/auth/session')
+      const { user } = await res.json()
 
       if (user) {
-        const logoUrl = await fetchUserLogo(user)
-        useAuthStore.getState().setUser({
-          id: user.id,
-          email: user.email!,
-          role: user.user_metadata?.role || 'CUSTOMER',
-          fullName: user.user_metadata?.full_name,
-          logoUrl,
-        })
+        useAuthStore.getState().setUser(user)
       } else {
         useAuthStore.getState().setLoading(false)
       }
@@ -87,21 +57,21 @@ if (typeof window !== 'undefined') {
 
   initAuth()
 
-  // Listen for changes
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  // Listen for login/logout events from the Supabase client
+  supabase.auth.onAuthStateChange(async (event, session) => {
     try {
-      if (session?.user) {
-        const user = session.user
-        const logoUrl = await fetchUserLogo(user)
-        useAuthStore.getState().setUser({
-          id: user.id,
-          email: user.email!,
-          role: user.user_metadata?.role || 'CUSTOMER',
-          fullName: user.user_metadata?.full_name,
-          logoUrl,
-        })
-      } else {
+      if (event === 'SIGNED_OUT' || !session) {
         useAuthStore.getState().setUser(null)
+        return
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Re-fetch from server to get full user profile including logoUrl
+        const res = await fetch('/api/auth/session')
+        const { user } = await res.json()
+        if (user) {
+          useAuthStore.getState().setUser(user)
+        }
       }
     } catch (e) {
       console.error('Auth state change error:', e)
