@@ -52,9 +52,15 @@ export default function OwnerSettingsPage() {
 
   const supabase = createClient()
 
-  const { user } = useAuthStore()
+  const { user, isLoading: authLoading } = useAuthStore()
 
   useEffect(() => {
+    // Auth store is done loading but no user — stop spinning
+    if (!authLoading && !user) {
+      setIsLoading(false)
+      return
+    }
+
     async function loadSettings() {
       if (!user) return
 
@@ -107,7 +113,7 @@ export default function OwnerSettingsPage() {
     }
 
     loadSettings()
-  }, [user])
+  }, [user, authLoading])
 
   // Track changes to show the sticky save bar
   useEffect(() => {
