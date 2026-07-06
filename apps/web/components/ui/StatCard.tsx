@@ -38,10 +38,10 @@ export function StatCard({
   }
 
   const blobColorMap: Record<string, string> = {
-    green: 'bg-green-500 group-hover:shadow-[0_0_30px_10px_rgba(34,197,94,0.4)]',
-    blue: 'bg-blue-500 group-hover:shadow-[0_0_30px_10px_rgba(59,130,246,0.4)]',
-    amber: 'bg-amber-500 group-hover:shadow-[0_0_30px_10px_rgba(245,158,11,0.4)]',
-    purple: 'bg-purple-500 group-hover:shadow-[0_0_30px_10px_rgba(168,85,247,0.4)]',
+    green: 'bg-green-500 group-hover:shadow-[0_0_40px_15px_rgba(34,197,94,0.3)]',
+    blue: 'bg-blue-500 group-hover:shadow-[0_0_40px_15px_rgba(59,130,246,0.3)]',
+    amber: 'bg-amber-500 group-hover:shadow-[0_0_40px_15px_rgba(245,158,11,0.3)]',
+    purple: 'bg-purple-500 group-hover:shadow-[0_0_40px_15px_rgba(168,85,247,0.3)]',
   }
 
   return (
@@ -78,12 +78,12 @@ export function StatCard({
         <p className="text-sm text-gray-400 mt-1">{label}</p>
       </div>
 
-      {/* Decorative blob */}
+      {/* Decorative blob / Expanding background */}
       <div
         className={cn(
-          'absolute -bottom-12 -right-12 w-32 h-32 rounded-full opacity-[0.04] z-0 pointer-events-none',
-          'transition-all duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
-          'group-hover:-translate-x-12 group-hover:-translate-y-12 group-hover:scale-[1.08] group-hover:opacity-20',
+          'absolute -bottom-6 -right-6 w-24 h-24 rounded-full opacity-[0.03] z-0 pointer-events-none',
+          'transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]',
+          'group-hover:scale-[8] group-hover:opacity-[0.08]',
           blobColorMap[accent] || 'bg-current'
         )}
       />
