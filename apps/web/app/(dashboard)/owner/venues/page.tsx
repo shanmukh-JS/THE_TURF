@@ -1,38 +1,6 @@
 import { MapPin, Edit3, Trash2, Eye, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-
-const venues = [
-  {
-    id: 'v1',
-    name: 'Olympia Turf',
-    area: 'Madhapur, Hyderabad',
-    pitches: 2,
-    rating: 4.9,
-    bookings: 128,
-    revenue: 153600,
-    status: 'APPROVED',
-  },
-  {
-    id: 'v2',
-    name: 'Downtown Cricket Box',
-    area: 'Banjara Hills, Hyderabad',
-    pitches: 1,
-    rating: 4.7,
-    bookings: 62,
-    revenue: 55800,
-    status: 'APPROVED',
-  },
-  {
-    id: 'v3',
-    name: 'Champions Turf',
-    area: 'Gachibowli, Hyderabad',
-    pitches: 3,
-    rating: 0,
-    bookings: 0,
-    revenue: 0,
-    status: 'UNDER_REVIEW',
-  },
-]
+import { createClient } from '@/lib/supabase/server'
 
 const statusMap = {
   APPROVED: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', label: 'Live' },
@@ -47,7 +15,31 @@ const statusMap = {
 
 export const metadata = { title: 'My Venues | TRUF GAMING Owner' }
 
-export default function OwnerVenuesPage() {
+export default async function OwnerVenuesPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let venues: any[] = []
+
+  if (user) {
+    const { data: realVenues } = await supabase.from('venues').select('*').eq('owner_id', user.id)
+
+    if (realVenues) {
+      venues = realVenues.map((v) => ({
+        id: v.id,
+        name: v.name,
+        area: `${v.city}, India`,
+        pitches: v.number_of_grounds || 1,
+        rating: 0,
+        bookings: 0,
+        revenue: 0,
+        status: v.status || 'UNDER_REVIEW',
+      }))
+    }
+  }
+
   return (
     <div className="p-8 space-y-8">
       <div className="flex items-center justify-between">

@@ -11,6 +11,8 @@ import {
   AlertCircle,
 } from 'lucide-react'
 
+import { createClient } from '@/lib/supabase/server'
+
 const recentBookings = [
   {
     id: 'BK001',
@@ -65,7 +67,22 @@ const statusConfig = {
   CANCELLED: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
 }
 
-export default function OwnerDashboardPage() {
+export default async function OwnerDashboardPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let activeVenuesCount = 0
+  if (user) {
+    const { count } = await supabase
+      .from('venues')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', user.id)
+
+    activeVenuesCount = count || 0
+  }
+
   return (
     <div className="p-8 space-y-8">
       {/* Header */}
@@ -76,7 +93,9 @@ export default function OwnerDashboardPage() {
         </div>
         <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 px-4 py-2 rounded-xl">
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-green-400 text-sm font-medium">2 Venues Active</span>
+          <span className="text-green-400 text-sm font-medium">
+            {activeVenuesCount} {activeVenuesCount === 1 ? 'Venue' : 'Venues'} Active
+          </span>
         </div>
       </div>
 
