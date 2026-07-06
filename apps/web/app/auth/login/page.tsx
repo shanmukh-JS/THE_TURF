@@ -45,7 +45,7 @@ export default function LoginPage() {
       } else if (role === 'OWNER') {
         target = '/owner'
       } else {
-        target = '/'
+        target = '/player'
       }
       setTargetDashboard(target)
       setIsTransitioning(true)

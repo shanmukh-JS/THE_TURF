@@ -134,13 +134,13 @@ export function Navbar() {
                     {user.role === 'CUSTOMER' && (
                       <>
                         <Link
-                          href="/profile"
+                          href="/player"
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
                         >
-                          <User className="w-4 h-4" /> My Profile
+                          <User className="w-4 h-4" /> Player Dashboard
                         </Link>
                         <Link
-                          href="/profile/bookings"
+                          href="/player/bookings"
                           className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
                         >
                           <CalendarCheck className="w-4 h-4" /> My Bookings
@@ -253,14 +253,14 @@ export function Navbar() {
                   {user.role === 'CUSTOMER' && (
                     <>
                       <Link
-                        href="/profile"
+                        href="/player"
                         onClick={() => setMobileOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
                       >
-                        <User className="w-4 h-4" /> My Profile
+                        <User className="w-4 h-4" /> Player Dashboard
                       </Link>
                       <Link
-                        href="/profile/bookings"
+                        href="/player/bookings"
                         onClick={() => setMobileOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all"
                       >
