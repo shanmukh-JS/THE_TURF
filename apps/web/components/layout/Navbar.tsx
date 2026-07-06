@@ -115,39 +115,45 @@ export function Navbar() {
                 />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl shadow-2xl shadow-black/50 py-2 z-50">
-                  {user.role === 'CUSTOMER' && (
+                <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-white/10 bg-black/90 backdrop-blur-xl shadow-2xl shadow-black/50 py-2 z-50">
+                  {/* Always visible for all roles */}
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    <User className="w-4 h-4" /> My Profile
+                  </Link>
+                  <Link
+                    href="/profile/bookings"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    <CalendarCheck className="w-4 h-4" /> My Bookings
+                  </Link>
+
+                  {/* Role-specific dashboard link */}
+                  {user.role === 'OWNER' && (
                     <>
+                      <div className="border-t border-white/8 my-1" />
                       <Link
-                        href="/profile"
+                        href="/owner"
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
                       >
-                        <User className="w-4 h-4" /> My Profile
-                      </Link>
-                      <Link
-                        href="/profile/bookings"
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
-                      >
-                        <CalendarCheck className="w-4 h-4" /> My Bookings
+                        <LayoutDashboard className="w-4 h-4" /> Owner Dashboard
                       </Link>
                     </>
                   )}
-                  {user.role === 'OWNER' && (
-                    <Link
-                      href="/owner"
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
-                    >
-                      <LayoutDashboard className="w-4 h-4" /> Owner Dashboard
-                    </Link>
-                  )}
                   {user.role === 'ADMIN' && (
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
-                    >
-                      <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
-                    </Link>
+                    <>
+                      <div className="border-t border-white/8 my-1" />
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
+                      </Link>
+                    </>
                   )}
+
                   <div className="border-t border-white/8 mt-1 pt-1">
                     <button
                       onClick={async () => {
