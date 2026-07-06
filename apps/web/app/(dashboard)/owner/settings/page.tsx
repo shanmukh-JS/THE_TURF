@@ -15,6 +15,7 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react'
+import { useAuthStore } from '@/store/useAuthStore'
 
 const defaultSettings = {
   business: {
@@ -180,6 +181,7 @@ export default function OwnerSettingsPage() {
 
       setInitialData(formData)
       setHasChanges(false)
+      useAuthStore.getState().setLogoUrl(formData.business.logoUrl)
       setToast({ message: 'Settings saved successfully', type: 'success' })
     } catch (e: any) {
       console.error(e)

@@ -79,9 +79,15 @@ export function Navbar() {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 transition-all group"
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-xs font-bold text-white">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
+                {user.logoUrl ? (
+                  <div className="w-7 h-7 rounded-full overflow-hidden border border-white/20">
+                    <img src={user.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-xs font-bold text-white">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <span className="text-sm text-white font-medium">{displayName}</span>
                 <ChevronDown
                   className={cn(
