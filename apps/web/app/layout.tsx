@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import { AuthProvider } from '@/components/providers/AuthProvider'
-import { createClient } from '@/lib/supabase/server'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,18 +17,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body
         className={`${inter.className} min-h-screen bg-background antialiased overflow-x-hidden`}
       >
-        <Navbar initialUser={user} />
+        <Navbar />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

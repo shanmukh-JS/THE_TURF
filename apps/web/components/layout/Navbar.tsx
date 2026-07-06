@@ -23,14 +23,12 @@ const navLinks = [
 
 import { useAuthStore } from '@/store/useAuthStore'
 
-export function Navbar({ initialUser }: { initialUser?: any }) {
+export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const router = useRouter()
 
-  const { user: storeUser, logout } = useAuthStore()
-
-  const user = storeUser || initialUser
+  const { user, logout } = useAuthStore()
 
   const displayName = user?.fullName || user?.email?.split('@')[0] || 'User'
 
