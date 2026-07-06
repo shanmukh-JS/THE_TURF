@@ -62,13 +62,12 @@ if (typeof window !== 'undefined') {
   const initAuth = async () => {
     try {
       const {
-        data: { session },
+        data: { user },
         error,
-      } = await supabase.auth.getSession()
+      } = await supabase.auth.getUser()
       if (error) throw error
 
-      if (session?.user) {
-        const user = session.user
+      if (user) {
         const logoUrl = await fetchUserLogo(user)
         useAuthStore.getState().setUser({
           id: user.id,
