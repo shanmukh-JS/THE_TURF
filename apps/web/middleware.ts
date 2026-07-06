@@ -56,8 +56,18 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    if (isAuthRoute) {
-      return NextResponse.redirect(new URL('/', request.url))
+    if (isAuthRoute || request.nextUrl.pathname === '/') {
+      if (role === 'OWNER') {
+        return NextResponse.redirect(new URL('/owner', request.url))
+      }
+      if (role === 'ADMIN') {
+        return NextResponse.redirect(new URL('/admin', request.url))
+      }
+
+      // If they are a CUSTOMER hitting an auth route, send to home
+      if (isAuthRoute) {
+        return NextResponse.redirect(new URL('/', request.url))
+      }
     }
   }
 

@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuthStore } from '@/store/useAuthStore'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -29,7 +31,13 @@ const navItems = [
 
 export function OwnerSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, logout } = useAuthStore()
   const [isOpen, setIsOpen] = useState(false)
+
+  const displayName = user?.fullName || user?.email?.split('@')[0] || 'Owner'
+  const email = user?.email || ''
+  const initials = displayName.substring(0, 2).toUpperCase()
 
   // Close sidebar on navigation
   useEffect(() => {
@@ -100,13 +108,22 @@ export function OwnerSidebar() {
         <div className="p-4 border-t border-white/8">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-              RK
+              {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Rajesh Kumar</p>
-              <p className="text-xs text-gray-500 truncate">rajesh@truf.com</p>
+              <p className="text-sm font-medium text-white truncate">{displayName}</p>
+              <p className="text-xs text-gray-500 truncate">{email}</p>
             </div>
-            <LogOut className="w-4 h-4 text-gray-600 group-hover:text-red-400 transition-colors flex-shrink-0" />
+            <button
+              onClick={async () => {
+                await logout()
+                router.push('/auth/login')
+              }}
+              className="p-1 hover:bg-red-500/10 rounded-lg transition-colors group/btn"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4 text-gray-600 group-hover/btn:text-red-400 transition-colors flex-shrink-0" />
+            </button>
           </div>
         </div>
       </aside>
