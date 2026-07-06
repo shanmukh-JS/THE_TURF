@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import {
   Zap,
@@ -32,6 +32,12 @@ export function Navbar() {
   const { user, logout } = useAuthStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [signingOut, setSigningOut] = useState(false)
+  const pathname = usePathname()
+
+  // Reset signingOut when the route changes (e.g. after redirecting to login)
+  useEffect(() => {
+    setSigningOut(false)
+  }, [pathname])
 
   // Close dropdown when clicking outside
   useEffect(() => {
