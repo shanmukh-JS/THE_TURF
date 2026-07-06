@@ -23,8 +23,28 @@ export async function submitVenueAction(formData: FormData) {
       .eq('user_id', user.id)
       .single()
 
+    let ownerId = ownerProfile?.id
+
     if (ownerError || !ownerProfile) {
-      return { success: false, error: 'Owner profile not found. Are you registered as an owner?' }
+      // If no owner profile exists (e.g., admin testing), create one automatically
+      const { data: newOwner, error: createOwnerError } = await supabase
+        .from('owner_profiles')
+        .insert({
+          user_id: user.id,
+          full_name: user.email?.split('@')[0] || 'Admin',
+          business_name: 'Turf Gaming Testing',
+          contact_number: '1234567890',
+        })
+        .select('id')
+        .single()
+
+      if (createOwnerError || !newOwner) {
+        return {
+          success: false,
+          error: 'Owner profile not found and could not be created automatically.',
+        }
+      }
+      ownerId = newOwner.id
     }
 
     // 3. Upload Images to Supabase Storage
@@ -38,7 +58,7 @@ export async function submitVenueAction(formData: FormData) {
       if (!file || file.size === 0) return
 
       const fileExt = file.name.split('.').pop()
-      const fileName = `${ownerProfile.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const fileName = `${ownerId}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       const filePath = `venues/${fileName}`
 
       const { error: uploadError } = await supabase.storage
@@ -69,7 +89,7 @@ export async function submitVenueAction(formData: FormData) {
     const sportsAvailable = sportsStr ? sportsStr.split(',').map((s) => s.trim()) : []
 
     const venueData = {
-      owner_id: ownerProfile.id,
+      owner_id: ownerId,
       name: formData.get('venueName') as string,
       description: formData.get('description') as string,
       address: formData.get('address') as string,
