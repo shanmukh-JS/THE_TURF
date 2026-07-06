@@ -18,11 +18,13 @@ import {
   Zap,
   Menu,
   X,
+  Clock,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/owner', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/owner/venues', icon: MapPin, label: 'My Venues' },
+  { href: '/owner/slots', icon: Clock, label: 'Manage Slots' },
   { href: '/owner/bookings', icon: CalendarDays, label: 'Bookings' },
   { href: '/owner/revenue', icon: TrendingUp, label: 'Revenue' },
   { href: '/owner/reviews', icon: Star, label: 'Reviews' },
