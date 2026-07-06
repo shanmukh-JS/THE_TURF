@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Building2,
-  CheckCircle,
   ChevronRight,
   UploadCloud,
   MapPin,
@@ -151,8 +150,8 @@ export default function OwnerOnboardingPage() {
       } else {
         setSubmitError(result.error || 'Something went wrong')
       }
-    } catch (err: any) {
-      setSubmitError(err.message || 'Something went wrong')
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setIsSubmitting(false)
     }

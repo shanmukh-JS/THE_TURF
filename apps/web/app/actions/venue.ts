@@ -119,8 +119,11 @@ export async function submitVenueAction(formData: FormData) {
 
     revalidatePath('/owner')
     return { success: true, venueId: newVenue.id }
-  } catch (error: any) {
-    console.error('Submission error:', error)
-    return { success: false, error: error.message || 'An unexpected error occurred.' }
+  } catch (error: unknown) {
+    console.error('Server error submitting venue:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown server error',
+    }
   }
 }
