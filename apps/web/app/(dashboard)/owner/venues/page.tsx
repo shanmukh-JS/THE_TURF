@@ -1,6 +1,26 @@
-import { MapPin, Edit3, Trash2, Eye, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import {
+  MapPin,
+  Edit3,
+  Trash2,
+  Eye,
+  Plus,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  X,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react'
+import {
+  DashboardAnimationWrapper,
+  DashboardAnimationItem,
+} from '@/components/ui/DashboardAnimationWrapper'
 
 const statusMap = {
   APPROVED: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', label: 'Live' },
@@ -13,47 +33,174 @@ const statusMap = {
   DRAFT: { icon: AlertCircle, color: 'text-gray-400', bg: 'bg-gray-400/10', label: 'Draft' },
 }
 
-export const metadata = { title: 'My Venues | TRUF GAMING Owner' }
+export default function OwnerVenuesPage() {
+  const supabase = createClient()
+  const router = useRouter()
 
-export default async function OwnerVenuesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [venues, setVenues] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  let venues: any[] = []
+  // Owner profile ID
+  const [ownerProfileId, setOwnerProfileId] = useState<string | null>(null)
 
-  if (user) {
-    const { data: ownerProfile } = await supabase
+  // Edit Modal States
+  const [editingVenue, setEditingVenue] = useState<any | null>(null)
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    description: '',
+    pitches: '1',
+    isIndoor: false,
+    turfType: 'Artificial Grass',
+    address: '',
+    pricePerHour: '',
+  })
+
+  // Auto-hide toast
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
+
+  const fetchVenues = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setLoading(false)
+      return
+    }
+
+    const { data: profile } = await supabase
       .from('owner_profiles')
       .select('id')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (ownerProfile) {
-      const { data: realVenues } = await supabase
+    if (!profile) {
+      setLoading(false)
+      return
+    }
+    setOwnerProfileId(profile.id)
+
+    // Fetch venues along with pricing
+    const { data: realVenues } = await supabase
+      .from('venues')
+      .select(
+        `
+        *,
+        venue_pricing(price)
+      `
+      )
+      .eq('owner_id', profile.id)
+
+    if (realVenues) {
+      const formatted = realVenues.map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        description: v.description || '',
+        address: v.address,
+        turfType: v.turf_type || 'Artificial Grass',
+        pitches: v.pitches || 1,
+        isIndoor: v.is_indoor || false,
+        pricePerHour: v.venue_pricing?.[0]?.price || 1000,
+        rating: 4.8, // default fallback
+        bookings: 0,
+        revenue: 0,
+        status: v.verification_status || 'DRAFT',
+      }))
+      setVenues(formatted)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchVenues()
+  }, [])
+
+  // Delete Venue
+  const handleDeleteVenue = async (venueId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to delete this venue? This will permanently delete all associated images, slots, and pricing details.'
+      )
+    )
+      return
+
+    const { error } = await supabase.from('venues').delete().eq('id', venueId)
+
+    if (error) {
+      setToast({ message: error.message, type: 'error' })
+    } else {
+      setToast({ message: 'Venue deleted successfully.', type: 'success' })
+      setVenues((prev) => prev.filter((v) => v.id !== venueId))
+    }
+  }
+
+  // Edit form opening
+  const handleOpenEdit = (v: any) => {
+    setEditingVenue(v)
+    setEditFormData({
+      name: v.name,
+      description: v.description,
+      pitches: v.pitches.toString(),
+      isIndoor: v.isIndoor,
+      turfType: v.turfType,
+      address: v.address,
+      pricePerHour: v.pricePerHour.toString(),
+    })
+  }
+
+  // Edit Submission
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingVenue) return
+
+    setEditSubmitting(true)
+    try {
+      // 1. Update Venue
+      const { error: venueError } = await supabase
         .from('venues')
-        .select('*')
-        .eq('owner_id', ownerProfile.id)
+        .update({
+          name: editFormData.name,
+          description: editFormData.description,
+          pitches: parseInt(editFormData.pitches),
+          is_indoor: editFormData.isIndoor,
+          turf_type: editFormData.turfType,
+          address: editFormData.address,
+        })
+        .eq('id', editingVenue.id)
 
-      if (realVenues) {
-        venues = realVenues.map((v) => ({
-          id: v.id,
-          name: v.name,
-          area: `${v.city_id || v.area_id || 'India'}`, // we'd need city join ideally but fallback for now
-          pitches: v.pitches || 1,
-          rating: 0,
-          bookings: 0,
-          revenue: 0,
-          status: v.verification_status || 'UNDER_REVIEW',
-        }))
-      }
+      if (venueError) throw venueError
+
+      // 2. Update/Upsert Pricing
+      const { error: pricingError } = await supabase.from('venue_pricing').upsert(
+        {
+          venue_id: editingVenue.id,
+          price: Number(editFormData.pricePerHour),
+        },
+        { onConflict: 'venue_id' }
+      )
+
+      if (pricingError) throw pricingError
+
+      setToast({ message: 'Venue details updated successfully.', type: 'success' })
+      setEditingVenue(null)
+      fetchVenues() // reload list
+    } catch (err: any) {
+      setToast({ message: err.message || 'Error updating venue.', type: 'error' })
+    } finally {
+      setEditSubmitting(false)
     }
   }
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex items-center justify-between">
+    <DashboardAnimationWrapper className="p-8 space-y-8">
+      <DashboardAnimationItem className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">My Venues</h1>
           <p className="text-gray-400 mt-1">Manage all your cricket box listings.</p>
@@ -64,99 +211,291 @@ export default async function OwnerVenuesPage() {
         >
           <Plus className="w-4 h-4" /> Add New Venue
         </Link>
-      </div>
+      </DashboardAnimationItem>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {venues.map((v) => {
-          const s = statusMap[v.status as keyof typeof statusMap] || statusMap.DRAFT
-          const Icon = s.icon
-          return (
-            <div
-              key={v.id}
-              className="rounded-2xl border border-white/8 bg-white/[0.03] hover:border-white/15 transition-all overflow-hidden group"
-            >
-              {/* Header */}
-              <div className="h-2 bg-gradient-to-r from-green-600 to-emerald-500" />
-              <div className="p-5 space-y-4">
-                <div className="flex items-start justify-between gap-2">
+      <DashboardAnimationItem>
+        {loading ? (
+          <div className="py-20 text-center text-gray-500 animate-pulse">Loading venues...</div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {venues.map((v) => {
+              const s = statusMap[v.status as keyof typeof statusMap] || statusMap.DRAFT
+              const Icon = s.icon
+              return (
+                <div
+                  key={v.id}
+                  className="rounded-2xl border border-white/8 bg-white/[0.03] hover:border-white/15 transition-all overflow-hidden group flex flex-col justify-between"
+                >
                   <div>
-                    <h3 className="text-base font-bold text-white group-hover:text-green-400 transition-colors">
-                      {v.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                      <MapPin className="w-3 h-3" />
-                      {v.area}
-                    </p>
-                  </div>
-                  <span
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${s.color} ${s.bg}`}
-                  >
-                    <Icon className="w-3 h-3" /> {s.label}
-                  </span>
-                </div>
+                    {/* Header bar */}
+                    <div className="h-2 bg-gradient-to-r from-green-600 to-emerald-500" />
+                    <div className="p-5 space-y-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-base font-bold text-white group-hover:text-green-400 transition-colors">
+                            {v.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-1 truncate max-w-[180px]">
+                            <MapPin className="w-3 h-3" />
+                            {v.address}
+                          </p>
+                        </div>
+                        <span
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${s.color} ${s.bg}`}
+                        >
+                          <Icon className="w-3 h-3" /> {s.label}
+                        </span>
+                      </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'Pitches', value: v.pitches },
-                    { label: 'Bookings', value: v.bookings },
-                    { label: 'Rating', value: v.rating > 0 ? `${v.rating} ★` : '—' },
-                  ].map(({ label, value }) => (
-                    <div
-                      key={label}
-                      className="rounded-xl bg-white/5 border border-white/8 px-2 py-2 text-center"
-                    >
-                      <p className="text-sm font-bold text-white">{value}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{label}</p>
+                      {/* Stats */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Pitches', value: v.pitches },
+                          { label: 'Bookings', value: v.bookings },
+                          { label: 'Rating', value: v.rating > 0 ? `${v.rating} ★` : '—' },
+                        ].map(({ label, value }) => (
+                          <div
+                            key={label}
+                            className="rounded-xl bg-white/5 border border-white/8 px-2 py-2 text-center"
+                          >
+                            <p className="text-sm font-bold text-white">{value}</p>
+                            <p className="text-[11px] text-gray-500 mt-0.5">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Price info inside card */}
+                      <div className="rounded-xl bg-green-500/5 border border-green-500/15 px-4 py-2.5 flex items-center justify-between">
+                        <span className="text-xs text-gray-400">Pricing</span>
+                        <span className="text-sm font-bold text-green-400">
+                          ₹{v.pricePerHour.toLocaleString()}/hr
+                        </span>
+                      </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Actions buttons footer inside card */}
+                  <div className="p-5 pt-0">
+                    <div className="flex gap-2 pt-1 border-t border-white/5 mt-2">
+                      <Link
+                        href={`/venues/${v.id}`}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-white/10 text-gray-300 text-xs font-medium hover:text-white hover:border-white/20 transition-all"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Preview
+                      </Link>
+                      <button
+                        onClick={() => handleOpenEdit(v)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-blue-500/20 text-blue-400 text-xs font-medium hover:bg-blue-500/10 transition-all"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVenue(v.id)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Add New Venue Card */}
+            <Link
+              href="/owner/venues/new"
+              className="rounded-2xl border border-dashed border-white/15 hover:border-green-500/40 bg-transparent hover:bg-green-500/5 transition-all flex flex-col items-center justify-center min-h-[280px] gap-3 group cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-white/20 group-hover:border-green-500/40 flex items-center justify-center transition-all">
+                <Plus className="w-5 h-5 text-gray-600 group-hover:text-green-400 transition-colors" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors">
+                  Add New Venue
+                </p>
+                <p className="text-xs text-gray-600 mt-1">List another cricket box</p>
+              </div>
+            </Link>
+          </div>
+        )}
+      </DashboardAnimationItem>
+
+      {/* EDIT VENUE MODAL */}
+      {editingVenue && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0a0f0a] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-green-400" />
+                Edit Venue Details
+              </h2>
+              <button
+                onClick={() => setEditingVenue(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleEditSubmit}
+              className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+            >
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Venue Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Description</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={editFormData.description}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, description: e.target.value })
+                  }
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50 resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Number of Pitches/Courts
+                  </label>
+                  <select
+                    value={editFormData.pitches}
+                    onChange={(e) => setEditFormData({ ...editFormData, pitches: e.target.value })}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n} className="text-black bg-white">
+                        {n}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {v.revenue > 0 && (
-                  <div className="rounded-xl bg-green-500/5 border border-green-500/15 px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Total Revenue</span>
-                    <span className="text-sm font-bold text-green-400">
-                      ₹{v.revenue.toLocaleString()}
-                    </span>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-1">
-                  <Link
-                    href={`/venues/${v.id}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-white/10 text-gray-300 text-xs font-medium hover:text-white hover:border-white/20 transition-all"
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Turf Type</label>
+                  <select
+                    value={editFormData.turfType}
+                    onChange={(e) => setEditFormData({ ...editFormData, turfType: e.target.value })}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
                   >
-                    <Eye className="w-3.5 h-3.5" /> Preview
-                  </Link>
-                  <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-blue-500/20 text-blue-400 text-xs font-medium hover:bg-blue-500/10 transition-all">
-                    <Edit3 className="w-3.5 h-3.5" /> Edit
-                  </button>
-                  <button className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-all">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    <option value="Artificial Grass" className="text-black bg-white">
+                      Artificial Grass
+                    </option>
+                    <option value="Natural Grass" className="text-black bg-white">
+                      Natural Grass
+                    </option>
+                    <option value="Clay Court" className="text-black bg-white">
+                      Clay Court
+                    </option>
+                    <option value="Hard Court" className="text-black bg-white">
+                      Hard Court
+                    </option>
+                    <option value="Indoor Wooden" className="text-black bg-white">
+                      Indoor Wooden
+                    </option>
+                  </select>
                 </div>
               </div>
-            </div>
-          )
-        })}
 
-        {/* Add New Venue Card */}
-        <Link
-          href="/owner/venues/new"
-          className="rounded-2xl border border-dashed border-white/15 hover:border-green-500/40 bg-transparent hover:bg-green-500/5 transition-all flex flex-col items-center justify-center min-h-[280px] gap-3 group cursor-pointer"
-        >
-          <div className="w-12 h-12 rounded-full border-2 border-dashed border-white/20 group-hover:border-green-500/40 flex items-center justify-center transition-all">
-            <Plus className="w-5 h-5 text-gray-600 group-hover:text-green-400 transition-colors" />
+              <div className="grid grid-cols-2 gap-4 items-center">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Price Per Hour (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={editFormData.pricePerHour}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, pricePerHour: e.target.value })
+                    }
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-5">
+                  <input
+                    type="checkbox"
+                    id="editIsIndoor"
+                    checked={editFormData.isIndoor}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, isIndoor: e.target.checked })
+                    }
+                    className="w-5 h-5 rounded border-gray-600 text-green-500 focus:ring-green-500 focus:ring-offset-gray-900 bg-transparent"
+                  />
+                  <label
+                    htmlFor="editIsIndoor"
+                    className="text-sm font-medium text-white cursor-pointer select-none"
+                  >
+                    Indoor Venue
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Complete Address</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={editFormData.address}
+                  onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50 resize-none"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex gap-3 justify-end pt-4 border-t border-white/8">
+                <button
+                  type="button"
+                  onClick={() => setEditingVenue(null)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-white font-semibold text-sm transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all shadow-lg shadow-green-900/30 disabled:opacity-55"
+                >
+                  {editSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors">
-              Add New Venue
-            </p>
-            <p className="text-xs text-gray-600 mt-1">List another cricket box</p>
+        </div>
+      )}
+
+      {/* Custom Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-xl shadow-2xl shadow-black/50 border border-gray-100">
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+            )}
+            <p className="text-sm font-semibold text-gray-900">{toast.message}</p>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </Link>
-      </div>
-    </div>
+        </div>
+      )}
+    </DashboardAnimationWrapper>
   )
 }
