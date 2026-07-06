@@ -27,8 +27,39 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // refreshing the auth token
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const isProtectedRoute =
+    request.nextUrl.pathname.startsWith('/profile') ||
+    request.nextUrl.pathname.startsWith('/owner') ||
+    request.nextUrl.pathname.startsWith('/book') ||
+    request.nextUrl.pathname.startsWith('/admin')
+
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
+
+  if (isProtectedRoute && !user) {
+    return NextResponse.redirect(new URL('/auth/login', request.url))
+  }
+
+  if (user) {
+    const role = user.user_metadata?.role || 'CUSTOMER'
+
+    // Prevent non-owners/admins from accessing owner routes
+    if (request.nextUrl.pathname.startsWith('/owner') && role !== 'OWNER' && role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    // Prevent non-admins from accessing admin routes
+    if (request.nextUrl.pathname.startsWith('/admin') && role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    if (isAuthRoute) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  }
 
   return supabaseResponse
 }

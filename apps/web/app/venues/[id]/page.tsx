@@ -1,11 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 import { MapPin, Star, Clock, Zap, Shield, ChevronRight } from 'lucide-react'
+import { ImageCarousel } from '@/components/venues/ImageCarousel'
 
 // In production, this would fetch from the API: /api/v1/venues/:id
 const venue = {
   id: 'v1',
   name: 'Olympia Turf',
-  description: 'Olympia Turf is Hyderabad\'s premier indoor cricket box featuring professional-grade synthetic turf, professional floodlights, and world-class facilities. Ideal for corporate matches, friendly games, and weekend sessions.',
+  description:
+    "Olympia Turf is Hyderabad's premier indoor cricket box featuring professional-grade synthetic turf, professional floodlights, and world-class facilities. Ideal for corporate matches, friendly games, and weekend sessions.",
   area: 'Madhapur',
   city: 'Hyderabad',
   lat: 17.4486,
@@ -21,14 +23,36 @@ const venue = {
     'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?q=80&w=1949&auto=format&fit=crop',
   ],
   amenities: ['Parking', 'WiFi', 'Floodlights', 'Changing Rooms', 'Water Dispenser'],
-  rules: ['No metal spikes allowed', 'Booking must be cancelled 2 hrs before slot', 'Maximum 12 players per booking'],
+  rules: [
+    'No metal spikes allowed',
+    'Booking must be cancelled 2 hrs before slot',
+    'Maximum 12 players per booking',
+  ],
   owner: { name: 'Rajesh Kumar', memberSince: '2025' },
 }
 
 const reviews = [
-  { id: 'r1', name: 'Arjun M.', rating: 5, comment: 'Best turf in Hyderabad. Lights are great for evening play!', date: 'Jul 2026' },
-  { id: 'r2', name: 'Sneha R.', rating: 4, comment: 'Great pitch quality. The indoor facility is perfect for summer.', date: 'Jun 2026' },
-  { id: 'r3', name: 'Kiran B.', rating: 5, comment: 'Booked for my company team. Absolutely worth it!', date: 'Jun 2026' },
+  {
+    id: 'r1',
+    name: 'Arjun M.',
+    rating: 5,
+    comment: 'Best turf in Hyderabad. Lights are great for evening play!',
+    date: 'Jul 2026',
+  },
+  {
+    id: 'r2',
+    name: 'Sneha R.',
+    rating: 4,
+    comment: 'Great pitch quality. The indoor facility is perfect for summer.',
+    date: 'Jun 2026',
+  },
+  {
+    id: 'r3',
+    name: 'Kiran B.',
+    rating: 5,
+    comment: 'Booked for my company team. Absolutely worth it!',
+    date: 'Jun 2026',
+  },
 ]
 
 export async function generateMetadata() {
@@ -47,16 +71,7 @@ export default function VenueDetailPage() {
   return (
     <main className="min-h-screen bg-[#060d06] text-white">
       {/* Image Gallery */}
-      <div className="grid grid-cols-4 grid-rows-2 h-[440px] gap-2 px-6 pt-6">
-        <div className="col-span-2 row-span-2 rounded-2xl overflow-hidden">
-          <img src={venue.images[0]} alt="main" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-        </div>
-        {venue.images.slice(1).map((img, i) => (
-          <div key={i} className="rounded-xl overflow-hidden">
-            <img src={img} alt={`img-${i}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-          </div>
-        ))}
-      </div>
+      <ImageCarousel images={venue.images} />
 
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Left — Details */}
@@ -72,10 +87,22 @@ export default function VenueDetailPage() {
             </div>
             <h1 className="text-3xl font-bold mb-2">{venue.name}</h1>
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
-              <span className="flex items-center gap-1.5"><Star className="w-4 h-4 fill-yellow-400 text-yellow-400" /><strong className="text-white">{venue.rating}</strong> ({venue.reviews} reviews)</span>
-              <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" />{venue.area}, {venue.city}</span>
-              <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-green-400" />{venue.isIndoor ? 'Indoor' : 'Outdoor'}</span>
-              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" />{venue.pitches} {venue.pitches > 1 ? 'Pitches' : 'Pitch'}</span>
+              <span className="flex items-center gap-1.5">
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <strong className="text-white">{venue.rating}</strong> ({venue.reviews} reviews)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4" />
+                {venue.area}, {venue.city}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-green-400" />
+                {venue.isIndoor ? 'Indoor' : 'Outdoor'}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                {venue.pitches} {venue.pitches > 1 ? 'Pitches' : 'Pitch'}
+              </span>
             </div>
           </div>
 
@@ -113,7 +140,8 @@ export default function VenueDetailPage() {
           {/* Reviews */}
           <div>
             <h2 className="text-xl font-semibold mb-5">
-              Reviews <span className="text-gray-400 text-base font-normal ml-1">({venue.reviews})</span>
+              Reviews{' '}
+              <span className="text-gray-400 text-base font-normal ml-1">({venue.reviews})</span>
             </h2>
             <div className="space-y-4">
               {reviews.map((r) => (
@@ -155,22 +183,36 @@ export default function VenueDetailPage() {
             <div className="space-y-3">
               <div className="rounded-xl border border-white/10 bg-black/40 px-4 py-3">
                 <p className="text-xs text-gray-500 mb-1">Date</p>
-                <input type="date" className="bg-transparent outline-none text-white text-sm w-full" />
+                <input
+                  type="date"
+                  className="bg-transparent outline-none text-white text-sm w-full"
+                />
               </div>
               <div className="rounded-xl border border-white/10 bg-black/40 px-4 py-3">
                 <p className="text-xs text-gray-500 mb-1">Time Slot</p>
                 <select className="bg-transparent outline-none text-white text-sm w-full appearance-none">
                   <option className="text-black">7:00 PM – 8:00 PM (Available)</option>
-                  <option className="text-black" disabled>8:00 PM – 9:00 PM (Booked)</option>
+                  <option className="text-black" disabled>
+                    8:00 PM – 9:00 PM (Booked)
+                  </option>
                   <option className="text-black">9:00 PM – 10:00 PM (Available)</option>
                 </select>
               </div>
             </div>
 
             <div className="border-t border-white/8 pt-4 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-400"><span>₹1,200 × 1 hour</span><span>₹1,200</span></div>
-              <div className="flex justify-between text-gray-400"><span>Advance (50%)</span><span className="text-green-400">₹600 due now</span></div>
-              <div className="flex justify-between font-semibold text-white border-t border-white/8 pt-2 mt-2"><span>Total</span><span>₹1,200</span></div>
+              <div className="flex justify-between text-gray-400">
+                <span>₹1,200 × 1 hour</span>
+                <span>₹1,200</span>
+              </div>
+              <div className="flex justify-between text-gray-400">
+                <span>Advance (50%)</span>
+                <span className="text-green-400">₹600 due now</span>
+              </div>
+              <div className="flex justify-between font-semibold text-white border-t border-white/8 pt-2 mt-2">
+                <span>Total</span>
+                <span>₹1,200</span>
+              </div>
             </div>
 
             <a href={`/book/${venue.id}`}>
@@ -179,7 +221,9 @@ export default function VenueDetailPage() {
               </button>
             </a>
 
-            <p className="text-center text-xs text-gray-500">No charges until confirmed · Cancel 2 hrs before</p>
+            <p className="text-center text-xs text-gray-500">
+              No charges until confirmed · Cancel 2 hrs before
+            </p>
           </div>
         </div>
       </div>

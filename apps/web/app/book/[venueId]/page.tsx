@@ -1,7 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { CheckCircle, CreditCard, Calendar, User, ChevronRight, Lock, ArrowLeft } from 'lucide-react'
+import { useState, use } from 'react'
+import {
+  CheckCircle,
+  CreditCard,
+  Calendar,
+  User,
+  ChevronRight,
+  Lock,
+  ArrowLeft,
+} from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -21,9 +29,10 @@ const availableSlots = [
   { id: 's6', time: '8:00 AM – 9:00 AM', price: 900, available: false },
 ]
 
-export default function BookingWizard({ params }: { params: { venueId: string } }) {
+export default function BookingWizard({ params }: { params: Promise<{ venueId: string }> }) {
+  const { venueId } = use(params)
   const [step, setStep] = useState(1)
-  const [selectedSlot, setSelectedSlot] = useState<typeof availableSlots[0] | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<(typeof availableSlots)[0] | null>(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [details, setDetails] = useState({ name: '', phone: '', players: '6' })
   const [agreed, setAgreed] = useState(false)
@@ -36,7 +45,10 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
     <main className="min-h-screen bg-[#060d06] text-white flex flex-col items-center px-4 py-10">
       {/* Back link */}
       <div className="w-full max-w-2xl mb-6">
-        <a href={`/venues/${params.venueId}`} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+        <a
+          href={`/venues/${venueId}`}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" /> Back to {venueName}
         </a>
       </div>
@@ -51,15 +63,25 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
             const active = step === s.id
             return (
               <div key={s.id} className="flex flex-col items-center gap-2 z-10">
-                <div className={cn(
-                  'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300',
-                  done ? 'bg-green-500 border-green-500' :
-                  active ? 'bg-green-500/20 border-green-500' :
-                  'bg-[#060d06] border-white/20'
-                )}>
-                  <Icon className={cn('w-4 h-4', done || active ? 'text-green-300' : 'text-gray-500')} />
+                <div
+                  className={cn(
+                    'w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300',
+                    done
+                      ? 'bg-green-500 border-green-500'
+                      : active
+                        ? 'bg-green-500/20 border-green-500'
+                        : 'bg-[#060d06] border-white/20'
+                  )}
+                >
+                  <Icon
+                    className={cn('w-4 h-4', done || active ? 'text-green-300' : 'text-gray-500')}
+                  />
                 </div>
-                <span className={cn('text-xs font-medium', active ? 'text-white' : 'text-gray-500')}>{s.label}</span>
+                <span
+                  className={cn('text-xs font-medium', active ? 'text-white' : 'text-gray-500')}
+                >
+                  {s.label}
+                </span>
               </div>
             )
           })}
@@ -68,7 +90,6 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
 
       {/* Step Content */}
       <div className="w-full max-w-2xl">
-
         {/* Step 1: Select Slot */}
         {step === 1 && (
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 space-y-6">
@@ -94,9 +115,11 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
                     onClick={() => setSelectedSlot(slot)}
                     className={cn(
                       'p-4 rounded-xl border text-left transition-all',
-                      !slot.available ? 'opacity-40 cursor-not-allowed border-white/5 bg-white/5' :
-                      selectedSlot?.id === slot.id ? 'border-green-500 bg-green-500/15 shadow-lg shadow-green-900/20' :
-                      'border-white/10 bg-white/5 hover:border-green-500/40 hover:bg-white/8'
+                      !slot.available
+                        ? 'opacity-40 cursor-not-allowed border-white/5 bg-white/5'
+                        : selectedSlot?.id === slot.id
+                          ? 'border-green-500 bg-green-500/15 shadow-lg shadow-green-900/20'
+                          : 'border-white/10 bg-white/5 hover:border-green-500/40 hover:bg-white/8'
                     )}
                   >
                     <p className="text-sm font-semibold text-white">{slot.time}</p>
@@ -124,7 +147,9 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
 
             {['name', 'phone'].map((field) => (
               <div key={field}>
-                <label className="block text-sm text-gray-400 mb-2 capitalize">{field === 'phone' ? 'Phone Number' : 'Full Name'}</label>
+                <label className="block text-sm text-gray-400 mb-2 capitalize">
+                  {field === 'phone' ? 'Phone Number' : 'Full Name'}
+                </label>
                 <input
                   type={field === 'phone' ? 'tel' : 'text'}
                   placeholder={field === 'phone' ? '+91 98765 43210' : 'Arjun Mehta'}
@@ -142,12 +167,21 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
                 onChange={(e) => setDetails({ ...details, players: e.target.value })}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-green-500/50 appearance-none"
               >
-                {[2,4,6,8,10,12].map(n => <option key={n} className="text-black">{n}</option>)}
+                {[2, 4, 6, 8, 10, 12].map((n) => (
+                  <option key={n} className="text-black">
+                    {n}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 transition-colors">← Back</button>
+              <button
+                onClick={() => setStep(1)}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 transition-colors"
+              >
+                ← Back
+              </button>
               <button
                 disabled={!details.name || !details.phone}
                 onClick={() => setStep(3)}
@@ -166,21 +200,55 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
 
             {/* Order Summary */}
             <div className="rounded-xl border border-white/8 bg-black/30 p-4 space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-gray-400">Venue</span><span>{venueName}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Date</span><span>{selectedDate}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Slot</span><span>{selectedSlot.time}</span></div>
-              <div className="flex justify-between"><span className="text-gray-400">Players</span><span>{details.players}</span></div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Venue</span>
+                <span>{venueName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Date</span>
+                <span>{selectedDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Slot</span>
+                <span>{selectedSlot.time}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Players</span>
+                <span>{details.players}</span>
+              </div>
               <div className="border-t border-white/8 pt-3 mt-2">
-                <div className="flex justify-between font-bold text-base"><span>Total</span><span>₹{selectedSlot.price}</span></div>
-                <div className="flex justify-between text-green-400 mt-1"><span>Advance (50% due now)</span><span>₹{advanceAmount}</span></div>
-                <div className="flex justify-between text-gray-500 mt-1 text-xs"><span>Balance due at venue</span><span>₹{selectedSlot.price - advanceAmount}</span></div>
+                <div className="flex justify-between font-bold text-base">
+                  <span>Total</span>
+                  <span>₹{selectedSlot.price}</span>
+                </div>
+                <div className="flex justify-between text-green-400 mt-1">
+                  <span>Advance (50% due now)</span>
+                  <span>₹{advanceAmount}</span>
+                </div>
+                <div className="flex justify-between text-gray-500 mt-1 text-xs">
+                  <span>Balance due at venue</span>
+                  <span>₹{selectedSlot.price - advanceAmount}</span>
+                </div>
               </div>
             </div>
 
             <label className="flex items-start gap-3 cursor-pointer group">
-              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 accent-green-500" />
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 accent-green-500"
+              />
               <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                I agree to the venue rules and TRUF GAMING&apos;s <a href="#" className="text-green-400 underline">Terms of Service</a> and <a href="#" className="text-green-400 underline">Cancellation Policy</a>.
+                I agree to the venue rules and TRUF GAMING&apos;s{' '}
+                <a href="#" className="text-green-400 underline">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="#" className="text-green-400 underline">
+                  Cancellation Policy
+                </a>
+                .
               </span>
             </label>
 
@@ -190,7 +258,12 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setStep(2)} className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 transition-colors">← Back</button>
+              <button
+                onClick={() => setStep(2)}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 transition-colors"
+              >
+                ← Back
+              </button>
               <button
                 disabled={!agreed}
                 onClick={() => setStep(4)}
@@ -209,14 +282,30 @@ export default function BookingWizard({ params }: { params: { venueId: string } 
               <CheckCircle className="w-10 h-10 text-green-400" />
             </div>
             <h2 className="text-2xl font-bold text-white">Booking Confirmed! 🏏</h2>
-            <p className="text-gray-400">Your slot at <strong className="text-white">{venueName}</strong> on <strong className="text-white">{selectedDate}</strong> at <strong className="text-white">{selectedSlot.time}</strong> is confirmed.</p>
+            <p className="text-gray-400">
+              Your slot at <strong className="text-white">{venueName}</strong> on{' '}
+              <strong className="text-white">{selectedDate}</strong> at{' '}
+              <strong className="text-white">{selectedSlot.time}</strong> is confirmed.
+            </p>
             <div className="inline-block px-4 py-2 rounded-xl bg-black/40 border border-green-500/20 font-mono text-green-400 text-sm font-bold tracking-widest">
               BOOKING #TG{Date.now().toString().slice(-6)}
             </div>
-            <p className="text-xs text-gray-500">A confirmation SMS has been sent to {details.phone}. See you on the pitch! 🎯</p>
+            <p className="text-xs text-gray-500">
+              A confirmation SMS has been sent to {details.phone}. See you on the pitch! 🎯
+            </p>
             <div className="flex gap-3 justify-center mt-4">
-              <Link href="/" className="px-6 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 text-sm transition-colors">Back to Home</Link>
-              <Link href="/venues" className="px-6 py-2.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium transition-colors hover:bg-green-500/25">Browse More Venues</Link>
+              <Link
+                href="/"
+                className="px-6 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 text-sm transition-colors"
+              >
+                Back to Home
+              </Link>
+              <Link
+                href="/venues"
+                className="px-6 py-2.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium transition-colors hover:bg-green-500/25"
+              >
+                Browse More Venues
+              </Link>
             </div>
           </div>
         )}

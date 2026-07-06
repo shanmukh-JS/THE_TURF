@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import {
   Zap,
@@ -25,6 +26,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const router = useRouter()
 
   const { user, logout } = useAuthStore()
 
@@ -114,11 +116,20 @@ export function Navbar() {
                       <LayoutDashboard className="w-4 h-4" /> Owner Dashboard
                     </Link>
                   )}
+                  {user.role === 'ADMIN' && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                    >
+                      <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
+                    </Link>
+                  )}
                   <div className="border-t border-white/8 mt-1 pt-1">
                     <button
-                      onClick={() => {
-                        logout()
+                      onClick={async () => {
+                        await logout()
                         setProfileOpen(false)
+                        router.push('/auth/login')
                       }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-all"
                     >

@@ -33,7 +33,13 @@ export default function LoginPage() {
 
     if (data.session) {
       const role = data.session.user.user_metadata?.role
-      router.push(role === 'OWNER' ? '/owner' : '/')
+      if (role === 'ADMIN') {
+        router.push('/admin')
+      } else if (role === 'OWNER') {
+        router.push('/owner')
+      } else {
+        router.push('/')
+      }
     }
   }
 
