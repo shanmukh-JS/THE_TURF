@@ -174,7 +174,6 @@ export default function NewVenuePage() {
             user_id: userData.user.id,
             full_name: userData.user.email?.split('@')[0] || 'Admin',
             business_name: 'Turf Gaming Testing',
-            contact_number: '1234567890',
           })
           .select('id')
           .single()

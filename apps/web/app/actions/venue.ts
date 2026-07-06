@@ -33,7 +33,6 @@ export async function submitVenueAction(formData: FormData) {
           user_id: user.id,
           full_name: user.email?.split('@')[0] || 'Admin',
           business_name: 'Turf Gaming Testing',
-          contact_number: '1234567890',
         })
         .select('id')
         .single()
