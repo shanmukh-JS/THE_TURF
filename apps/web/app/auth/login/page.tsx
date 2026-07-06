@@ -58,36 +58,36 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 py-8 relative">
-      {/* Background Image for Login Page */}
-      <div className="absolute inset-0 z-0 opacity-25 pointer-events-none select-none overflow-hidden">
-        <Image
-          src="/images/turf-bg.png"
-          alt="Turf Background"
-          fill
-          className="object-cover"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#060d06] via-transparent to-[#060d06]/85" />
-      </div>
-
       {/* Cinematic Transition Overlay */}
       <AnimatePresence>
         {isTransitioning && (
           <motion.div
-            className="fixed inset-0 left-0 top-0 w-screen h-screen z-[9999] bg-[#060d06] overflow-hidden"
+            className="fixed inset-0 left-0 top-0 w-screen h-screen z-[9999] bg-[#060d06] flex flex-col items-center justify-center px-4 text-center overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
           >
-            <ScrollExpandMedia
-              mediaType="image"
-              mediaSrc="/images/turf-bg.png"
-              bgImageSrc="/images/turf-bg.png"
-              autoPlay={true}
-              duration={2500}
-              onComplete={handleAnimationComplete}
-            />
+            <motion.div
+              animate={{
+                scale: [0.9, 1, 1, 0.8],
+                opacity: [0, 1, 1, 0],
+              }}
+              transition={{
+                duration: 2.2,
+                times: [0, 0.35, 0.75, 1],
+                ease: 'easeInOut',
+              }}
+              onAnimationComplete={handleAnimationComplete}
+              className="flex flex-col items-center justify-center gap-5 text-center w-full"
+            >
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[2rem] bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-[0_0_50px_rgba(74,222,128,0.3)]">
+                <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              </div>
+              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-widest uppercase text-center w-full block select-none">
+                TRUF GAMING
+              </h1>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
