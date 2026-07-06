@@ -8,9 +8,9 @@ import {
   Building2,
   Users,
   CalendarDays,
-  DollarSign,
-  ShieldCheck,
-  BarChart3,
+  CreditCard,
+  CheckSquare,
+  Flag,
   Settings,
   LogOut,
   Zap,
@@ -18,14 +18,13 @@ import {
 } from 'lucide-react'
 
 const navItems = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Overview' },
-  { href: '/admin/venues', icon: Building2, label: 'Venues' },
-  { href: '/admin/owners', icon: Users, label: 'Owners' },
-  { href: '/admin/customers', icon: Users, label: 'Customers' },
+  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/users', icon: Users, label: 'Users' },
+  { href: '/admin/approvals', icon: CheckSquare, label: 'Owner Approvals' },
+  { href: '/admin/venues', icon: Building2, label: 'Turf Management' },
   { href: '/admin/bookings', icon: CalendarDays, label: 'Bookings' },
-  { href: '/admin/settlements', icon: DollarSign, label: 'Settlements' },
-  { href: '/admin/verifications', icon: ShieldCheck, label: 'Verifications' },
-  { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
+  { href: '/admin/payments', icon: CreditCard, label: 'Payments' },
+  { href: '/admin/reports', icon: Flag, label: 'Reports' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
@@ -59,7 +58,12 @@ export function AdminSidebar() {
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               )}
             >
-              <Icon className={cn('w-4 h-4 flex-shrink-0', active ? 'text-green-400' : 'text-gray-500 group-hover:text-gray-300')} />
+              <Icon
+                className={cn(
+                  'w-4 h-4 flex-shrink-0',
+                  active ? 'text-green-400' : 'text-gray-500 group-hover:text-gray-300'
+                )}
+              />
               <span>{label}</span>
               {active && <ChevronRight className="ml-auto w-3.5 h-3.5 text-green-500/60" />}
             </Link>

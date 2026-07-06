@@ -89,6 +89,8 @@ export default async function PlayerDashboard() {
       venue_pricing(price)
     `
     )
+    .eq('verification_status', 'APPROVED')
+    .eq('is_disabled', false)
     .limit(3)
 
   const venues = venuesData || []

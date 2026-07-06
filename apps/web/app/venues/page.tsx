@@ -23,13 +23,19 @@ export default function VenuesPage() {
   useEffect(() => {
     const fetchVenues = async () => {
       setLoading(true)
-      const { data, error } = await supabase.from('venues').select(`
+      const { data, error } = await supabase
+        .from('venues')
+        .select(
+          `
           *,
           city:cities(name),
           area:areas(name),
           venue_pricing(price),
           venue_images(url, is_cover)
-        `)
+        `
+        )
+        .eq('verification_status', 'APPROVED')
+        .eq('is_disabled', false)
 
       if (!error && data) {
         // Map data to the format UI expects
