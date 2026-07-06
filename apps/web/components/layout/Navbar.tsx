@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Zap,
   Menu,
@@ -67,18 +67,18 @@ export function Navbar() {
             <div className="w-32 h-10 animate-pulse bg-white/10 rounded-xl" />
           ) : !user ? (
             <>
-              <Link
+              <a
                 href="/auth/login"
                 className="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors"
               >
                 Sign In
-              </Link>
-              <Link
+              </a>
+              <a
                 href="/auth/register"
                 className="px-4 py-2 rounded-xl bg-green-500 hover:bg-green-400 text-black text-sm font-semibold transition-all shadow-lg shadow-green-900/30"
               >
                 Get Started
-              </Link>
+              </a>
             </>
           ) : (
             <div className="relative">
