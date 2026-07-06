@@ -34,19 +34,30 @@ export default function AdminApprovalsPage() {
 
   async function fetchApprovals() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('venues')
-      .select(
+    try {
+      const { data, error } = await supabase
+        .from('venues')
+        .select(
+          `
+          *,
+          owner_profiles(
+            id, full_name, business_name, business_phone, user_id,
+            owner_settings(bank_account_name, bank_account_number, bank_ifsc, bank_upi)
+          )
         `
-        *,
-        owner_profiles(id, full_name, business_name, business_phone, user_id),
-        owner_settings(bank_account_name, bank_account_number, bank_ifsc, bank_upi)
-      `
-      )
-      .order('created_at', { ascending: false })
+        )
+        .order('created_at', { ascending: false })
 
-    if (data) setApprovals(data)
-    setLoading(false)
+      if (error) {
+        console.error('Error fetching approvals:', error)
+      } else if (data) {
+        setApprovals(data)
+      }
+    } catch (err) {
+      console.error('Exception fetching approvals:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleUpdateStatus = async () => {
@@ -59,30 +70,37 @@ export default function AdminApprovalsPage() {
     if (action === 'APPROVED') statusText = 'APPROVED'
     if (action === 'REJECTED') statusText = 'REJECTED'
 
-    const { error } = await supabase
-      .from('venues')
-      .update({
-        verification_status: statusText,
-        // If we want to record notes
-      })
-      .eq('id', venue.id)
+    try {
+      const { error } = await supabase
+        .from('venues')
+        .update({
+          verification_status: statusText,
+        })
+        .eq('id', venue.id)
 
-    if (!error) {
-      await logAdminAction(
-        `Venue Verification status: ${statusText}`,
-        'venues',
-        venue.id,
-        `Set verification_status to ${statusText}. Reason: ${reason || 'None provided'}`
-      )
+      if (!error) {
+        await logAdminAction(
+          `Venue Verification status: ${statusText}`,
+          'venues',
+          venue.id,
+          `Set verification_status to ${statusText}. Reason: ${reason || 'None provided'}`
+        ).catch(console.error) // Prevent audit log failure from crashing the app
 
-      // Refresh list
-      fetchApprovals()
-      setSelectedVenue(null)
+        // Refresh list
+        fetchApprovals()
+        setSelectedVenue(null)
+      } else {
+        console.error('Error updating status:', error)
+        alert('Failed to update status. Please try again.')
+      }
+    } catch (err) {
+      console.error('Exception updating status:', err)
+      alert('An unexpected error occurred. Please try again.')
+    } finally {
+      setActionLoading(false)
+      setConfirmModal(null)
+      setReason('')
     }
-
-    setActionLoading(false)
-    setConfirmModal(null)
-    setReason('')
   }
 
   const filteredApprovals = approvals.filter((v) => {
@@ -100,7 +118,12 @@ export default function AdminApprovalsPage() {
       emailVerified: true, // Auto-verified if registered
       phoneVerified: !!v.owner_profiles?.business_phone,
       idUploaded: true, // ID proof uploaded check representation
-      bankAdded: !!v.owner_settings?.bank_account_number,
+      bankAdded:
+        !!v.owner_profiles?.owner_settings?.bank_account_number ||
+        !!(
+          Array.isArray(v.owner_profiles?.owner_settings) &&
+          v.owner_profiles?.owner_settings[0]?.bank_account_number
+        ),
       imagesUploaded: true,
       addressAdded: !!v.address,
     }
@@ -256,19 +279,27 @@ export default function AdminApprovalsPage() {
                 <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-2 text-sm text-gray-300">
                   <p>
                     <strong className="text-white">Account Name:</strong>{' '}
-                    {selectedVenue.owner_settings?.bank_account_name || 'N/A'}
+                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
+                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_account_name
+                      : selectedVenue.owner_profiles?.owner_settings?.bank_account_name) || 'N/A'}
                   </p>
                   <p>
                     <strong className="text-white">Account Number:</strong>{' '}
-                    {selectedVenue.owner_settings?.bank_account_number || 'N/A'}
+                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
+                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_account_number
+                      : selectedVenue.owner_profiles?.owner_settings?.bank_account_number) || 'N/A'}
                   </p>
                   <p>
                     <strong className="text-white">IFSC:</strong>{' '}
-                    {selectedVenue.owner_settings?.bank_ifsc || 'N/A'}
+                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
+                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_ifsc
+                      : selectedVenue.owner_profiles?.owner_settings?.bank_ifsc) || 'N/A'}
                   </p>
                   <p>
                     <strong className="text-white">UPI ID:</strong>{' '}
-                    {selectedVenue.owner_settings?.bank_upi || 'N/A'}
+                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
+                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_upi
+                      : selectedVenue.owner_profiles?.owner_settings?.bank_upi) || 'N/A'}
                   </p>
                 </div>
               </div>
