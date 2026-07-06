@@ -19,7 +19,7 @@ BEGIN
   IF (assigned_role = 'OWNER') then
     INSERT INTO public.owner_profiles (user_id, full_name, business_name)
     VALUES (new.id, COALESCE(new.raw_user_meta_data->>'full_name', 'New Owner'), COALESCE(new.raw_user_meta_data->>'full_name', 'New Owner') || 's Business');
-  ELIF (assigned_role = 'CUSTOMER') then
+  ELSIF (assigned_role = 'CUSTOMER') then
     INSERT INTO public.customer_profiles (user_id, full_name)
     VALUES (new.id, COALESCE(new.raw_user_meta_data->>'full_name', 'New Customer'));
   END IF;
