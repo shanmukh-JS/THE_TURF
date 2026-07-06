@@ -164,13 +164,32 @@ export default function NewVenuePage() {
         .eq('user_id', userData.user.id)
         .single()
 
-      if (!profile) throw new Error('Owner profile not found')
+      let ownerProfileId = profile?.id
+
+      if (!profile) {
+        // Automatically create an owner profile for the user (e.g., admin testing)
+        const { data: newProfile, error: createError } = await supabase
+          .from('owner_profiles')
+          .insert({
+            user_id: userData.user.id,
+            full_name: userData.user.email?.split('@')[0] || 'Admin',
+            business_name: 'Turf Gaming Testing',
+            contact_number: '1234567890',
+          })
+          .select('id')
+          .single()
+
+        if (createError || !newProfile) {
+          throw new Error('Owner profile not found and could not be created.')
+        }
+        ownerProfileId = newProfile.id
+      }
 
       // 2. Insert Venue
       const { data: venue, error: venueError } = await supabase
         .from('venues')
         .insert({
-          owner_id: profile.id,
+          owner_id: ownerProfileId,
           name: formData.name,
           description: formData.description,
           pitches: parseInt(formData.pitches),

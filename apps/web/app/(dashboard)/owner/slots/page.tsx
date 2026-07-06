@@ -106,19 +106,36 @@ export default function ManageSlotsPage() {
         .eq('user_id', user.id)
         .maybeSingle()
 
+      let ownerProfileId = profile?.id
+
       if (!profile) {
-        setToast({ message: 'Owner profile not found.', type: 'error' })
-        setLoading(false)
-        return
+        // Automatically create an owner profile for the user (e.g., admin testing)
+        const { data: newProfile, error: createError } = await supabase
+          .from('owner_profiles')
+          .insert({
+            user_id: user.id,
+            full_name: user.email?.split('@')[0] || 'Admin',
+            business_name: 'Turf Gaming Testing',
+            contact_number: '1234567890',
+          })
+          .select('id')
+          .single()
+
+        if (createError || !newProfile) {
+          setToast({ message: 'Owner profile not found and could not be created.', type: 'error' })
+          setLoading(false)
+          return
+        }
+        ownerProfileId = newProfile.id
       }
 
-      setOwnerProfileId(profile.id)
+      setOwnerProfileId(ownerProfileId)
 
       // Fetch venues
       const { data: venuesData } = await supabase
         .from('venues')
         .select('id, name')
-        .eq('owner_id', profile.id)
+        .eq('owner_id', ownerProfileId)
 
       if (venuesData) {
         setVenues(venuesData)
