@@ -333,13 +333,13 @@ export default function OwnerSettingsPage() {
                   onChange={(e) => updateSection('booking', 'cancellationPolicy', e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
                 >
-                  <option className="bg-[#0a0f0a]" value="flexible">
+                  <option className="text-black bg-white" value="flexible">
                     Flexible (Cancel anytime)
                   </option>
-                  <option className="bg-[#0a0f0a]" value="24_hours">
+                  <option className="text-black bg-white" value="24_hours">
                     Moderate (Free up to 24 hours)
                   </option>
-                  <option className="bg-[#0a0f0a]" value="strict">
+                  <option className="text-black bg-white" value="strict">
                     Strict (No refunds)
                   </option>
                 </select>
@@ -353,16 +353,16 @@ export default function OwnerSettingsPage() {
                   onChange={(e) => updateSection('booking', 'bufferTime', e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
                 >
-                  <option className="bg-[#0a0f0a]" value="0">
+                  <option className="text-black bg-white" value="0">
                     No Buffer
                   </option>
-                  <option className="bg-[#0a0f0a]" value="15_mins">
+                  <option className="text-black bg-white" value="15_mins">
                     15 Minutes
                   </option>
-                  <option className="bg-[#0a0f0a]" value="30_mins">
+                  <option className="text-black bg-white" value="30_mins">
                     30 Minutes
                   </option>
-                  <option className="bg-[#0a0f0a]" value="1_hour">
+                  <option className="text-black bg-white" value="1_hour">
                     1 Hour
                   </option>
                 </select>
