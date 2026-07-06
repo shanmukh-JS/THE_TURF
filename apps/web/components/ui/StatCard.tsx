@@ -19,23 +19,29 @@ export function StatCard({
   accent = 'green',
 }: StatCardProps) {
   const accentMap: Record<string, string> = {
-    green: 'from-green-500/20 to-emerald-500/5 border-green-500/20',
-    blue: 'from-blue-500/20 to-cyan-500/5 border-blue-500/20',
-    amber: 'from-amber-500/20 to-orange-500/5 border-amber-500/20',
-    purple: 'from-purple-500/20 to-violet-500/5 border-purple-500/20',
+    green:
+      'from-green-500/10 to-emerald-500/5 border-green-500/20 hover:border-green-500/50 hover:from-green-500/20',
+    blue: 'from-blue-500/10 to-cyan-500/5 border-blue-500/20 hover:border-blue-500/50 hover:from-blue-500/20',
+    amber:
+      'from-amber-500/10 to-orange-500/5 border-amber-500/20 hover:border-amber-500/50 hover:from-amber-500/20',
+    purple:
+      'from-purple-500/10 to-violet-500/5 border-purple-500/20 hover:border-purple-500/50 hover:from-purple-500/20',
   }
   const iconMap: Record<string, string> = {
-    green: 'bg-green-500/15 text-green-400',
-    blue: 'bg-blue-500/15 text-blue-400',
-    amber: 'bg-amber-500/15 text-amber-400',
-    purple: 'bg-purple-500/15 text-purple-400',
+    green:
+      'bg-green-500/15 text-green-400 group-hover:bg-green-500/25 group-hover:scale-110 transition-all duration-300',
+    blue: 'bg-blue-500/15 text-blue-400 group-hover:bg-blue-500/25 group-hover:scale-110 transition-all duration-300',
+    amber:
+      'bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/25 group-hover:scale-110 transition-all duration-300',
+    purple:
+      'bg-purple-500/15 text-purple-400 group-hover:bg-purple-500/25 group-hover:scale-110 transition-all duration-300',
   }
 
   const blobColorMap: Record<string, string> = {
-    green: 'bg-green-500 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]',
-    blue: 'bg-blue-500 group-hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]',
-    amber: 'bg-amber-500 group-hover:shadow-[0_0_30px_rgba(245,158,11,0.4)]',
-    purple: 'bg-purple-500 group-hover:shadow-[0_0_30px_rgba(168,85,247,0.4)]',
+    green: 'bg-green-500 group-hover:shadow-[0_0_40px_20px_rgba(34,197,94,0.3)]',
+    blue: 'bg-blue-500 group-hover:shadow-[0_0_40px_20px_rgba(59,130,246,0.3)]',
+    amber: 'bg-amber-500 group-hover:shadow-[0_0_40px_20px_rgba(245,158,11,0.3)]',
+    purple: 'bg-purple-500 group-hover:shadow-[0_0_40px_20px_rgba(168,85,247,0.3)]',
   }
 
   return (
@@ -73,9 +79,9 @@ export function StatCard({
       {/* Decorative blob */}
       <div
         className={cn(
-          'absolute -bottom-4 -right-4 w-24 h-24 rounded-full opacity-[0.03]',
+          'absolute -bottom-6 -right-6 w-32 h-32 rounded-full opacity-[0.03]',
           'transition-all duration-500 ease-out',
-          'group-hover:scale-[1.3] group-hover:-translate-x-3 group-hover:-translate-y-3 group-hover:opacity-20',
+          'group-hover:scale-150 group-hover:-translate-x-4 group-hover:-translate-y-4 group-hover:opacity-30',
           blobColorMap[accent] || 'bg-current'
         )}
       />
