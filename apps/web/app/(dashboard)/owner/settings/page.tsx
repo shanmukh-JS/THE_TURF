@@ -30,12 +30,7 @@ const defaultSettings = {
     cancellationPolicy: 'flexible',
     bufferTime: '0',
   },
-  bank: {
-    accountName: '',
-    accountNumber: '',
-    ifsc: '',
-    upi: '',
-  },
+
   notifications: {
     booking: true,
     payment: true,
@@ -73,7 +68,7 @@ export default function OwnerSettingsPage() {
           .from('owner_settings')
           .select('*')
           .eq('owner_id', profile.id)
-          .single()
+          .maybeSingle()
 
         const mappedData = {
           business: {
@@ -89,12 +84,7 @@ export default function OwnerSettingsPage() {
             cancellationPolicy: settings?.cancellation_policy || 'flexible',
             bufferTime: settings?.booking_buffer_time || '0',
           },
-          bank: {
-            accountName: settings?.bank_account_name || '',
-            accountNumber: settings?.bank_account_number || '',
-            ifsc: settings?.bank_ifsc || '',
-            upi: settings?.bank_upi || '',
-          },
+
           notifications: {
             booking: settings ? settings.notify_bookings : true,
             payment: settings ? settings.notify_payments : true,
@@ -166,11 +156,6 @@ export default function OwnerSettingsPage() {
         cancellation_policy: formData.booking.cancellationPolicy,
         booking_buffer_time: formData.booking.bufferTime,
 
-        bank_account_name: formData.bank.accountName,
-        bank_account_number: formData.bank.accountNumber,
-        bank_ifsc: formData.bank.ifsc,
-        bank_upi: formData.bank.upi,
-
         notify_bookings: formData.notifications.booking,
         notify_payments: formData.notifications.payment,
         notify_email: formData.notifications.email,
@@ -179,12 +164,11 @@ export default function OwnerSettingsPage() {
         updated_at: new Date().toISOString(),
       }
 
-      // Check if row exists
       const { data: existingSettings } = await supabase
         .from('owner_settings')
         .select('id')
         .eq('owner_id', profile.id)
-        .single()
+        .maybeSingle()
 
       if (existingSettings) {
         await supabase.from('owner_settings').update(settingsPayload).eq('id', existingSettings.id)
