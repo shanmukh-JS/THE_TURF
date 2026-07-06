@@ -28,7 +28,12 @@ export function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false)
   const router = useRouter()
 
-  const { user, logout } = useAuthStore()
+  const { user, isLoading, logout } = useAuthStore()
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const displayName = user?.fullName || user?.email?.split('@')[0] || 'User'
 
@@ -58,7 +63,9 @@ export function Navbar() {
 
         {/* Desktop Auth */}
         <div className="hidden md:flex items-center gap-3">
-          {!user ? (
+          {!isMounted || isLoading ? (
+            <div className="w-32 h-10 animate-pulse bg-white/10 rounded-xl" />
+          ) : !user ? (
             <>
               <Link
                 href="/auth/login"
