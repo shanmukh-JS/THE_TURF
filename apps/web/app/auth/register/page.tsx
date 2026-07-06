@@ -42,7 +42,14 @@ export default function RegisterPage() {
 
     if (data.session) {
       // User created and logged in automatically (if email confirmation is off)
-      router.push(role === 'OWNER' ? '/owner' : '/')
+      const userRole = data.session.user.user_metadata?.role || role
+      if (userRole === 'ADMIN') {
+        router.push('/admin')
+      } else if (userRole === 'OWNER') {
+        router.push('/owner')
+      } else {
+        router.push('/player')
+      }
     } else {
       setError('Registration successful! Please check your email to confirm.')
     }

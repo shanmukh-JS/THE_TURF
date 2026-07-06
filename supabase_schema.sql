@@ -194,14 +194,22 @@ returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  assigned_role text;
 begin
+  if (new.email = 'jaminishannu9k@gmail.com') then
+    assigned_role := 'ADMIN';
+  else
+    assigned_role := coalesce(new.raw_user_meta_data->>'role', 'CUSTOMER');
+  end if;
+
   insert into public.users (id, email, role)
-  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'role', 'CUSTOMER'));
+  values (new.id, new.email, assigned_role);
   
-  if (new.raw_user_meta_data->>'role' = 'OWNER') then
+  if (assigned_role = 'OWNER') then
     insert into public.owner_profiles (user_id, full_name, business_name)
     values (new.id, coalesce(new.raw_user_meta_data->>'full_name', 'New Owner'), coalesce(new.raw_user_meta_data->>'full_name', 'New Owner') || 's Business');
-  else
+  elsif (assigned_role = 'CUSTOMER') then
     insert into public.customer_profiles (user_id, full_name)
     values (new.id, coalesce(new.raw_user_meta_data->>'full_name', 'New Customer'));
   end if;
