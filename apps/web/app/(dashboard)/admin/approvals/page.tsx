@@ -46,7 +46,7 @@ export default function AdminApprovalsPage() {
           )
         `
         )
-        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
 
       if (error) {
         console.error('Error fetching approvals:', error)
@@ -208,7 +208,7 @@ export default function AdminApprovalsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-gray-400 text-xs">
-                    {new Date(v.created_at).toLocaleDateString()}
+                    {v.created_at ? new Date(v.created_at).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <button

@@ -291,7 +291,10 @@ export default function AdminVenueReviewPage() {
             <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-400 text-xs">
                 <Calendar className="w-4 h-4" />
-                Submitted on {format(new Date(venue.created_at), 'MMM d, yyyy')}
+                Submitted on{' '}
+                {venue.created_at
+                  ? format(new Date(venue.created_at), 'MMM d, yyyy')
+                  : 'Unknown Date'}
               </div>
             </div>
           </div>

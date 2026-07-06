@@ -33,7 +33,7 @@ export default function AdminTurfManagementPage() {
         cities(name)
       `
       )
-      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
 
     if (data) setVenues(data)
     setLoading(false)
@@ -154,6 +154,9 @@ export default function AdminTurfManagementPage() {
                   </td>
                   <td className="px-6 py-4 text-gray-400">
                     {v.owner_profiles?.full_name || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {v.created_at ? new Date(v.created_at).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="px-6 py-4 text-gray-400">{v.cities?.name || 'N/A'}</td>
                   <td className="px-6 py-4">
