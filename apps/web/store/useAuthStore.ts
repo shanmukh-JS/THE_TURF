@@ -59,37 +59,54 @@ const fetchUserLogo = async (user: any) => {
 
 // Initialize auth listener
 if (typeof window !== 'undefined') {
-  // Check initial session
-  supabase.auth.getSession().then(async ({ data: { session } }) => {
-    if (session?.user) {
-      const user = session.user
-      const logoUrl = await fetchUserLogo(user)
-      useAuthStore.getState().setUser({
-        id: user.id,
-        email: user.email!,
-        role: user.user_metadata?.role || 'CUSTOMER',
-        fullName: user.user_metadata?.full_name,
-        logoUrl,
-      })
-    } else {
+  const initAuth = async () => {
+    try {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession()
+      if (error) throw error
+
+      if (session?.user) {
+        const user = session.user
+        const logoUrl = await fetchUserLogo(user)
+        useAuthStore.getState().setUser({
+          id: user.id,
+          email: user.email!,
+          role: user.user_metadata?.role || 'CUSTOMER',
+          fullName: user.user_metadata?.full_name,
+          logoUrl,
+        })
+      } else {
+        useAuthStore.getState().setLoading(false)
+      }
+    } catch (e) {
+      console.error('Auth initialization error:', e)
       useAuthStore.getState().setLoading(false)
     }
-  })
+  }
+
+  initAuth()
 
   // Listen for changes
   supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (session?.user) {
-      const user = session.user
-      const logoUrl = await fetchUserLogo(user)
-      useAuthStore.getState().setUser({
-        id: user.id,
-        email: user.email!,
-        role: user.user_metadata?.role || 'CUSTOMER',
-        fullName: user.user_metadata?.full_name,
-        logoUrl,
-      })
-    } else {
-      useAuthStore.getState().setUser(null)
+    try {
+      if (session?.user) {
+        const user = session.user
+        const logoUrl = await fetchUserLogo(user)
+        useAuthStore.getState().setUser({
+          id: user.id,
+          email: user.email!,
+          role: user.user_metadata?.role || 'CUSTOMER',
+          fullName: user.user_metadata?.full_name,
+          logoUrl,
+        })
+      } else {
+        useAuthStore.getState().setUser(null)
+      }
+    } catch (e) {
+      console.error('Auth state change error:', e)
+      useAuthStore.getState().setLoading(false)
     }
   })
 }
