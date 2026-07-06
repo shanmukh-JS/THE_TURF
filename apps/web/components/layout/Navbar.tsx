@@ -136,12 +136,20 @@ export function Navbar() {
 
                   {/* Role-specific dashboard link */}
                   {user.role === 'OWNER' && (
-                    <Link
-                      href="/owner"
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
-                    >
-                      <LayoutDashboard className="w-4 h-4" /> Owner Dashboard
-                    </Link>
+                    <>
+                      <Link
+                        href="/owner"
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <LayoutDashboard className="w-4 h-4" /> Owner Dashboard
+                      </Link>
+                      <Link
+                        href="/profile/bookings"
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                      >
+                        <CalendarCheck className="w-4 h-4" /> My Bookings
+                      </Link>
+                    </>
                   )}
                   {user.role === 'ADMIN' && (
                     <Link
