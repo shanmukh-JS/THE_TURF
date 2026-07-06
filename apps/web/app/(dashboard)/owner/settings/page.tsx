@@ -52,17 +52,18 @@ export default function OwnerSettingsPage() {
 
   const supabase = createClient()
 
+  const { user } = useAuthStore()
+
   useEffect(() => {
     async function loadSettings() {
+      if (!user) return
+
       setIsLoading(true)
       try {
-        const { data: userData } = await supabase.auth.getUser()
-        if (!userData.user) return
-
         const { data: profile } = await supabase
           .from('owner_profiles')
           .select('id, full_name, business_name')
-          .eq('user_id', userData.user.id)
+          .eq('user_id', user.id)
           .single()
 
         if (!profile) return
@@ -77,8 +78,8 @@ export default function OwnerSettingsPage() {
           business: {
             turfName: profile.business_name || '',
             ownerName: profile.full_name || '',
-            email: settings?.business_email || userData.user.email || '',
-            phone: settings?.business_phone || userData.user.phone || '',
+            email: settings?.business_email || user.email || '',
+            phone: settings?.business_phone || '',
             address: settings?.business_address || '',
             logoUrl: settings?.business_logo_url || '',
           },
@@ -106,7 +107,7 @@ export default function OwnerSettingsPage() {
     }
 
     loadSettings()
-  }, [])
+  }, [user])
 
   // Track changes to show the sticky save bar
   useEffect(() => {
@@ -127,13 +128,12 @@ export default function OwnerSettingsPage() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) throw new Error('Not logged in')
+      if (!user) throw new Error('Not logged in')
 
       const { data: profile } = await supabase
         .from('owner_profiles')
         .select('id')
-        .eq('user_id', userData.user.id)
+        .eq('user_id', user.id)
         .single()
 
       if (!profile) throw new Error('Profile not found')
@@ -212,11 +212,10 @@ export default function OwnerSettingsPage() {
         return
       }
 
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) throw new Error('Not logged in')
+      if (!user) throw new Error('Not logged in')
 
       const fileExt = file.name.split('.').pop()
-      const fileName = `${userData.user.id}-${Date.now()}.${fileExt}`
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`
       const filePath = `${fileName}`
 
       const { error: uploadError } = await supabase.storage
