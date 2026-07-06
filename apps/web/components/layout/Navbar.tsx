@@ -168,6 +168,7 @@ export function Navbar() {
             <Link
               key={l.href}
               href={l.href}
+              onClick={() => setMobileOpen(false)}
               className="block px-4 py-3 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
             >
               {l.label}
@@ -176,12 +177,14 @@ export function Navbar() {
           <div className="border-t border-white/8 pt-3 mt-3 flex flex-col gap-2">
             <Link
               href="/auth/login"
+              onClick={() => setMobileOpen(false)}
               className="block px-4 py-2.5 rounded-xl text-sm text-gray-300 hover:bg-white/5 transition-all text-center border border-white/10"
             >
               Sign In
             </Link>
             <Link
               href="/auth/register"
+              onClick={() => setMobileOpen(false)}
               className="block px-4 py-2.5 rounded-xl bg-green-500 text-black text-sm font-semibold transition-all text-center"
             >
               Get Started
