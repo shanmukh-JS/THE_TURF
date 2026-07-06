@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -27,9 +27,11 @@ const STEPS = [
 export default function NewVenuePage() {
   const router = useRouter()
   const supabase = createClient()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null)
 
   // Data fetching state
@@ -111,6 +113,38 @@ export default function NewVenuePage() {
     if (currentStep > 1) setCurrentStep((prev) => prev - 1)
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random()}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('venue_images')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('venue_images').getPublicUrl(filePath)
+
+      updateField('coverImage', publicUrl)
+      setToast({ message: 'Cover image uploaded successfully!', type: 'success' })
+    } catch (err: any) {
+      setToast({ message: err.message || 'Error uploading image.', type: 'error' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSubmit = async () => {
     const isValid = validateStep()
     if (isValid !== true) {
@@ -175,7 +209,12 @@ export default function NewVenuePage() {
       }, 2000)
     } catch (e: any) {
       console.error(e)
-      setToast({ message: e.message || 'Error submitting venue', type: 'error' })
+      let msg = e.message || 'Error submitting venue'
+      if (msg.toLowerCase().includes('row-level security') || msg.toLowerCase().includes('rls')) {
+        msg =
+          "Database Error: RLS policy violation on 'venue_pricing'. Please run the migration SQL scripts inside your Supabase dashboard SQL Editor!"
+      }
+      setToast({ message: msg, type: 'error' })
       setIsSubmitting(false)
     }
   }
@@ -259,7 +298,7 @@ export default function NewVenuePage() {
                   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
                 >
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
+                    <option key={n} value={n} className="text-black bg-white">
                       {n}
                     </option>
                   ))}
@@ -274,11 +313,21 @@ export default function NewVenuePage() {
                   onChange={(e) => updateField('turfType', e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
                 >
-                  <option value="Artificial Grass">Artificial Grass</option>
-                  <option value="Natural Grass">Natural Grass</option>
-                  <option value="Clay Court">Clay Court</option>
-                  <option value="Hard Court">Hard Court</option>
-                  <option value="Indoor Wooden">Indoor Wooden</option>
+                  <option value="Artificial Grass" className="text-black bg-white">
+                    Artificial Grass
+                  </option>
+                  <option value="Natural Grass" className="text-black bg-white">
+                    Natural Grass
+                  </option>
+                  <option value="Clay Court" className="text-black bg-white">
+                    Clay Court
+                  </option>
+                  <option value="Hard Court" className="text-black bg-white">
+                    Hard Court
+                  </option>
+                  <option value="Indoor Wooden" className="text-black bg-white">
+                    Indoor Wooden
+                  </option>
                 </select>
               </div>
             </div>
@@ -314,9 +363,11 @@ export default function NewVenuePage() {
                     onChange={(e) => updateField('cityId', e.target.value)}
                     className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
                   >
-                    <option value="">Select a city...</option>
+                    <option value="" className="text-black bg-white">
+                      Select a city...
+                    </option>
                     {cities.map((city) => (
-                      <option key={city.id} value={city.id}>
+                      <option key={city.id} value={city.id} className="text-black bg-white">
                         {city.name}
                       </option>
                     ))}
@@ -332,9 +383,11 @@ export default function NewVenuePage() {
                     disabled={!formData.cityId || areas.length === 0}
                     className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50 disabled:opacity-50"
                   >
-                    <option value="">Select an area...</option>
+                    <option value="" className="text-black bg-white">
+                      Select an area...
+                    </option>
                     {areas.map((area) => (
-                      <option key={area.id} value={area.id}>
+                      <option key={area.id} value={area.id} className="text-black bg-white">
                         {area.name}
                       </option>
                     ))}
@@ -385,11 +438,43 @@ export default function NewVenuePage() {
                 Venue Photos
               </label>
 
-              <div className="w-full h-48 rounded-2xl bg-white/5 border-2 border-white/10 border-dashed flex flex-col items-center justify-center text-gray-500 hover:bg-white/10 hover:text-white hover:border-green-500/50 transition-all cursor-pointer group">
-                <Upload className="w-8 h-8 mb-3 group-hover:-translate-y-1 transition-transform text-green-500/80" />
-                <p className="text-sm font-semibold text-white">Click to upload photos</p>
-                <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-48 rounded-2xl bg-white/5 border-2 border-white/10 border-dashed flex flex-col items-center justify-center text-gray-500 hover:bg-white/10 hover:text-white hover:border-green-500/50 transition-all cursor-pointer group overflow-hidden relative"
+              >
+                {uploading ? (
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <Loader2 className="w-8 h-8 text-green-400 animate-spin" />
+                    <p className="text-xs text-gray-400">Uploading cover image...</p>
+                  </div>
+                ) : formData.coverImage ? (
+                  <div className="w-full h-full relative group">
+                    <img
+                      src={formData.coverImage}
+                      alt="Venue Cover"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white text-black font-semibold text-xs">
+                        <Upload className="w-4 h-4" /> Change Photo
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 mb-3 group-hover:-translate-y-1 transition-transform text-green-500/80" />
+                    <p className="text-sm font-semibold text-white">Click to upload photos</p>
+                    <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                  </>
+                )}
               </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
 
               {/* Placeholder for URL input if Cloudinary isn't ready */}
               <div className="mt-4">
