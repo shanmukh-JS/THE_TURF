@@ -1,6 +1,10 @@
 import { StatCard } from '@/components/ui/StatCard'
 import { ClientGreeting } from '@/components/dashboard/ClientGreeting'
 import {
+  DashboardAnimationWrapper,
+  DashboardAnimationItem,
+} from '@/components/ui/DashboardAnimationWrapper'
+import {
   TrendingUp,
   CalendarCheck,
   Star,
@@ -201,9 +205,9 @@ export default async function OwnerDashboardPage() {
   const revFormatted = `₹${revenue.toLocaleString('en-IN')}`
 
   return (
-    <div className="p-8 space-y-8">
+    <DashboardAnimationWrapper className="p-8 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <DashboardAnimationItem className="flex items-center justify-between">
         <div>
           <ClientGreeting />
           <p className="text-gray-400 mt-1">Here&apos;s how your venues are performing today.</p>
@@ -218,10 +222,10 @@ export default async function OwnerDashboardPage() {
             {activeVenuesCount} {activeVenuesCount === 1 ? 'Venue' : 'Venues'} Active
           </span>
         </div>
-      </div>
+      </DashboardAnimationItem>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <DashboardAnimationItem className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         <StatCard
           label="Revenue This Month"
           value={revFormatted}
@@ -254,10 +258,10 @@ export default async function OwnerDashboardPage() {
           accent="purple"
           icon={<Users className="w-5 h-5" />}
         />
-      </div>
+      </DashboardAnimationItem>
 
-      {/* Recent Bookings & Quick Actions */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      {/* Main Content Layout */}
+      <DashboardAnimationItem className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Bookings Table */}
         <div className="xl:col-span-2 rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
           <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
@@ -398,7 +402,7 @@ export default async function OwnerDashboardPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DashboardAnimationItem>
+    </DashboardAnimationWrapper>
   )
 }

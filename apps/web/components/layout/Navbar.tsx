@@ -14,6 +14,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
 
 const navLinks = [
   { label: 'Browse Venues', href: '/venues' },
@@ -53,7 +54,12 @@ export function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-white/8 bg-black/60 backdrop-blur-xl">
+      <motion.header
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="sticky top-0 z-50 w-full border-b border-white/8 bg-black/60 backdrop-blur-xl"
+      >
         <div className="w-full px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
@@ -219,7 +225,7 @@ export function Navbar() {
             </div>
           </div>
         )}
-      </header>
+      </motion.header>
 
       {/* Smooth sign-out overlay — fades to black before redirect */}
       <div

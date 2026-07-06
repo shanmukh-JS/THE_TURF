@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { User, Mail, Shield, CalendarCheck } from 'lucide-react'
+import {
+  DashboardAnimationWrapper,
+  DashboardAnimationItem,
+} from '@/components/ui/DashboardAnimationWrapper'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -21,14 +25,14 @@ export default async function CustomerProfilePage() {
   const role = user.user_metadata?.role || 'CUSTOMER'
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-[#060d06] px-6 md:px-12 lg:px-20 py-10 space-y-8 w-full">
-      <div>
+    <DashboardAnimationWrapper className="min-h-[calc(100vh-64px)] bg-[#060d06] px-6 md:px-12 lg:px-20 py-10 space-y-8 w-full">
+      <DashboardAnimationItem>
         <h1 className="text-2xl font-bold text-white">My Profile</h1>
         <p className="text-gray-400 mt-1">Manage your account details and preferences.</p>
-      </div>
+      </DashboardAnimationItem>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-6">
+        <DashboardAnimationItem className="md:col-span-2 space-y-6">
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 space-y-6">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <User className="w-5 h-5 text-green-400" />
@@ -62,9 +66,9 @@ export default async function CustomerProfilePage() {
               </div>
             </div>
           </div>
-        </div>
+        </DashboardAnimationItem>
 
-        <div className="space-y-6">
+        <DashboardAnimationItem className="space-y-6">
           <div className="rounded-2xl border border-white/8 bg-gradient-to-br from-green-500/10 to-emerald-600/10 p-6 flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-2xl font-bold text-white shadow-xl shadow-green-900/40">
               {fullName.charAt(0).toUpperCase()}
@@ -90,8 +94,8 @@ export default async function CustomerProfilePage() {
             </div>
             <div className="text-gray-600 group-hover:text-white transition-colors">→</div>
           </Link>
-        </div>
+        </DashboardAnimationItem>
       </div>
-    </main>
+    </DashboardAnimationWrapper>
   )
 }
