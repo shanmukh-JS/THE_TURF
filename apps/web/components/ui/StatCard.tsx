@@ -51,37 +51,39 @@ export function StatCard({
         accentMap[accent]
       )}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div
-          className={cn('w-10 h-10 rounded-xl flex items-center justify-center', iconMap[accent])}
-        >
-          {icon}
-        </div>
-        {change && (
-          <span
-            className={cn(
-              'flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full',
-              trend === 'up' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
-            )}
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-3">
+          <div
+            className={cn('w-10 h-10 rounded-xl flex items-center justify-center', iconMap[accent])}
           >
-            {trend === 'up' ? (
-              <ArrowUpRight className="w-3 h-3" />
-            ) : (
-              <ArrowDownRight className="w-3 h-3" />
-            )}
-            {change}
-          </span>
-        )}
+            {icon}
+          </div>
+          {change && (
+            <span
+              className={cn(
+                'flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full',
+                trend === 'up' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+              )}
+            >
+              {trend === 'up' ? (
+                <ArrowUpRight className="w-3 h-3" />
+              ) : (
+                <ArrowDownRight className="w-3 h-3" />
+              )}
+              {change}
+            </span>
+          )}
+        </div>
+        <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
+        <p className="text-sm text-gray-400 mt-1">{label}</p>
       </div>
-      <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
-      <p className="text-sm text-gray-400 mt-1">{label}</p>
 
       {/* Decorative blob */}
       <div
         className={cn(
-          'absolute -bottom-6 -right-6 w-32 h-32 rounded-full opacity-[0.03]',
-          'transition-all duration-500 ease-out',
-          'group-hover:scale-150 group-hover:-translate-x-4 group-hover:-translate-y-4 group-hover:opacity-30',
+          'absolute -bottom-6 -right-6 w-32 h-32 rounded-full opacity-[0.03] z-0 pointer-events-none',
+          'transition-transform duration-500 ease-out transition-opacity',
+          'group-hover:scale-[1.8] group-hover:-translate-x-4 group-hover:-translate-y-4 group-hover:opacity-30',
           blobColorMap[accent] || 'bg-current'
         )}
       />
