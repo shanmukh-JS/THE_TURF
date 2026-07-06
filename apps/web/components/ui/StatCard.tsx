@@ -82,8 +82,8 @@ export function StatCard({
       <div
         className={cn(
           'absolute -bottom-6 -right-6 w-32 h-32 rounded-full opacity-[0.03] z-0 pointer-events-none',
-          'transition-transform duration-500 ease-out transition-opacity',
-          'group-hover:scale-[1.8] group-hover:-translate-x-4 group-hover:-translate-y-4 group-hover:opacity-30',
+          'transition-all duration-700 ease-out',
+          'group-hover:scale-[12] group-hover:opacity-15',
           blobColorMap[accent] || 'bg-current'
         )}
       />
