@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Zap,
   Menu,
@@ -29,6 +29,24 @@ export function Navbar() {
   const router = useRouter()
 
   const { user, logout } = useAuthStore()
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+    if (profileOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [profileOpen])
 
   const displayName = user?.fullName || user?.email?.split('@')[0] || 'User'
 
@@ -74,7 +92,7 @@ export function Navbar() {
               </a>
             </>
           ) : (
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 transition-all group"
