@@ -262,8 +262,8 @@ export default function OwnerSettingsPage() {
   }
 
   return (
-    <div className="relative pb-24">
-      <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="relative pb-24 h-full">
+      <div className="p-8 space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
           <p className="text-gray-400">Manage your business profile, bookings, and preferences.</p>
