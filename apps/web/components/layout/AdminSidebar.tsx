@@ -15,6 +15,7 @@ import {
   LogOut,
   Zap,
   ChevronRight,
+  X,
 } from 'lucide-react'
 
 const navItems = [
@@ -28,20 +29,27 @@ const navItems = [
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
-export function AdminSidebar() {
+export function AdminSidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
 
   return (
     <aside className="flex flex-col w-64 h-screen bg-[#080808] border-r border-white/8 sticky top-0">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-white/8">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-900/40">
-          <Zap className="w-5 h-5 text-white" />
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-white/8 justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-900/40">
+            <Zap className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="font-bold text-white text-sm tracking-wide">TRUF GAMING</p>
+            <p className="text-[11px] text-rose-400 font-medium">Super Admin</p>
+          </div>
         </div>
-        <div>
-          <p className="font-bold text-white text-sm tracking-wide">TRUF GAMING</p>
-          <p className="text-[11px] text-rose-400 font-medium">Super Admin</p>
-        </div>
+        {onClose && (
+          <button onClick={onClose} className="md:hidden p-2 text-gray-400 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -51,6 +59,7 @@ export function AdminSidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={cn(
                 'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                 active
