@@ -184,7 +184,7 @@ export function PlayerDashboardClient({
   }, [nextBooking])
 
   return (
-    <div className="p-8 space-y-8 w-full max-w-[1600px] mx-auto">
+    <div className="p-8 space-y-8 w-full">
       {/* 1. HERO SECTION */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
