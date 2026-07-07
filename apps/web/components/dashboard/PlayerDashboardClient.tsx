@@ -659,6 +659,19 @@ export function PlayerDashboardClient({
                 </div>
               )
             })}
+            {venues.length === 1 && (
+              <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.01] hover:border-white/15 transition-all p-5 flex flex-col items-center justify-center text-center space-y-4 min-h-[300px]">
+                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-green-400">
+                  <span className="text-xl">🏏</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm">More Venues Coming Soon</h4>
+                  <p className="text-[11px] text-gray-500 max-w-[200px] mx-auto mt-1 leading-relaxed">
+                    We are onboarding more premium boxes in Hyderabad. Stay tuned!
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
