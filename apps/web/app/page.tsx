@@ -14,6 +14,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [detectingLocation, setDetectingLocation] = useState(false)
   const [locationInput, setLocationInput] = useState('')
+  const [searchedLocation, setSearchedLocation] = useState('')
 
   const [minDate] = useState(() => {
     const d = new Date()
@@ -79,14 +80,16 @@ export default function HomePage() {
 
   const handleSearch = () => {
     let result = [...venues]
+    const term = locationInput.trim()
+    setSearchedLocation(term)
 
-    if (locationInput.trim()) {
-      const term = locationInput.toLowerCase().trim()
+    if (term) {
+      const lowerTerm = term.toLowerCase()
       result = result.filter(
         (v) =>
-          v.name?.toLowerCase().includes(term) ||
-          v.address?.toLowerCase().includes(term) ||
-          v.city_name?.toLowerCase().includes(term)
+          v.name?.toLowerCase().includes(lowerTerm) ||
+          v.address?.toLowerCase().includes(lowerTerm) ||
+          v.city_name?.toLowerCase().includes(lowerTerm)
       )
     }
 
@@ -186,6 +189,15 @@ export default function HomePage() {
                       onMouseDown={() => {
                         setLocationInput(suggestion)
                         setShowSuggestions(false)
+                        setSearchedLocation(suggestion)
+                        const lowerTerm = suggestion.toLowerCase()
+                        const filtered = venues.filter(
+                          (v) =>
+                            v.name?.toLowerCase().includes(lowerTerm) ||
+                            v.address?.toLowerCase().includes(lowerTerm) ||
+                            v.city_name?.toLowerCase().includes(lowerTerm)
+                        )
+                        setFilteredVenues(filtered)
                       }}
                     >
                       <MapPin className="text-primary w-4 h-4" />
@@ -254,7 +266,9 @@ export default function HomePage() {
 
       {/* Featured Venues Section */}
       <section className="w-full max-w-7xl px-4 py-20">
-        <h2 className="text-3xl font-bold mb-8 text-white">Top Rated Boxes Near You</h2>
+        <h2 className="text-3xl font-bold mb-8 text-white">
+          {searchedLocation ? `${searchedLocation} Boxes Near You` : 'Top Rated Boxes Near You'}
+        </h2>
 
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-500 gap-3">
