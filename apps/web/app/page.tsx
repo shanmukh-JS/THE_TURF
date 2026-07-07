@@ -80,13 +80,13 @@ export default function HomePage() {
       <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
         {/* Background Stadium Image with CSS Boomerang Animation */}
         <div
-          className="absolute inset-0 opacity-40 bg-cover bg-center z-0 animate-boomerang"
+          className="absolute inset-0 opacity-75 bg-cover bg-center z-0 animate-boomerang"
           style={{
             backgroundImage:
-              "url('https://images.unsplash.com/photo-1562074244-3523ba7ad800?q=80&w=2000&auto=format&fit=crop')",
+              "url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2000&auto=format&fit=crop')",
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-[#0a0f0a] z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black z-10" />
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-6 px-4">
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-xl">
