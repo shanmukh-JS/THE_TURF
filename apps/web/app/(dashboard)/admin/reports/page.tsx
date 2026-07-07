@@ -1,8 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { Flag, ShieldAlert, CheckCircle2, UserX, AlertTriangle, Loader2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import {
+  Flag,
+  ShieldAlert,
+  CheckCircle2,
+  UserX,
+  AlertTriangle,
+  Loader2,
+  Search,
+  Download,
+  AlertCircle,
+} from 'lucide-react'
 import { logAdminAction } from '@/lib/admin/audit'
+import {
+  DashboardAnimationWrapper,
+  DashboardAnimationItem,
+} from '@/components/ui/DashboardAnimationWrapper'
 
 export default function AdminReportsPage() {
   const [reports, setReports] = useState<any[]>([
@@ -13,6 +27,9 @@ export default function AdminReportsPage() {
       reporterEmail: 'arjun@gmail.com',
       complaint: 'Overlapping bookings: The slot from 6pm to 7pm was double-booked.',
       status: 'PENDING',
+      priority: 'HIGH',
+      category: 'Booking Conflict',
+      assignedAdmin: 'Super Admin',
       createdAt: '2 hours ago',
     },
     {
@@ -22,9 +39,17 @@ export default function AdminReportsPage() {
       reporterEmail: 'karan@gmail.com',
       complaint: 'Floodlights did not work during the booked night slot.',
       status: 'RESOLVED',
+      priority: 'MEDIUM',
+      category: 'Equipment Failure',
+      assignedAdmin: 'Super Admin',
       createdAt: '1 day ago',
     },
   ])
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [priorityFilter, setPriorityFilter] = useState('ALL')
+
   const [confirmModal, setConfirmModal] = useState<{
     report: any
     action: 'suspend_turf' | 'suspend_owner' | 'resolve'
@@ -36,8 +61,6 @@ export default function AdminReportsPage() {
     setActionLoading(true)
 
     const { report, action } = confirmModal
-
-    // Simulate updating backend
     let detailsText = ''
     if (action === 'resolve') {
       detailsText = 'Report marked as resolved'
@@ -47,79 +70,200 @@ export default function AdminReportsPage() {
     }
 
     await logAdminAction(`Report Action: ${action}`, 'reports', report.id, detailsText)
-
     setActionLoading(false)
     setConfirmModal(null)
   }
 
+  // Filter
+  const filteredReports = useMemo(() => {
+    return reports.filter((r) => {
+      const query = searchQuery.toLowerCase()
+      const matchesSearch =
+        r.turfName.toLowerCase().includes(query) ||
+        r.reporterEmail.toLowerCase().includes(query) ||
+        r.complaint.toLowerCase().includes(query)
+
+      const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter
+      const matchesPriority = priorityFilter === 'ALL' || r.priority === priorityFilter
+
+      return matchesSearch && matchesStatus && matchesPriority
+    })
+  }, [reports, searchQuery, statusFilter, priorityFilter])
+
+  // Export CSV
+  const handleExportCSV = () => {
+    const headers = ['Report ID', 'Category', 'Priority', 'Turf', 'Reporter', 'Complaint', 'Status']
+    const rows = filteredReports.map((r) => [
+      r.id,
+      r.category,
+      r.priority,
+      r.turfName,
+      r.reporterEmail,
+      r.complaint,
+      r.status,
+    ])
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((r) => r.map((val) => `"${val}"`).join(','))].join('\n')
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `truf_reports.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
-    <div className="p-8 space-y-6">
+    <DashboardAnimationWrapper className="p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Complaints & Reports</h1>
-        <p className="text-gray-400 mt-1">
-          Review customer disputes, complaints, and suspension requests.
-        </p>
-      </div>
+      <DashboardAnimationItem className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Complaints & Ticket Management</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Review customer disputes, complaints, and platform tickets.
+          </p>
+        </div>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 border border-white/10 hover:bg-white/5 rounded-xl text-sm font-semibold text-gray-300 transition-colors"
+        >
+          <Download className="w-4 h-4" /> Export CSV
+        </button>
+      </DashboardAnimationItem>
 
-      {/* List */}
-      <div className="space-y-4">
-        {reports.map((r) => (
-          <div
-            key={r.id}
-            className="rounded-2xl border border-white/8 bg-white/[0.02] p-6 flex flex-col md:flex-row md:items-start justify-between gap-6"
+      {/* Controls */}
+      <DashboardAnimationItem className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/50"
           >
-            <div className="space-y-3 flex-1">
-              <div className="flex items-center gap-3">
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    r.status === 'RESOLVED'
-                      ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  }`}
-                >
-                  {r.status}
-                </span>
-                <span className="text-xs text-gray-500">{r.createdAt}</span>
-              </div>
+            <option value="ALL" className="text-black">
+              All Statuses
+            </option>
+            <option value="PENDING" className="text-black">
+              Pending
+            </option>
+            <option value="RESOLVED" className="text-black">
+              Resolved
+            </option>
+          </select>
 
-              <div>
-                <h4 className="text-base font-bold text-white">Reported: {r.turfName}</h4>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Owner: {r.ownerName} · Reported by: {r.reporterEmail}
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/50"
+          >
+            <option value="ALL" className="text-black">
+              All Priorities
+            </option>
+            <option value="HIGH" className="text-black">
+              High
+            </option>
+            <option value="MEDIUM" className="text-black">
+              Medium
+            </option>
+            <option value="LOW" className="text-black">
+              Low
+            </option>
+          </select>
+        </div>
+
+        <div className="relative max-w-sm w-full font-sans">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search tickets by customer or turf..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500/50"
+          />
+        </div>
+      </DashboardAnimationItem>
+
+      {/* Ticket List */}
+      <DashboardAnimationItem className="space-y-4">
+        {filteredReports.length === 0 ? (
+          <div className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-12 text-center text-gray-500 text-sm">
+            No active reports match the criteria.
+          </div>
+        ) : (
+          filteredReports.map((r) => (
+            <div
+              key={r.id}
+              className="rounded-2xl border border-white/8 bg-[#0a0f0a] p-6 flex flex-col lg:flex-row lg:items-start justify-between gap-6 hover:border-white/15 transition-all"
+            >
+              <div className="space-y-3.5 flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      r.status === 'RESOLVED'
+                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}
+                  >
+                    {r.status}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      r.priority === 'HIGH'
+                        ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                    }`}
+                  >
+                    {r.priority} Priority
+                  </span>
+                  <span className="text-xs text-gray-500">{r.createdAt}</span>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-bold text-white">Issue Category: {r.category}</h4>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Turf Name: <span className="text-white font-medium">{r.turfName}</span> · Owner:{' '}
+                    {r.ownerName} · Reporter: {r.reporterEmail}
+                  </p>
+                </div>
+
+                <p className="text-xs text-gray-300 bg-white/[0.01] border border-white/5 p-4 rounded-xl leading-relaxed">
+                  &quot;{r.complaint}&quot;
+                </p>
+
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
+                  Assigned Officer:{' '}
+                  <span className="text-gray-300 font-medium">{r.assignedAdmin}</span>
                 </p>
               </div>
 
-              <p className="text-sm text-gray-300 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
-                {r.complaint}
-              </p>
+              {r.status !== 'RESOLVED' && (
+                <div className="flex flex-row lg:flex-col gap-2 self-end lg:self-start">
+                  <button
+                    onClick={() => setConfirmModal({ report: r, action: 'resolve' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold hover:bg-green-500 hover:text-black transition-all"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Resolve ticket
+                  </button>
+                  <button
+                    onClick={() => setConfirmModal({ report: r, action: 'suspend_turf' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500/15 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold hover:bg-amber-500 hover:text-black transition-all"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" /> Suspend Turf
+                  </button>
+                  <button
+                    onClick={() => setConfirmModal({ report: r, action: 'suspend_owner' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500 hover:text-white transition-all"
+                  >
+                    <UserX className="w-3.5 h-3.5" /> Suspend Owner
+                  </button>
+                </div>
+              )}
             </div>
-
-            {r.status !== 'RESOLVED' && (
-              <div className="flex flex-row md:flex-col gap-2.5 self-end md:self-start">
-                <button
-                  onClick={() => setConfirmModal({ report: r, action: 'resolve' })}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold hover:bg-green-500 hover:text-black transition-all"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Resolve Report
-                </button>
-                <button
-                  onClick={() => setConfirmModal({ report: r, action: 'suspend_turf' })}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500/15 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold hover:bg-amber-500 hover:text-black transition-all"
-                >
-                  <AlertTriangle className="w-3.5 h-3.5" /> Suspend Turf
-                </button>
-                <button
-                  onClick={() => setConfirmModal({ report: r, action: 'suspend_owner' })}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500 hover:text-white transition-all"
-                >
-                  <UserX className="w-3.5 h-3.5" /> Suspend Owner
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+          ))
+        )}
+      </DashboardAnimationItem>
 
       {/* Confirmation Dialog */}
       {confirmModal && (
@@ -135,9 +279,9 @@ export default function AdminReportsPage() {
             </div>
 
             <p className="text-sm text-gray-300">
-              Are you sure you want to perform action{' '}
-              <strong className="text-red-400">{confirmModal.action}</strong> on this complaint?
-              This will update status flags and audit actions immediately.
+              Set ticket action to{' '}
+              <strong className="text-red-400 uppercase">{confirmModal.action}</strong> on this
+              dispute?
             </p>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -160,6 +304,6 @@ export default function AdminReportsPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardAnimationWrapper>
   )
 }
