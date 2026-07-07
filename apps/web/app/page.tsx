@@ -11,6 +11,11 @@ export default function HomePage() {
   const [venues, setVenues] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [minDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+
   useEffect(() => {
     const fetchVenues = async () => {
       const { data } = await supabase
@@ -72,6 +77,7 @@ export default function HomePage() {
               <Calendar className="text-primary w-5 h-5 mr-3" />
               <input
                 type="date"
+                min={minDate}
                 className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400"
               />
             </div>
