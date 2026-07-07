@@ -139,6 +139,7 @@ export default function BoomerangVideoBg({ src, className }: Props) {
       <video
         ref={videoRef}
         src={src}
+        poster="https://images.unsplash.com/photo-1562074244-3523ba7ad800?q=80&w=2000&auto=format&fit=crop"
         className="w-full h-full object-cover"
         style={{ display: framesReady ? 'none' : 'block' }}
         muted
