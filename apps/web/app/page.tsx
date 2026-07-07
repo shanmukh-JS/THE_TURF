@@ -9,6 +9,8 @@ import Link from 'next/link'
 export default function HomePage() {
   const supabase = createClient()
   const [venues, setVenues] = useState<any[]>([])
+  const [filteredVenues, setFilteredVenues] = useState<any[]>([])
+  const [selectedTime, setSelectedTime] = useState('')
   const [loading, setLoading] = useState(true)
   const [detectingLocation, setDetectingLocation] = useState(false)
   const [locationInput, setLocationInput] = useState('')
@@ -68,11 +70,28 @@ export default function HomePage() {
 
       if (data) {
         setVenues(data)
+        setFilteredVenues(data)
       }
       setLoading(false)
     }
     fetchVenues()
   }, [])
+
+  const handleSearch = () => {
+    let result = [...venues]
+
+    if (locationInput.trim()) {
+      const term = locationInput.toLowerCase().trim()
+      result = result.filter(
+        (v) =>
+          v.name?.toLowerCase().includes(term) ||
+          v.address?.toLowerCase().includes(term) ||
+          v.city_name?.toLowerCase().includes(term)
+      )
+    }
+
+    setFilteredVenues(result)
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center">
@@ -162,7 +181,11 @@ export default function HomePage() {
             {/* Time */}
             <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full">
               <Clock className="text-primary w-5 h-5 mr-3" />
-              <select className="bg-transparent border-none outline-none text-white w-full appearance-none">
+              <select
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="bg-transparent border-none outline-none text-white w-full appearance-none"
+              >
                 <option value="" className="text-black">
                   Any Time
                 </option>
@@ -176,7 +199,10 @@ export default function HomePage() {
             </div>
 
             {/* Search Button */}
-            <button className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-semibold transition-all flex items-center justify-center w-full md:w-auto">
+            <button
+              onClick={handleSearch}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-semibold transition-all flex items-center justify-center w-full md:w-auto"
+            >
               <Search className="w-5 h-5 mr-2" />
               Search
             </button>
@@ -193,13 +219,13 @@ export default function HomePage() {
             <Loader2 className="w-8 h-8 animate-spin text-green-500" />
             <p className="text-sm">Finding active venues near you...</p>
           </div>
-        ) : venues.length === 0 ? (
+        ) : filteredVenues.length === 0 ? (
           <div className="text-center py-20 text-gray-500 text-sm">
-            No live verified turfs found. Check back soon!
+            No live verified turfs match your search. Check back soon!
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {venues.map((v) => {
+            {filteredVenues.map((v) => {
               const price = Array.isArray(v.venue_pricing)
                 ? (v.venue_pricing[0] as any)?.price || 1000
                 : (v.venue_pricing as any)?.price || 1000
