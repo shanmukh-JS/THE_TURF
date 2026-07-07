@@ -264,6 +264,15 @@ export default function ManageSlotsPage() {
     e.preventDefault()
     if (!ownerProfileId || !formData.venueId || !formData.date) return
 
+    const selectedV = venues.find((v) => v.id === formData.venueId)
+    if (selectedV?.verification_status !== 'APPROVED') {
+      setToast({
+        message: 'This turf is not approved yet. Slots can only be generated for approved venues.',
+        type: 'error',
+      })
+      return
+    }
+
     setSubmitting(true)
 
     // Duration numeric parse
@@ -857,10 +866,32 @@ export default function ManageSlotsPage() {
                   >
                     {venues.map((v) => (
                       <option key={v.id} value={v.id} className="text-black">
-                        {v.name}
+                        {v.name} ({v.verification_status || 'PENDING'})
                       </option>
                     ))}
                   </select>
+
+                  {formData.venueId && (
+                    <div className="mt-2 text-xs">
+                      {venues.find((v) => v.id === formData.venueId)?.verification_status === 'APPROVED' ? (
+                        <span className="text-green-400 font-semibold flex items-center gap-1">
+                          🟢 Approved & Live
+                        </span>
+                      ) : (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl mt-2 space-y-1">
+                          <p className="font-bold flex items-center gap-1">
+                            <span className="text-sm">⚠️</span> Verification Required
+                          </p>
+                          <p>
+                            This venue is currently{' '}
+                            {venues.find((v) => v.id === formData.venueId)?.verification_status ||
+                              'PENDING'}
+                            . Slots cannot be generated until the venue is approved.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1074,7 +1105,7 @@ export default function ManageSlotsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || (venues.find((v) => v.id === formData.venueId)?.verification_status !== 'APPROVED')}
                   className="px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all shadow-lg shadow-green-900/30 disabled:opacity-55"
                 >
                   {submitting ? 'Creating...' : 'Create Slot'}
