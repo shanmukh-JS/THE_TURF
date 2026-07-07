@@ -135,12 +135,13 @@ export default function BoomerangVideoBg({ src, className }: Props) {
   }, [framesReady])
 
   return (
-    <div className={className ?? 'absolute inset-0 w-full h-full'}>
+    <div className={`${className ?? 'absolute inset-0 w-full h-full'} relative`}>
       <video
         ref={videoRef}
         src={src}
-        className="w-full h-full object-cover"
-        style={{ display: framesReady ? 'none' : 'block' }}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          framesReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
         muted
         playsInline
         preload="auto"
@@ -148,8 +149,9 @@ export default function BoomerangVideoBg({ src, className }: Props) {
       />
       <canvas
         ref={displayCanvasRef}
-        className="w-full h-full object-cover"
-        style={{ display: framesReady ? 'block' : 'none' }}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+          framesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
       />
     </div>
   )
