@@ -76,6 +76,7 @@ export default function AdminSettingsPage() {
     successRate: 100,
     avgDeliveryTime: 0,
   })
+  const [isRefreshingLogs, setIsRefreshingLogs] = useState(false)
   const [retryingLogId, setRetryingLogId] = useState<string | null>(null)
 
   const [confirmModal, setConfirmModal] = useState(false)
@@ -125,6 +126,7 @@ export default function AdminSettingsPage() {
   }
 
   async function fetchEmailLogs() {
+    setIsRefreshingLogs(true)
     try {
       const url = `/api/admin/email-logs?page=${logsPage}&limit=10&search=${encodeURIComponent(logsSearch)}&status=${logsStatus}`
       const res = await fetch(url)
@@ -139,6 +141,8 @@ export default function AdminSettingsPage() {
       }
     } catch (err) {
       console.error('Error fetching email logs:', err)
+    } finally {
+      setIsRefreshingLogs(false)
     }
   }
 
@@ -723,9 +727,10 @@ export default function AdminSettingsPage() {
                   setLogsPage(1)
                   fetchEmailLogs()
                 }}
-                className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
+                disabled={isRefreshingLogs}
+                className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white transition-colors disabled:opacity-50"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className={`w-4 h-4 ${isRefreshingLogs ? 'animate-spin' : ''}`} />
               </button>
             </div>
 
