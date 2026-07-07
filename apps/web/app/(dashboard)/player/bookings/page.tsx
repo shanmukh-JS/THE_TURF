@@ -66,6 +66,15 @@ export default async function CustomerBookingsPage({
     }
     const formattedTime = `${formatTime(b.slots.start_time)} – ${formatTime(b.slots.end_time)}`
 
+    // Automatically mark past confirmed bookings as completed
+    const now = new Date()
+    dateObj.setHours(23, 59, 59, 999)
+    const isPast = dateObj < now
+    let derivedStatus = b.status
+    if (derivedStatus === 'CONFIRMED' && isPast) {
+      derivedStatus = 'COMPLETED'
+    }
+
     return {
       id: b.id.substring(0, 8).toUpperCase(), // Short ID
       venue: b.venues.name,
@@ -74,7 +83,7 @@ export default async function CustomerBookingsPage({
       time: formattedTime,
       amount: b.total_amount,
       advance: b.advance_paid,
-      status: b.status,
+      status: derivedStatus,
     }
   })
 
