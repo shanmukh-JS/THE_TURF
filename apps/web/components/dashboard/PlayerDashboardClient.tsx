@@ -21,6 +21,8 @@ import {
   X,
 } from 'lucide-react'
 
+import { StatCard } from '@/components/ui/StatCard'
+
 // Simple helper to format time
 function formatRelativeTime(dateStr: string) {
   const dateObj = new Date(dateStr)
@@ -290,68 +292,86 @@ export function PlayerDashboardClient({
         }}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
       >
-        {[
-          {
-            label: 'Total Bookings',
-            val: totalBookings,
-            icon: CalendarCheck,
-            color: 'from-green-500 to-emerald-400',
-            glow: 'shadow-green-950/20',
-          },
-          {
-            label: 'Upcoming Match',
-            val: upcomingBookingsCount,
-            icon: Clock,
-            color: 'from-blue-500 to-indigo-400',
-            glow: 'shadow-blue-950/20',
-          },
-          {
-            label: 'Favorite Turfs',
-            val: totalFavorites,
-            icon: Heart,
-            color: 'from-red-500 to-pink-400',
-            glow: 'shadow-red-950/20',
-          },
-          {
-            label: 'Total Spent',
-            val: totalSpent,
-            icon: DollarSign,
-            color: 'from-yellow-500 to-amber-400',
-            isMoney: true,
-            glow: 'shadow-yellow-950/20',
-          },
-        ].map((c) => {
-          const Icon = c.icon
-          return (
-            <motion.div
-              key={c.label}
-              variants={{
-                hidden: { opacity: 0, y: 15 },
-                visible: { opacity: 1, y: 0 },
-              }}
-              whileHover={{ y: -4, borderColor: 'rgba(34,197,94,0.2)' }}
-              className={`rounded-2xl border border-white/8 bg-white/[0.02] p-5 flex items-center gap-4 relative overflow-hidden transition-all duration-300 group hover:shadow-lg ${c.glow}`}
-            >
-              {/* Outer light glow */}
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 via-green-500/0 to-green-500/0 group-hover:to-green-500/[0.02] transition-all duration-300" />
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            visible: { opacity: 1, y: 0 },
+          }}
+        >
+          <StatCard
+            label="Total Spent"
+            value={
+              <span className="flex items-baseline font-sans font-extrabold text-white text-2xl">
+                <span className="text-gray-400 mr-0.5 text-lg font-bold">₹</span>
+                <AnimatedNumber value={totalSpent} />
+              </span>
+            }
+            change="+0%"
+            trend="up"
+            accent="green"
+            icon={<DollarSign className="w-5 h-5" />}
+          />
+        </motion.div>
 
-              {/* Styled Icon */}
-              <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-gray-400 group-hover:text-green-400 group-hover:bg-green-500/10 group-hover:border-green-500/25 transition-all duration-300 flex-shrink-0">
-                <Icon className="w-5 h-5" />
-              </div>
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            visible: { opacity: 1, y: 0 },
+          }}
+        >
+          <StatCard
+            label="Total Bookings"
+            value={
+              <span className="font-sans font-extrabold text-white text-2xl">
+                <AnimatedNumber value={totalBookings} />
+              </span>
+            }
+            change="+0%"
+            trend="up"
+            accent="blue"
+            icon={<CalendarCheck className="w-5 h-5" />}
+          />
+        </motion.div>
 
-              <div>
-                <div className="text-2xl font-extrabold text-white tracking-tight flex items-baseline">
-                  {c.isMoney && <span className="text-gray-400 mr-1 text-lg font-bold">₹</span>}
-                  <AnimatedNumber value={c.val} />
-                </div>
-                <p className="text-xs font-semibold text-gray-500 tracking-wider uppercase mt-0.5 group-hover:text-gray-400 transition-colors">
-                  {c.label}
-                </p>
-              </div>
-            </motion.div>
-          )
-        })}
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            visible: { opacity: 1, y: 0 },
+          }}
+        >
+          <StatCard
+            label="Upcoming Match"
+            value={
+              <span className="font-sans font-extrabold text-white text-2xl">
+                <AnimatedNumber value={upcomingBookingsCount} />
+              </span>
+            }
+            change="0.0"
+            trend="up"
+            accent="amber"
+            icon={<Clock className="w-5 h-5" />}
+          />
+        </motion.div>
+
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 15 },
+            visible: { opacity: 1, y: 0 },
+          }}
+        >
+          <StatCard
+            label="Favorite Turfs"
+            value={
+              <span className="font-sans font-extrabold text-white text-2xl">
+                <AnimatedNumber value={totalFavorites} />
+              </span>
+            }
+            change="+0%"
+            trend="up"
+            accent="purple"
+            icon={<Heart className="w-5 h-5" />}
+          />
+        </motion.div>
       </motion.div>
 
       {/* MID-GRID: UPCOMING MATCH & QUICK ACTIONS */}

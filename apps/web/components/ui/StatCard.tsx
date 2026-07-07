@@ -3,7 +3,7 @@ import { ArrowUpRight, ArrowDownRight } from 'lucide-react'
 
 interface StatCardProps {
   label: string
-  value: string
+  value: React.ReactNode
   change?: string
   trend?: 'up' | 'down' | 'neutral'
   icon: React.ReactNode
