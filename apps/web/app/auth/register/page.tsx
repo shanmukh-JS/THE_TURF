@@ -97,39 +97,52 @@ export default function RegisterPage() {
                 label: 'Email Address',
                 type: 'email',
                 placeholder: 'arjun@example.com',
+                pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+                title: 'Please enter a valid email address',
               },
               {
                 field: 'phone',
                 label: 'Phone Number',
                 type: 'tel',
-                placeholder: '+91 98765 43210',
+                placeholder: '9876543210',
+                pattern: '[0-9]{10}',
+                maxLength: 10,
+                minLength: 10,
+                title: 'Please enter exactly 10 digits',
               },
               {
                 field: 'password',
                 label: 'Password',
                 type: 'password',
                 placeholder: 'Min. 8 characters',
+                minLength: 8,
               },
-            ].map(({ field, label, type, placeholder }) => (
+            ].map(({ field, label, type, placeholder, pattern, title, maxLength, minLength }) => (
               <div key={field}>
                 <label className="block text-sm text-gray-400 mb-2">{label}</label>
                 <input
                   type={type}
                   required
                   placeholder={placeholder}
+                  pattern={pattern}
+                  title={title}
+                  maxLength={maxLength}
+                  minLength={minLength}
                   value={form[field as keyof typeof form]}
-                  onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                  onChange={(e) => {
+                    if (field === 'phone') {
+                      const val = e.target.value.replace(/\D/g, '')
+                      if (val.length <= 10) {
+                        setForm({ ...form, [field]: val })
+                      }
+                    } else {
+                      setForm({ ...form, [field]: e.target.value })
+                    }
+                  }}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
                 />
               </div>
             ))}
-
-            {role === 'OWNER' && (
-              <div className="rounded-xl bg-green-500/5 border border-green-500/20 px-4 py-3 text-sm text-green-300">
-                🏏 After registration, you&apos;ll complete KYC verification before listing your
-                venue.
-              </div>
-            )}
 
             {error && (
               <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
