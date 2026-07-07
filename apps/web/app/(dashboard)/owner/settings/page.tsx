@@ -41,6 +41,40 @@ const defaultSettings = {
   },
 }
 
+const InputField = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
+  <div className="space-y-1.5">
+    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50 focus:bg-white/10 transition-all"
+    />
+  </div>
+)
+
+const Toggle = ({ checked, onChange, label, description }: any) => (
+  <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+    <div>
+      <h4 className="text-sm font-semibold text-white">{label}</h4>
+      <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+    </div>
+    <button
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-[#0a0f0a] ${
+        checked ? 'bg-green-500' : 'bg-gray-600'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  </div>
+)
+
 export default function OwnerSettingsPage() {
   const [formData, setFormData] = useState(defaultSettings)
   const [initialData, setInitialData] = useState(defaultSettings)
@@ -328,21 +362,6 @@ export default function OwnerSettingsPage() {
       type: 'error',
     })
   }
-
-  const InputField = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-        {label}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50 focus:bg-white/10 transition-all"
-      />
-    </div>
-  )
 
   const Toggle = ({ checked, onChange, label, description }: any) => (
     <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
