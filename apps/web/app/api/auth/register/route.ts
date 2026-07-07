@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .ilike('email', email)
       .maybeSingle()
 
     if (existingUser) {
