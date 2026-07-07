@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useState } from 'react'
-import { MapPin, Calendar, Clock, Search, Loader2 } from 'lucide-react'
+import { MapPin, Calendar, Clock, Search, Loader2, Navigation } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
@@ -10,11 +10,47 @@ export default function HomePage() {
   const supabase = createClient()
   const [venues, setVenues] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [detectingLocation, setDetectingLocation] = useState(false)
+  const [locationInput, setLocationInput] = useState('')
 
   const [minDate] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser')
+      return
+    }
+    setDetectingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
+          )
+          const data = await res.json()
+          const locationName =
+            data.city ||
+            data.locality ||
+            `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
+          setLocationInput(locationName)
+        } catch (e) {
+          setLocationInput(
+            `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
+          )
+        }
+        setDetectingLocation(false)
+      },
+      (error) => {
+        console.error(error)
+        alert('Failed to detect location. Please type manually.')
+        setDetectingLocation(false)
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    )
+  }
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -63,13 +99,30 @@ export default function HomePage() {
           {/* Search Glass Panel */}
           <div className="mt-8 p-4 glass-panel rounded-2xl w-full max-w-4xl flex flex-col md:flex-row gap-4 items-center">
             {/* Location */}
-            <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full">
-              <MapPin className="text-primary w-5 h-5 mr-3" />
-              <input
-                type="text"
-                placeholder="Where do you want to play?"
-                className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400"
-              />
+            <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full justify-between">
+              <div className="flex items-center flex-1">
+                <MapPin className="text-primary w-5 h-5 mr-3" />
+                <input
+                  type="text"
+                  placeholder="Where do you want to play?"
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
+                  className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={detectingLocation}
+                className="p-1 hover:bg-white/5 rounded-lg text-primary transition-all ml-2 flex items-center justify-center disabled:opacity-50"
+                title="Detect Location"
+              >
+                {detectingLocation ? (
+                  <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                ) : (
+                  <Navigation className="w-4.5 h-4.5" />
+                )}
+              </button>
             </div>
 
             {/* Date */}
