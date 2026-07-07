@@ -79,13 +79,10 @@ export default function HomePage() {
     <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
       <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
-        {/* Background Image */}
-        <div
-          className="absolute inset-0 opacity-40 bg-cover bg-center z-0"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1562074244-3523ba7ad800?q=80&w=2000&auto=format&fit=crop')",
-          }}
+        {/* Background Boomerang Video */}
+        <BoomerangVideoBg
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260511_131941_d136af49-e243-493a-be14-6ff3f24e09e6.mp4"
+          className="absolute inset-0 w-full h-full opacity-40 z-0"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-[#0a0f0a] z-10" />
 
