@@ -93,6 +93,27 @@ export default function HomePage() {
     setFilteredVenues(result)
   }
 
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const locationSuggestions = React.useMemo(() => {
+    const list = new Set<string>()
+    venues.forEach((v) => {
+      if (v.address) {
+        if (v.address.toLowerCase().includes('tadepalligudem')) list.add('Tadepalligudem')
+        if (v.address.toLowerCase().includes('bhimavaram')) list.add('Bhimavaram')
+        if (v.address.toLowerCase().includes('mudhunurupadu')) list.add('Mudhunurupadu')
+      }
+    })
+    if (list.size === 0) {
+      return ['Tadepalligudem', 'Bhimavaram', 'Mudhunurupadu']
+    }
+    return Array.from(list)
+  }, [venues])
+
+  const filteredSuggestions = locationSuggestions.filter((item) =>
+    item.toLowerCase().includes(locationInput.toLowerCase())
+  )
+
   return (
     <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
@@ -128,7 +149,7 @@ export default function HomePage() {
               }}
             />
             {/* Location */}
-            <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full justify-between">
+            <div className="relative flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full justify-between">
               <div className="flex items-center flex-1">
                 <MapPin className="text-primary w-5 h-5 mr-3" />
                 <input
@@ -136,6 +157,8 @@ export default function HomePage() {
                   placeholder="Where do you want to play?"
                   value={locationInput}
                   onChange={(e) => setLocationInput(e.target.value)}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setShowSuggestions(false)}
                   className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400"
                 />
               </div>
@@ -152,6 +175,25 @@ export default function HomePage() {
                   <Navigation className="w-4.5 h-4.5" />
                 )}
               </button>
+
+              {/* Autocomplete Suggestions Dropdown */}
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl z-50 max-h-60 overflow-y-auto">
+                  {filteredSuggestions.map((suggestion) => (
+                    <div
+                      key={suggestion}
+                      className="px-4 py-3 hover:bg-primary/20 text-white cursor-pointer transition-colors border-b border-white/5 last:border-none flex items-center gap-2"
+                      onMouseDown={() => {
+                        setLocationInput(suggestion)
+                        setShowSuggestions(false)
+                      }}
+                    >
+                      <MapPin className="text-primary w-4 h-4" />
+                      <span>{suggestion}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Date */}
