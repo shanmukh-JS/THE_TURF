@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   X,
   RefreshCw,
+  MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 
@@ -255,6 +256,39 @@ export default function OwnerSettingsPage() {
     }
   }
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setToast({ message: 'Geolocation is not supported by your browser.', type: 'error' })
+      return
+    }
+
+    setToast({ message: 'Detecting exact location...', type: 'success' })
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          )
+          const data = await res.json()
+
+          if (data && data.display_name) {
+            updateSection('business', 'address', data.display_name)
+            setToast({ message: 'Location auto-filled successfully!', type: 'success' })
+          } else {
+            throw new Error('No address found')
+          }
+        } catch (error) {
+          setToast({ message: 'Failed to fetch address from coordinates.', type: 'error' })
+        }
+      },
+      (error: any) => {
+        setToast({ message: `Location error: ${error.message}`, type: 'error' })
+      }
+    )
+  }
+
   const handleUpdatePassword = async () => {
     const newPassword = window.prompt('Enter your new password (minimum 6 characters):')
     if (!newPassword) return
@@ -411,11 +445,28 @@ export default function OwnerSettingsPage() {
                 onChange={(v: any) => updateSection('business', 'phone', v)}
               />
               <div className="md:col-span-2">
-                <InputField
-                  label="Complete Address"
-                  value={formData.business.address}
-                  onChange={(v: any) => updateSection('business', 'address', v)}
-                />
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Complete Address
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleDetectLocation}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 text-xs font-medium border border-green-500/20 transition-all"
+                    >
+                      <MapPin className="w-3.5 h-3.5" />
+                      Detect My Location
+                    </button>
+                  </div>
+                  <textarea
+                    value={formData.business.address}
+                    onChange={(e) => updateSection('business', 'address', e.target.value)}
+                    rows={2}
+                    placeholder="E.g., 123 Turf Avenue, Sector 4..."
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50 focus:bg-white/10 transition-all resize-none"
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -151,7 +151,7 @@ export default function NewVenuePage() {
       return
     }
 
-    setToast({ message: 'Detecting location...', type: 'success' })
+    setToast({ message: 'Detecting exact location and mapping regions...', type: 'success' })
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -161,9 +161,79 @@ export default function NewVenuePage() {
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
           )
           const data = await res.json()
+
           if (data && data.display_name) {
             updateField('address', data.display_name)
-            setToast({ message: 'Location detected successfully!', type: 'success' })
+
+            // Extract City and Area from Nominatim response
+            const addressObj = data.address || {}
+            let detectedCity =
+              addressObj.city || addressObj.town || addressObj.county || addressObj.state_district
+            let detectedArea =
+              addressObj.suburb ||
+              addressObj.neighbourhood ||
+              addressObj.village ||
+              addressObj.residential ||
+              addressObj.city_district
+
+            if (detectedCity) {
+              // Check if city exists in DB
+              let { data: existingCity } = await supabase
+                .from('cities')
+                .select('id, name')
+                .ilike('name', detectedCity)
+                .single()
+
+              let cityIdToUse = existingCity?.id
+
+              if (!existingCity) {
+                // Insert new city
+                const { data: newCity } = await supabase
+                  .from('cities')
+                  .insert({ name: detectedCity, state: addressObj.state || 'Unknown State' })
+                  .select('id')
+                  .single()
+                if (newCity) cityIdToUse = newCity.id
+
+                // Refresh cities list
+                const { data: allCities } = await supabase.from('cities').select('*')
+                if (allCities) setCities(allCities)
+              }
+
+              if (cityIdToUse) {
+                updateField('cityId', cityIdToUse)
+
+                if (detectedArea) {
+                  // Check if area exists under this city
+                  let { data: existingArea } = await supabase
+                    .from('areas')
+                    .select('id, name')
+                    .eq('city_id', cityIdToUse)
+                    .ilike('name', detectedArea)
+                    .single()
+
+                  let areaIdToUse = existingArea?.id
+                  if (!existingArea) {
+                    const { data: newArea } = await supabase
+                      .from('areas')
+                      .insert({
+                        name: detectedArea,
+                        city_id: cityIdToUse,
+                        pincode: addressObj.postcode || null,
+                      })
+                      .select('id')
+                      .single()
+                    if (newArea) areaIdToUse = newArea.id
+                  }
+
+                  if (areaIdToUse) {
+                    updateField('areaId', areaIdToUse)
+                  }
+                }
+              }
+            }
+
+            setToast({ message: 'Location auto-filled successfully!', type: 'success' })
           } else {
             throw new Error('No address found')
           }

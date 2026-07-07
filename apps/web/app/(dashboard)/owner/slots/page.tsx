@@ -148,13 +148,24 @@ export default function ManageSlotsPage() {
       // Fetch venues
       const { data: venuesData } = await supabase
         .from('venues')
-        .select('id, name')
+        .select('id, name, venue_pricing(price)')
         .eq('owner_id', ownerProfileId)
 
       if (venuesData) {
-        setVenues(venuesData)
-        if (venuesData.length > 0) {
-          setFormData((prev) => ({ ...prev, venueId: venuesData[0]?.id || '' }))
+        const mappedVenues = venuesData.map((v) => ({
+          id: v.id,
+          name: v.name,
+          price: Array.isArray(v.venue_pricing)
+            ? (v.venue_pricing[0] as any)?.price
+            : (v.venue_pricing as any)?.price || 1000,
+        }))
+        setVenues(mappedVenues)
+        if (mappedVenues.length > 0) {
+          setFormData((prev) => ({
+            ...prev,
+            venueId: mappedVenues[0]?.id || '',
+            price: mappedVenues[0]?.price?.toString() || '1000',
+          }))
         }
       }
 
@@ -829,13 +840,20 @@ export default function ManageSlotsPage() {
 
               {/* Form Grid */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+                <div className="md:col-span-2">
                   <label className="block text-xs text-gray-500 mb-1">Turf Box</label>
                   <select
                     value={formData.venueId}
-                    onChange={(e) => setFormData({ ...formData, venueId: e.target.value })}
+                    onChange={(e) => {
+                      const selectedV = venues.find((v) => v.id === e.target.value)
+                      setFormData({
+                        ...formData,
+                        venueId: e.target.value,
+                        price: selectedV?.price?.toString() || formData.price,
+                      })
+                    }}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-green-500/50 font-medium"
                     required
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
                   >
                     {venues.map((v) => (
                       <option key={v.id} value={v.id} className="text-black">
@@ -951,14 +969,16 @@ export default function ManageSlotsPage() {
                 )}
 
                 <div className={!isBulk ? 'col-span-1' : ''}>
-                  <label className="block text-xs text-gray-500 mb-1">Price (₹)</label>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    Price (₹) <span className="text-gray-600">(Locked to Venue)</span>
+                  </label>
                   <input
                     type="number"
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    readOnly
                     required
                     min="1"
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-gray-400 text-sm outline-none cursor-not-allowed select-none"
                   />
                 </div>
 

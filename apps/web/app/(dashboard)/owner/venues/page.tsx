@@ -107,7 +107,9 @@ export default function OwnerVenuesPage() {
         turfType: v.turf_type || 'Artificial Grass',
         pitches: v.pitches || 1,
         isIndoor: v.is_indoor || false,
-        pricePerHour: v.venue_pricing?.[0]?.price || 1000,
+        pricePerHour: Array.isArray(v.venue_pricing)
+          ? (v.venue_pricing[0] as any)?.price || 1000
+          : (v.venue_pricing as any)?.price || 1000,
         rating: 4.8, // default fallback
         bookings: 0,
         revenue: 0,
