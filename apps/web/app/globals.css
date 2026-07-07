@@ -88,3 +88,20 @@ html {
 .dark .glass-panel {
   @apply bg-black/40 backdrop-blur-md border border-white/10 shadow-lg;
 }
+
+/* Boomerang Background Animation */
+@keyframes boomerang {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-0.5%, -0.5%);
+  }
+  100% {
+    transform: scale(1) translate(0, 0);
+  }
+}
+.animate-boomerang {
+  animation: boomerang 18s ease-in-out infinite;
+  will-change: transform;
+}

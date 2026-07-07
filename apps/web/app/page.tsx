@@ -106,20 +106,6 @@ export default function HomePage() {
                 display: none !important;
                 -webkit-appearance: none !important;
               }
-              @keyframes boomerang {
-                0% {
-                  transform: scale(1) translate(0, 0);
-                }
-                50% {
-                  transform: scale(1.08) translate(-0.5%, -0.5%);
-                }
-                100% {
-                  transform: scale(1) translate(0, 0);
-                }
-              }
-              .animate-boomerang {
-                animation: boomerang 18s ease-in-out infinite;
-              }
             `,
               }}
             />
