@@ -137,16 +137,29 @@ export default function AdminDashboardPage() {
       .from('users')
       .select('id, role, created_at, is_suspended')
 
+    // Profile fallbacks to ensure counts are never 0 if users query is restricted
+    const { data: fallbackOwners } = await supabase.from('owner_profiles').select('user_id')
+    const { data: fallbackPlayers } = await supabase.from('customer_profiles').select('user_id')
+
+    const totalPlayersCount = Math.max(
+      users?.filter((u) => u.role === 'CUSTOMER').length || 0,
+      fallbackPlayers?.length || 0
+    )
+    const totalOwnersCount = Math.max(
+      users?.filter((u) => u.role === 'OWNER').length || 0,
+      fallbackOwners?.length || 0
+    )
+
+    setTotalPlayers(totalPlayersCount)
+    setTotalOwners(totalOwnersCount)
+
     if (users) {
       const players = users.filter((u) => u.role === 'CUSTOMER')
       const owners = users.filter((u) => u.role === 'OWNER')
 
-      setTotalPlayers(players.length)
-      setTotalOwners(owners.length)
-
       // Registrations today
       setNewPlayersToday(players.filter((p) => p.created_at?.startsWith(todayStr)).length)
-      setPendingOwners(owners.filter((o) => o.is_suspended).length) // Simple representation
+      setPendingOwners(owners.filter((o) => o.is_suspended).length)
       setVerifiedOwners(owners.filter((o) => !o.is_suspended).length)
 
       // Daily Registration Sparklines (Last 7 Days)
@@ -170,12 +183,15 @@ export default function AdminDashboardPage() {
       }
       setPlayerRegistrationsSpark(pSpark)
       setOwnerRegistrationsSpark(oSpark)
+    } else {
+      setVerifiedOwners(totalOwnersCount)
+      setPendingOwners(0)
     }
 
-    // 2. Fetch Venues
+    // 2. Fetch Venues (joined with reviews to calculate ratings without non-existent rating column)
     const { data: venues } = await supabase
       .from('venues')
-      .select('id, name, verification_status, rating')
+      .select('id, name, verification_status, reviews(rating)')
 
     if (venues) {
       setTotalTurfs(venues.length)
@@ -185,10 +201,14 @@ export default function AdminDashboardPage() {
       // Highest rated
       let topRated = '—'
       let maxRating = 0
-      venues.forEach((v) => {
-        const rating = Number(v.rating || 0)
-        if (rating > maxRating) {
-          maxRating = rating
+      venues.forEach((v: any) => {
+        const reviews = v.reviews || []
+        const avgRating =
+          reviews.length > 0
+            ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+            : 0
+        if (avgRating > maxRating) {
+          maxRating = avgRating
           topRated = v.name
         }
       })
