@@ -314,25 +314,24 @@ export default function OwnerVenuesPage() {
                   className="rounded-2xl border border-white/8 bg-white/[0.03] hover:border-white/15 transition-all overflow-hidden group flex flex-col justify-between hover:-translate-y-[2px] hover:shadow-xl hover:shadow-black/30"
                 >
                   <div>
-                    {/* Cover Image or Gradient Bar */}
-                    {v.coverImage ? (
-                      <div className="h-36 overflow-hidden relative">
-                        <img
-                          src={v.coverImage}
-                          alt={v.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                        {/* Status badge on image */}
-                        <span
-                          className={`absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${s.color} ${s.bg}`}
-                        >
-                          <Icon className="w-3 h-3" /> {s.label}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="h-2 bg-gradient-to-r from-green-600 to-emerald-500" />
-                    )}
+                    {/* Cover Image */}
+                    <div className="h-36 overflow-hidden relative bg-neutral-900 flex items-center justify-center">
+                      <img
+                        src={
+                          v.coverImage ||
+                          'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=640&auto=format&fit=crop'
+                        }
+                        alt={v.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      {/* Status badge on image */}
+                      <span
+                        className={`absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${s.color} ${s.bg}`}
+                      >
+                        <Icon className="w-3 h-3" /> {s.label}
+                      </span>
+                    </div>
 
                     <div className="p-5 space-y-4">
                       <div className="flex items-start justify-between gap-2">
@@ -345,13 +344,6 @@ export default function OwnerVenuesPage() {
                             {v.address}
                           </p>
                         </div>
-                        {!v.coverImage && (
-                          <span
-                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${s.color} ${s.bg}`}
-                          >
-                            <Icon className="w-3 h-3" /> {s.label}
-                          </span>
-                        )}
                       </div>
 
                       {/* Live Stats Grid */}
