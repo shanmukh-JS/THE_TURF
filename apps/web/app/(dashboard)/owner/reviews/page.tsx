@@ -1,97 +1,160 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { useAuthStore } from '@/store/useAuthStore'
 import {
   DashboardAnimationWrapper,
   DashboardAnimationItem,
 } from '@/components/ui/DashboardAnimationWrapper'
-import { Star, MessageSquare, TrendingUp, Users } from 'lucide-react'
+import { Star, MessageSquare, TrendingUp, Users, RefreshCw } from 'lucide-react'
 
-export default async function OwnerReviewsPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function OwnerReviewsPage() {
+  const supabase = createClient()
+  const { user } = useAuthStore()
 
-  let formattedReviews: any[] = []
-  let averageRating = 0
-  let totalReviews = 0
-  const ratingDistribution = [0, 0, 0, 0, 0] // index 0 = 1★, index 4 = 5★
+  const [loading, setLoading] = useState(true)
+  const [reviews, setReviews] = useState<any[]>([])
+  const [averageRating, setAverageRating] = useState(0)
+  const [totalReviews, setTotalReviews] = useState(0)
+  const [ratingDistribution, setRatingDistribution] = useState<number[]>([0, 0, 0, 0, 0])
+  const [venueIds, setVenueIds] = useState<string[]>([])
 
-  if (user) {
-    const { data: profile } = await supabase
+  const fetchReviews = async () => {
+    if (!user) return
+
+    setLoading(true)
+    let profile = null
+    const { data: existingProfile } = await supabase
       .from('owner_profiles')
       .select('id')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (profile) {
-      const { data: venues } = await supabase
-        .from('venues')
-        .select('id, name')
-        .eq('owner_id', profile.id)
+    if (!existingProfile) {
+      const { data: newProfile } = await supabase
+        .from('owner_profiles')
+        .insert({
+          user_id: user.id,
+          full_name: user.email?.split('@')[0] || 'Owner',
+          business_name: 'My Turf Business',
+        })
+        .select('id')
+        .single()
+      profile = newProfile
+    } else {
+      profile = existingProfile
+    }
 
-      if (venues && venues.length > 0) {
-        const venueIds = venues.map((v) => v.id)
+    if (!profile) {
+      setLoading(false)
+      return
+    }
 
-        const { data: reviews } = await supabase
-          .from('reviews')
-          .select(
-            `
-            id, 
-            rating, 
-            comment, 
-            customer_id,
-            created_at,
-            venue:venues(name)
+    const { data: venues } = await supabase
+      .from('venues')
+      .select('id, name')
+      .eq('owner_id', profile.id)
+
+    if (venues && venues.length > 0) {
+      const vIds = venues.map((v) => v.id)
+      setVenueIds(vIds)
+
+      const { data: reviewsData } = await supabase
+        .from('reviews')
+        .select(
           `
-          )
-          .in('venue_id', venueIds)
-          .order('created_at', { ascending: false })
+          id, 
+          rating, 
+          comment, 
+          customer_id,
+          created_at,
+          venue:venues(name)
+        `
+        )
+        .in('venue_id', vIds)
+        .order('created_at', { ascending: false })
 
-        if (reviews && reviews.length > 0) {
-          const customerIds = Array.from(new Set(reviews.map((r) => r.customer_id)))
+      if (reviewsData && reviewsData.length > 0) {
+        const customerIds = Array.from(new Set(reviewsData.map((r) => r.customer_id)))
 
-          const { data: customerProfiles } = await supabase
-            .from('customer_profiles')
-            .select('user_id, full_name')
-            .in('user_id', customerIds as string[])
+        const { data: customerProfiles } = await supabase
+          .from('customer_profiles')
+          .select('user_id, full_name')
+          .in('user_id', customerIds as string[])
 
-          const customerMap = new Map()
-          if (customerProfiles) {
-            customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        const customerMap = new Map()
+        if (customerProfiles) {
+          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        }
+
+        let totalScore = 0
+        const dist = [0, 0, 0, 0, 0]
+        const formatted = reviewsData.map((r: any) => {
+          const rating = Number(r.rating)
+          totalScore += rating
+
+          if (rating >= 1 && rating <= 5) {
+            const idx = rating - 1
+            dist[idx] = (dist[idx] ?? 0) + 1
           }
 
-          let totalScore = 0
-          formattedReviews = reviews.map((r: any) => {
-            const rating = Number(r.rating)
-            totalScore += rating
-
-            // Accumulate distribution
-            if (rating >= 1 && rating <= 5) {
-              const idx = rating - 1
-              ratingDistribution[idx] = (ratingDistribution[idx] ?? 0) + 1
-            }
-
-            const dateStr = new Date(r.created_at).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
-
-            return {
-              id: r.id,
-              customerName: customerMap.get(r.customer_id) || 'Unknown Customer',
-              venueName: r.venue && !Array.isArray(r.venue) ? r.venue.name : 'Unknown Venue',
-              date: dateStr,
-              rating,
-              comment: r.comment,
-            }
+          const dateStr = new Date(r.created_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
           })
 
-          totalReviews = reviews.length
-          averageRating = Number((totalScore / reviews.length).toFixed(1))
-        }
+          return {
+            id: r.id,
+            customerName: customerMap.get(r.customer_id) || 'Unknown Customer',
+            venueName: r.venue && !Array.isArray(r.venue) ? r.venue.name : 'Unknown Venue',
+            date: dateStr,
+            rating,
+            comment: r.comment,
+          }
+        })
+
+        setReviews(formatted)
+        setRatingDistribution(dist)
+        setTotalReviews(reviewsData.length)
+        setAverageRating(Number((totalScore / reviewsData.length).toFixed(1)))
       }
     }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (user) {
+      fetchReviews()
+    }
+  }, [user])
+
+  // Real-time subscription
+  useEffect(() => {
+    if (venueIds.length === 0) return
+
+    const channel = supabase
+      .channel('owner-reviews-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () =>
+        fetchReviews()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [venueIds])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] w-full">
+        <RefreshCw className="w-8 h-8 text-green-500 animate-spin" />
+        <p className="mt-4 text-sm text-gray-400 font-medium tracking-wide animate-pulse">
+          Loading reviews...
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -99,7 +162,9 @@ export default async function OwnerReviewsPage() {
       <DashboardAnimationItem className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Customer Reviews</h1>
-          <p className="text-gray-400 text-sm mt-1">Read and respond to feedback from your customers.</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Read and respond to feedback from your customers.
+          </p>
         </div>
       </DashboardAnimationItem>
 
@@ -120,7 +185,9 @@ export default async function OwnerReviewsPage() {
                 />
               ))}
             </div>
-            <p className="text-sm text-gray-400">{totalReviews} {totalReviews === 1 ? 'review' : 'reviews'}</p>
+            <p className="text-sm text-gray-400">
+              {totalReviews} {totalReviews === 1 ? 'review' : 'reviews'}
+            </p>
           </div>
 
           {/* Rating Distribution */}
@@ -143,7 +210,9 @@ export default async function OwnerReviewsPage() {
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-500 w-12 text-right font-medium">{count} ({percentage}%)</span>
+                    <span className="text-xs text-gray-500 w-12 text-right font-medium">
+                      {count} ({percentage}%)
+                    </span>
                   </div>
                 )
               })}
@@ -154,33 +223,40 @@ export default async function OwnerReviewsPage() {
 
       {/* ═══ Reviews List ═══ */}
       <DashboardAnimationItem>
-        {formattedReviews.length === 0 ? (
+        {reviews.length === 0 ? (
           <div className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-12 flex flex-col items-center justify-center text-center min-h-[400px]">
             <div className="w-20 h-20 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-5">
               <MessageSquare className="w-10 h-10 text-amber-400/60" />
             </div>
             <h2 className="text-xl font-bold text-white mb-2">No Reviews Yet</h2>
             <p className="text-gray-400 max-w-md text-sm leading-relaxed">
-              Complete more bookings to collect customer feedback. Reviews help build trust and attract new customers to your venues.
+              Complete more bookings to collect customer feedback. Reviews help build trust and
+              attract new customers to your venues.
             </p>
             <div className="mt-6 grid grid-cols-3 gap-4 max-w-sm">
               <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/[0.03] border border-white/5">
                 <TrendingUp className="w-5 h-5 text-green-400/50" />
-                <span className="text-[10px] text-gray-500 font-medium text-center">Grow Bookings</span>
+                <span className="text-[10px] text-gray-500 font-medium text-center">
+                  Grow Bookings
+                </span>
               </div>
               <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/[0.03] border border-white/5">
                 <Star className="w-5 h-5 text-amber-400/50" />
-                <span className="text-[10px] text-gray-500 font-medium text-center">Earn Ratings</span>
+                <span className="text-[10px] text-gray-500 font-medium text-center">
+                  Earn Ratings
+                </span>
               </div>
               <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/[0.03] border border-white/5">
                 <Users className="w-5 h-5 text-blue-400/50" />
-                <span className="text-[10px] text-gray-500 font-medium text-center">Build Trust</span>
+                <span className="text-[10px] text-gray-500 font-medium text-center">
+                  Build Trust
+                </span>
               </div>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {formattedReviews.map((review, i) => (
+            {reviews.map((review, i) => (
               <div
                 key={i}
                 className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-6 hover:border-white/15 transition-all hover:-translate-y-[1px] hover:shadow-lg hover:shadow-black/30"

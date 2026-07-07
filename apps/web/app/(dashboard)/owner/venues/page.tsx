@@ -79,11 +79,27 @@ export default function OwnerVenuesPage() {
       return
     }
 
-    const { data: profile } = await supabase
+    let profile = null
+    const { data: existingProfile } = await supabase
       .from('owner_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle()
+
+    if (!existingProfile) {
+      const { data: newProfile } = await supabase
+        .from('owner_profiles')
+        .insert({
+          user_id: user.id,
+          full_name: user.email?.split('@')[0] || 'Owner',
+          business_name: 'My Turf Business',
+        })
+        .select('id')
+        .single()
+      profile = newProfile
+    } else {
+      profile = existingProfile
+    }
 
     if (!profile) {
       setLoading(false)
@@ -129,28 +145,40 @@ export default function OwnerVenuesPage() {
       const formatted = realVenues.map((v: any) => {
         // Cover image
         const coverImage =
-          v.venue_images?.find((img: any) => img.is_cover)?.url ||
-          v.venue_images?.[0]?.url ||
-          null
+          v.venue_images?.find((img: any) => img.is_cover)?.url || v.venue_images?.[0]?.url || null
 
         // Today's stats
         const venueBookingsToday = (todayBookings || []).filter((b: any) => {
           const slot = b.slots && !Array.isArray(b.slots) ? b.slots : null
-          return b.venue_id === v.id && slot?.date === todayStr && (b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+          return (
+            b.venue_id === v.id &&
+            slot?.date === todayStr &&
+            (b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+          )
         })
         const bookingsToday = venueBookingsToday.length
-        const revenueToday = venueBookingsToday.reduce((sum: number, b: any) => sum + Number(b.total_amount), 0)
+        const revenueToday = venueBookingsToday.reduce(
+          (sum: number, b: any) => sum + Number(b.total_amount),
+          0
+        )
 
         // Occupancy
         const venueSlots = (todaySlots || []).filter((s: any) => s.venue_id === v.id)
         const bookedSlots = venueSlots.filter((s: any) => s.is_booked)
-        const occupancy = venueSlots.length > 0 ? Math.round((bookedSlots.length / venueSlots.length) * 100) : 0
+        const occupancy =
+          venueSlots.length > 0 ? Math.round((bookedSlots.length / venueSlots.length) * 100) : 0
 
         // Rating
         const venueReviews = (allReviews || []).filter((r: any) => r.venue_id === v.id)
-        const avgRating = venueReviews.length > 0
-          ? Number((venueReviews.reduce((sum: number, r: any) => sum + Number(r.rating), 0) / venueReviews.length).toFixed(1))
-          : 0
+        const avgRating =
+          venueReviews.length > 0
+            ? Number(
+                (
+                  venueReviews.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
+                  venueReviews.length
+                ).toFixed(1)
+              )
+            : 0
 
         return {
           id: v.id,
@@ -333,15 +361,26 @@ export default function OwnerVenuesPage() {
                           <p className="text-[10px] text-gray-500 mt-0.5">Today</p>
                         </div>
                         <div className="rounded-xl bg-white/5 border border-white/8 px-2 py-2 text-center">
-                          <p className="text-sm font-bold text-green-400">₹{v.revenueToday > 999 ? `${(v.revenueToday / 1000).toFixed(1)}k` : v.revenueToday}</p>
+                          <p className="text-sm font-bold text-green-400">
+                            ₹
+                            {v.revenueToday > 999
+                              ? `${(v.revenueToday / 1000).toFixed(1)}k`
+                              : v.revenueToday}
+                          </p>
                           <p className="text-[10px] text-gray-500 mt-0.5">Revenue</p>
                         </div>
                         <div className="rounded-xl bg-white/5 border border-white/8 px-2 py-2 text-center">
-                          <p className={`text-sm font-bold ${v.occupancy >= 70 ? 'text-green-400' : v.occupancy >= 30 ? 'text-amber-400' : 'text-gray-400'}`}>{v.occupancy}%</p>
+                          <p
+                            className={`text-sm font-bold ${v.occupancy >= 70 ? 'text-green-400' : v.occupancy >= 30 ? 'text-amber-400' : 'text-gray-400'}`}
+                          >
+                            {v.occupancy}%
+                          </p>
                           <p className="text-[10px] text-gray-500 mt-0.5">Occupied</p>
                         </div>
                         <div className="rounded-xl bg-white/5 border border-white/8 px-2 py-2 text-center">
-                          <p className="text-sm font-bold text-amber-400">{v.rating > 0 ? `${v.rating}★` : '—'}</p>
+                          <p className="text-sm font-bold text-amber-400">
+                            {v.rating > 0 ? `${v.rating}★` : '—'}
+                          </p>
                           <p className="text-[10px] text-gray-500 mt-0.5">Rating</p>
                         </div>
                       </div>
@@ -473,11 +512,21 @@ export default function OwnerVenuesPage() {
                     onChange={(e) => setEditFormData({ ...editFormData, turfType: e.target.value })}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
                   >
-                    <option value="Artificial Grass" className="text-black bg-white">Artificial Grass</option>
-                    <option value="Natural Grass" className="text-black bg-white">Natural Grass</option>
-                    <option value="Clay Court" className="text-black bg-white">Clay Court</option>
-                    <option value="Hard Court" className="text-black bg-white">Hard Court</option>
-                    <option value="Indoor Wooden" className="text-black bg-white">Indoor Wooden</option>
+                    <option value="Artificial Grass" className="text-black bg-white">
+                      Artificial Grass
+                    </option>
+                    <option value="Natural Grass" className="text-black bg-white">
+                      Natural Grass
+                    </option>
+                    <option value="Clay Court" className="text-black bg-white">
+                      Clay Court
+                    </option>
+                    <option value="Hard Court" className="text-black bg-white">
+                      Hard Court
+                    </option>
+                    <option value="Indoor Wooden" className="text-black bg-white">
+                      Indoor Wooden
+                    </option>
                   </select>
                 </div>
               </div>

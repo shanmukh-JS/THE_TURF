@@ -218,7 +218,10 @@ export default function OwnerRevenuePage() {
         let maxRev = 0
         let topVenueId = ''
         venueRevMap.forEach((rev, vid) => {
-          if (rev > maxRev) { maxRev = rev; topVenueId = vid }
+          if (rev > maxRev) {
+            maxRev = rev
+            topVenueId = vid
+          }
         })
         if (topVenueId) {
           setTopVenue(venueMap.get(topVenueId) || null)
@@ -229,7 +232,10 @@ export default function OwnerRevenuePage() {
         let maxHourCount = 0
         let peakH = -1
         hourMap.forEach((count, hour) => {
-          if (count > maxHourCount) { maxHourCount = count; peakH = hour }
+          if (count > maxHourCount) {
+            maxHourCount = count
+            peakH = hour
+          }
         })
         if (peakH >= 0) {
           const ampm = peakH >= 12 ? 'PM' : 'AM'
@@ -238,11 +244,22 @@ export default function OwnerRevenuePage() {
         }
 
         // Peak day
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        const dayNames = [
+          'Sunday',
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+        ]
         let maxDayCount = 0
         let peakD = -1
         dayMap.forEach((count, day) => {
-          if (count > maxDayCount) { maxDayCount = count; peakD = day }
+          if (count > maxDayCount) {
+            maxDayCount = count
+            peakD = day
+          }
         })
         if (peakD >= 0) setPeakDay(dayNames[peakD] || null)
 
@@ -258,7 +275,9 @@ export default function OwnerRevenuePage() {
 
         // Transactions
         const formattedTx = bookings
-          .filter((b) => b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'COMPLETED')
+          .filter(
+            (b) => b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'COMPLETED'
+          )
           .slice(0, 15)
           .map((b: any) => {
             const dateStr = new Date(b.created_at).toLocaleDateString('en-US', {
@@ -302,7 +321,9 @@ export default function OwnerRevenuePage() {
         window.location.reload()
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [venueIds])
 
   // Mini sparkline SVG
@@ -333,8 +354,10 @@ export default function OwnerRevenuePage() {
   return (
     <DashboardAnimationWrapper className="p-8 space-y-8 h-full">
       <DashboardAnimationItem>
-        <h1 className="text-2xl font-bold text-white">Revenue Dashboard</h1>
-        <p className="text-gray-400 text-sm mt-1">Track your earnings, payouts, and financial insights.</p>
+        <h1 className="text-2xl font-bold text-white">Revenue</h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Track your earnings, payouts, and financial insights.
+        </p>
       </DashboardAnimationItem>
 
       {/* ═══ Revenue Summary Cards ═══ */}
@@ -387,7 +410,14 @@ export default function OwnerRevenuePage() {
                       <stop offset="100%" stopColor="rgb(34,197,94)" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  <path d={sparklinePath} fill="none" stroke="rgb(34,197,94)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d={sparklinePath}
+                    fill="none"
+                    stroke="rgb(34,197,94)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                   <path d={`${sparklinePath} L200,40 L0,40 Z`} fill="url(#sparkGrad)" />
                 </svg>
               </div>
@@ -509,18 +539,52 @@ export default function OwnerRevenuePage() {
 
 // ═══ Sub-components ═══
 
-function RevenueCard({ label, value, icon, accent }: { label: string; value: string; icon: React.ReactNode; accent: 'green' | 'blue' | 'purple' | 'amber' }) {
+function RevenueCard({
+  label,
+  value,
+  icon,
+  accent,
+}: {
+  label: string
+  value: string
+  icon: React.ReactNode
+  accent: 'green' | 'blue' | 'purple' | 'amber'
+}) {
   const colorMap: Record<string, { border: string; iconBg: string; iconColor: string }> = {
-    green: { border: 'border-green-500/20 hover:border-green-500/40', iconBg: 'bg-green-500/15', iconColor: 'text-green-400' },
-    blue: { border: 'border-blue-500/20 hover:border-blue-500/40', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-400' },
-    purple: { border: 'border-purple-500/20 hover:border-purple-500/40', iconBg: 'bg-purple-500/15', iconColor: 'text-purple-400' },
-    amber: { border: 'border-amber-500/20 hover:border-amber-500/40', iconBg: 'bg-amber-500/15', iconColor: 'text-amber-400' },
+    green: {
+      border: 'border-green-500/20 hover:border-green-500/40',
+      iconBg: 'bg-green-500/15',
+      iconColor: 'text-green-400',
+    },
+    blue: {
+      border: 'border-blue-500/20 hover:border-blue-500/40',
+      iconBg: 'bg-blue-500/15',
+      iconColor: 'text-blue-400',
+    },
+    purple: {
+      border: 'border-purple-500/20 hover:border-purple-500/40',
+      iconBg: 'bg-purple-500/15',
+      iconColor: 'text-purple-400',
+    },
+    amber: {
+      border: 'border-amber-500/20 hover:border-amber-500/40',
+      iconBg: 'bg-amber-500/15',
+      iconColor: 'text-amber-400',
+    },
   }
-  const c = (colorMap[accent] || colorMap.green) as { border: string; iconBg: string; iconColor: string }
+  const c = (colorMap[accent] || colorMap.green) as {
+    border: string
+    iconBg: string
+    iconColor: string
+  }
 
   return (
-    <div className={`rounded-2xl border bg-[#0a0f0a] p-5 transition-all hover:-translate-y-[2px] hover:shadow-lg hover:shadow-black/30 ${c.border}`}>
-      <div className={`w-9 h-9 rounded-xl ${c.iconBg} flex items-center justify-center ${c.iconColor} mb-3`}>
+    <div
+      className={`rounded-2xl border bg-[#0a0f0a] p-5 transition-all hover:-translate-y-[2px] hover:shadow-lg hover:shadow-black/30 ${c.border}`}
+    >
+      <div
+        className={`w-9 h-9 rounded-xl ${c.iconBg} flex items-center justify-center ${c.iconColor} mb-3`}
+      >
         {icon}
       </div>
       <p className="text-2xl font-bold text-white">{value}</p>
@@ -529,7 +593,17 @@ function RevenueCard({ label, value, icon, accent }: { label: string; value: str
   )
 }
 
-function InsightCard({ label, value, sub, icon }: { label: string; value: string; sub: string; icon: React.ReactNode }) {
+function InsightCard({
+  label,
+  value,
+  sub,
+  icon,
+}: {
+  label: string
+  value: string
+  sub: string
+  icon: React.ReactNode
+}) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 flex items-center gap-4 hover:border-white/15 transition-all">
       <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">

@@ -67,11 +67,27 @@ export default function OwnerSettingsPage() {
 
       setIsLoading(true)
       try {
-        const { data: profile } = await supabase
+        let profile = null
+        const { data: existingProfile } = await supabase
           .from('owner_profiles')
           .select('id, full_name, business_name')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
+
+        if (!existingProfile) {
+          const { data: newProfile } = await supabase
+            .from('owner_profiles')
+            .insert({
+              user_id: user.id,
+              full_name: user.email?.split('@')[0] || 'Owner',
+              business_name: 'My Turf Business',
+            })
+            .select('id, full_name, business_name')
+            .single()
+          profile = newProfile
+        } else {
+          profile = existingProfile
+        }
 
         if (!profile) return
 

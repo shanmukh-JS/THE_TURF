@@ -27,10 +27,20 @@ import {
 } from 'lucide-react'
 
 const statusConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
-  CONFIRMED: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', label: 'Confirmed' },
+  CONFIRMED: {
+    icon: CheckCircle,
+    color: 'text-green-400',
+    bg: 'bg-green-400/10',
+    label: 'Confirmed',
+  },
   PENDING: { icon: AlertCircle, color: 'text-amber-400', bg: 'bg-amber-400/10', label: 'Pending' },
   CANCELLED: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10', label: 'Cancelled' },
-  COMPLETED: { icon: CheckCircle2, color: 'text-blue-400', bg: 'bg-blue-400/10', label: 'Completed' },
+  COMPLETED: {
+    icon: CheckCircle2,
+    color: 'text-blue-400',
+    bg: 'bg-blue-400/10',
+    label: 'Completed',
+  },
 }
 
 export default function OwnerBookingsPage() {
@@ -78,11 +88,27 @@ export default function OwnerBookingsPage() {
       const { data: allVenues } = await supabase.from('venues').select('id, name')
       venues = allVenues || []
     } else {
-      const { data: profile } = await supabase
+      let profile = null
+      const { data: existingProfile } = await supabase
         .from('owner_profiles')
         .select('id')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
+
+      if (!existingProfile) {
+        const { data: newProfile } = await supabase
+          .from('owner_profiles')
+          .insert({
+            user_id: user.id,
+            full_name: user.email?.split('@')[0] || 'Owner',
+            business_name: 'My Turf Business',
+          })
+          .select('id')
+          .single()
+        profile = newProfile
+      } else {
+        profile = existingProfile
+      }
 
       if (!profile) {
         setLoading(false)
@@ -213,14 +239,14 @@ export default function OwnerBookingsPage() {
 
     const channel = supabase
       .channel('owner-bookings-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookings' },
-        () => fetchBookings()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () =>
+        fetchBookings()
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [venueIds])
 
   // Quick Actions
@@ -242,7 +268,8 @@ export default function OwnerBookingsPage() {
   }
 
   const handleCancelBooking = async (bookingId: string) => {
-    if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) return
+    if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.'))
+      return
 
     setActionLoading(true)
     const { error } = await supabase
@@ -295,17 +322,34 @@ export default function OwnerBookingsPage() {
       <DashboardAnimationItem className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Bookings</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage all your upcoming and past venue reservations.</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Manage all your upcoming and past venue reservations.
+          </p>
         </div>
 
         {/* Quick Stats */}
         <div className="flex gap-3">
           {[
-            { label: 'Confirmed', count: confirmedCount, color: 'text-green-400 bg-green-500/10 border-green-500/15' },
-            { label: 'Pending', count: pendingCount, color: 'text-amber-400 bg-amber-500/10 border-amber-500/15' },
-            { label: 'Completed', count: completedCount, color: 'text-blue-400 bg-blue-500/10 border-blue-500/15' },
+            {
+              label: 'Confirmed',
+              count: confirmedCount,
+              color: 'text-green-400 bg-green-500/10 border-green-500/15',
+            },
+            {
+              label: 'Pending',
+              count: pendingCount,
+              color: 'text-amber-400 bg-amber-500/10 border-amber-500/15',
+            },
+            {
+              label: 'Completed',
+              count: completedCount,
+              color: 'text-blue-400 bg-blue-500/10 border-blue-500/15',
+            },
           ].map((s) => (
-            <div key={s.label} className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${s.color}`}>
+            <div
+              key={s.label}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${s.color}`}
+            >
               {s.count} {s.label}
             </div>
           ))}
@@ -335,11 +379,21 @@ export default function OwnerBookingsPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/50"
             >
-              <option value="ALL" className="text-black">All Statuses</option>
-              <option value="CONFIRMED" className="text-black">Confirmed</option>
-              <option value="PENDING" className="text-black">Pending</option>
-              <option value="COMPLETED" className="text-black">Completed</option>
-              <option value="CANCELLED" className="text-black">Cancelled</option>
+              <option value="ALL" className="text-black">
+                All Statuses
+              </option>
+              <option value="CONFIRMED" className="text-black">
+                Confirmed
+              </option>
+              <option value="PENDING" className="text-black">
+                Pending
+              </option>
+              <option value="COMPLETED" className="text-black">
+                Completed
+              </option>
+              <option value="CANCELLED" className="text-black">
+                Cancelled
+              </option>
             </select>
           </div>
         </div>
@@ -471,7 +525,10 @@ export default function OwnerBookingsPage() {
           SLIDE-OVER DETAIL PANEL
          ═══════════════════════════════════════════════════════════════ */}
       {selectedBooking && (
-        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setSelectedBooking(null)}>
+        <div
+          className="fixed inset-0 z-50 flex justify-end"
+          onClick={() => setSelectedBooking(null)}
+        >
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
           <div
             className="relative w-full max-w-md bg-[#0a0f0a] border-l border-white/10 h-full overflow-y-auto animate-in slide-in-from-right duration-300"
@@ -479,7 +536,10 @@ export default function OwnerBookingsPage() {
           >
             <div className="px-6 py-5 border-b border-white/8 flex items-center justify-between">
               <h3 className="text-lg font-bold text-white">Booking Details</h3>
-              <button onClick={() => setSelectedBooking(null)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+              <button
+                onClick={() => setSelectedBooking(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -499,33 +559,49 @@ export default function OwnerBookingsPage() {
               {/* Info Grid */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Date</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                    Date
+                  </p>
                   <p className="text-sm font-semibold text-white">{selectedBooking.date}</p>
                 </div>
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Time</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                    Time
+                  </p>
                   <p className="text-sm font-semibold text-white">{selectedBooking.time}</p>
                 </div>
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Amount</p>
-                  <p className="text-sm font-semibold text-green-400">₹{selectedBooking.amount.toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                    Amount
+                  </p>
+                  <p className="text-sm font-semibold text-green-400">
+                    ₹{selectedBooking.amount.toLocaleString('en-IN')}
+                  </p>
                 </div>
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Status</p>
-                  <span className={`inline-flex items-center gap-1 text-sm font-semibold ${statusConfig[selectedBooking.status]?.color || 'text-gray-400'}`}>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                    Status
+                  </p>
+                  <span
+                    className={`inline-flex items-center gap-1 text-sm font-semibold ${statusConfig[selectedBooking.status]?.color || 'text-gray-400'}`}
+                  >
                     {statusConfig[selectedBooking.status]?.label || selectedBooking.status}
                   </span>
                 </div>
               </div>
 
               <div className="rounded-xl bg-white/5 border border-white/8 p-3">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Booking ID</p>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
+                  Booking ID
+                </p>
                 <p className="text-xs font-mono text-gray-300">{selectedBooking.id}</p>
               </div>
 
               {/* Quick Actions */}
               <div className="pt-4 border-t border-white/8 space-y-3">
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Quick Actions</p>
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                  Quick Actions
+                </p>
 
                 {selectedBooking.status === 'CONFIRMED' && (
                   <button
@@ -537,7 +613,8 @@ export default function OwnerBookingsPage() {
                   </button>
                 )}
 
-                {(selectedBooking.status === 'CONFIRMED' || selectedBooking.status === 'PENDING') && (
+                {(selectedBooking.status === 'CONFIRMED' ||
+                  selectedBooking.status === 'PENDING') && (
                   <button
                     onClick={() => handleCancelBooking(selectedBooking.id)}
                     disabled={actionLoading}
@@ -562,7 +639,10 @@ export default function OwnerBookingsPage() {
               <AlertTriangle className="w-5 h-5 text-red-500" />
             )}
             <p className="text-sm font-semibold text-gray-900">{toast.message}</p>
-            <button onClick={() => setToast(null)} className="ml-2 text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 text-gray-400 hover:text-gray-600"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
