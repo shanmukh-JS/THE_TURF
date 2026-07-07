@@ -102,13 +102,8 @@ export default function HomePage() {
               dangerouslySetInnerHTML={{
                 __html: `
               input[type="date"]::-webkit-calendar-picker-indicator {
-                filter: invert(1);
-                cursor: pointer;
-                opacity: 0.7;
-                transition: opacity 0.2s;
-              }
-              input[type="date"]::-webkit-calendar-picker-indicator:hover {
-                opacity: 1;
+                display: none !important;
+                -webkit-appearance: none !important;
               }
             `,
               }}
@@ -141,13 +136,25 @@ export default function HomePage() {
             </div>
 
             {/* Date */}
-            <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full">
-              <Calendar className="text-primary w-5 h-5 mr-3" />
+            <div
+              className="flex items-center justify-between flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full cursor-pointer"
+              onClick={(e) => {
+                const input = e.currentTarget.querySelector('input')
+                if (input) {
+                  try {
+                    input.showPicker()
+                  } catch (err) {
+                    input.click()
+                  }
+                }
+              }}
+            >
               <input
                 type="date"
                 min={minDate}
-                className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400"
+                className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400 cursor-pointer"
               />
+              <Calendar className="text-primary w-5 h-5 ml-3 flex-shrink-0" />
             </div>
 
             {/* Time */}
