@@ -70,6 +70,7 @@ function AnimatedNumber({ value }: { value: number }) {
 
 interface PlayerDashboardClientProps {
   displayName: string
+  profileImageUrl?: string
   email: string
   totalBookings: number
   upcomingBookingsCount: number
@@ -82,6 +83,7 @@ interface PlayerDashboardClientProps {
 
 export function PlayerDashboardClient({
   displayName,
+  profileImageUrl,
   email,
   totalBookings,
   upcomingBookingsCount,
@@ -209,8 +211,12 @@ export function PlayerDashboardClient({
           {/* Avatar with Glow */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500" />
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0f240f] to-green-950 border border-green-500/30 flex items-center justify-center text-xl font-bold text-green-400 relative">
-              {displayName.charAt(0).toUpperCase()}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0f240f] to-green-950 border border-green-500/30 flex items-center justify-center text-xl font-bold text-green-400 relative overflow-hidden">
+              {profileImageUrl ? (
+                <img src={profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                displayName.charAt(0).toUpperCase()
+              )}
             </div>
             <div className="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-green-500 border-2 border-black flex items-center justify-center text-[10px] font-bold text-black shadow-lg">
               {level}

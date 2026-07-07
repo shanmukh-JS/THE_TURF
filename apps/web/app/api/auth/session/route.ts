@@ -35,6 +35,19 @@ export async function GET() {
       } catch {
         // logo fetch is non-critical, ignore errors
       }
+    } else {
+      // For CUSTOMER or ADMIN, try to fetch from customer_profiles
+      try {
+        const { data: profile } = await supabase
+          .from('customer_profiles')
+          .select('profile_image_url')
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        logoUrl = profile?.profile_image_url || undefined
+      } catch {
+        // ignore errors
+      }
     }
 
     return NextResponse.json({

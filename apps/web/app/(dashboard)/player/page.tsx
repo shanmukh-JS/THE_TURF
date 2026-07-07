@@ -19,7 +19,11 @@ export default async function PlayerDashboard() {
     { data: venuesData },
     { count: favoritesCount },
   ] = await Promise.all([
-    supabase.from('customer_profiles').select('full_name').eq('user_id', user.id).maybeSingle(),
+    supabase
+      .from('customer_profiles')
+      .select('full_name, profile_image_url')
+      .eq('user_id', user.id)
+      .maybeSingle(),
     supabase
       .from('bookings')
       .select(
@@ -115,6 +119,7 @@ export default async function PlayerDashboard() {
   return (
     <PlayerDashboardClient
       displayName={displayName}
+      profileImageUrl={profile?.profile_image_url}
       email={user.email || ''}
       totalBookings={totalBookings}
       upcomingBookingsCount={upcomingBookingsCount}
