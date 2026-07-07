@@ -145,8 +145,17 @@ export function PlayerDashboardClient({
 
   // Dynamic gamification mock parameters (based on actual user bookings to make it live)
   const totalXp = totalBookings * 250
-  const level = 1 + Math.floor(totalXp / 1000)
-  const league = level >= 10 ? 'Veteran League' : level >= 5 ? 'Pro League' : 'Amateur League'
+  const level = Math.min(50, 1 + Math.floor(totalXp / 1000))
+  const league =
+    level >= 41
+      ? 'Legendary League'
+      : level >= 31
+        ? 'Master League'
+        : level >= 21
+          ? 'Pro League'
+          : level >= 11
+            ? 'Semi-Pro League'
+            : 'Amateur League'
   const xp = totalXp % 1000
   const xpTarget = 1000
 
@@ -595,9 +604,9 @@ export function PlayerDashboardClient({
               return (
                 <div
                   key={v.id}
-                  className="rounded-2xl border border-white/8 bg-white/[0.02] hover:border-white/15 transition-all overflow-hidden flex flex-col group hover:shadow-xl hover:shadow-black/40"
+                  className="rounded-2xl border border-white/8 bg-white/[0.02] hover:border-white/15 transition-all overflow-hidden flex flex-col h-[400px] group hover:shadow-xl hover:shadow-black/40"
                 >
-                  <div className="h-36 relative overflow-hidden bg-black/40">
+                  <div className="h-44 relative overflow-hidden bg-black/40">
                     <img
                       src={
                         v.image ||
@@ -661,7 +670,7 @@ export function PlayerDashboardClient({
               )
             })}
             {venues.length === 1 && (
-              <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.01] hover:border-white/15 transition-all p-5 flex flex-col items-center justify-center text-center space-y-4 min-h-[300px]">
+              <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.01] hover:border-white/15 transition-all p-5 flex flex-col items-center justify-center text-center space-y-4 h-[400px]">
                 <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center text-green-400">
                   <span className="text-xl">🏏</span>
                 </div>
