@@ -64,7 +64,8 @@ export default function HomePage() {
           `
           *,
           venue_pricing(price),
-          venue_images(url)
+          venue_images(url),
+          reviews(rating)
         `
         )
         .eq('verification_status', 'APPROVED')
@@ -240,6 +241,15 @@ export default function HomePage() {
                   ? v.venue_images[0]?.url
                   : 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=800'
 
+              const venueReviews = v.reviews || []
+              const hasReviews = venueReviews.length > 0
+              const rating = hasReviews
+                ? (
+                    venueReviews.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
+                    venueReviews.length
+                  ).toFixed(1)
+                : null
+
               return (
                 <div
                   key={v.id}
@@ -259,7 +269,7 @@ export default function HomePage() {
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-xl font-semibold text-white">{v.name}</h3>
                       <div className="flex items-center text-yellow-500 text-sm">
-                        ★ {v.rating || '4.5'}
+                        ★ {rating || 'New'}
                       </div>
                     </div>
                     <p className="text-muted-foreground text-sm flex items-center mb-4">
