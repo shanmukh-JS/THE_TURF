@@ -63,7 +63,7 @@ export default async function OwnerBookingsPage() {
             customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
           }
 
-          formattedBookings = bookings.map((b) => {
+          formattedBookings = bookings.map((b: any) => {
             const slot = b.slot && !Array.isArray(b.slot) ? b.slot : null
             let dateStr = 'N/A'
             let timeStr = 'N/A'

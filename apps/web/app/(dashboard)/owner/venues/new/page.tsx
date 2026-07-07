@@ -145,6 +145,38 @@ export default function NewVenuePage() {
     }
   }
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setToast({ message: 'Geolocation is not supported by your browser.', type: 'error' })
+      return
+    }
+
+    setToast({ message: 'Detecting location...', type: 'success' })
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          )
+          const data = await res.json()
+          if (data && data.display_name) {
+            updateField('address', data.display_name)
+            setToast({ message: 'Location detected successfully!', type: 'success' })
+          } else {
+            throw new Error('No address found')
+          }
+        } catch (error) {
+          setToast({ message: 'Failed to fetch address from coordinates.', type: 'error' })
+        }
+      },
+      (error) => {
+        setToast({ message: `Location error: ${error.message}`, type: 'error' })
+      }
+    )
+  }
+
   const handleSubmit = async () => {
     const isValid = validateStep()
     if (isValid !== true) {
@@ -412,9 +444,18 @@ export default function NewVenuePage() {
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    Complete Address
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Complete Address
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleDetectLocation}
+                      className="text-xs font-semibold text-green-500 hover:text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-md transition-colors"
+                    >
+                      <MapPin className="w-3 h-3" /> Detect My Location
+                    </button>
+                  </div>
                   <textarea
                     value={formData.address}
                     onChange={(e) => updateField('address', e.target.value)}

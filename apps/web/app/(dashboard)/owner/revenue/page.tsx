@@ -60,7 +60,7 @@ export default async function OwnerRevenuePage() {
             customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
           }
 
-          bookings.forEach((b) => {
+          bookings.forEach((b: any) => {
             if (b.status === 'CONFIRMED') {
               totalRevenue += Number(b.total_amount)
             } else if (b.status === 'PENDING') {
@@ -70,7 +70,7 @@ export default async function OwnerRevenuePage() {
 
           formattedTransactions = bookings
             .filter((b) => b.status === 'CONFIRMED' || b.status === 'PENDING')
-            .map((b) => {
+            .map((b: any) => {
               const dateStr = new Date(b.created_at).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',

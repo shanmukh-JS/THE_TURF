@@ -59,7 +59,7 @@ export default async function OwnerReviewsPage() {
           }
 
           let totalScore = 0
-          formattedReviews = reviews.map((r) => {
+          formattedReviews = reviews.map((r: any) => {
             totalScore += Number(r.rating)
             const dateStr = new Date(r.created_at).toLocaleDateString('en-US', {
               month: 'short',

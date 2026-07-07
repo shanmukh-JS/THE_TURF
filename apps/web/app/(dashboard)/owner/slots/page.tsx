@@ -42,13 +42,29 @@ export default function ManageSlotsPage() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Default values
+  const [todayStr] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+
+  const [defaultTimeStr] = useState(() => {
+    const d = new Date()
+    d.setHours(d.getHours() + 1)
+    d.setMinutes(0)
+    return `${String(d.getHours()).padStart(2, '0')}:00`
+  })
+
   // Create slot form state
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [isBulk, setIsBulk] = useState(false)
+  const [repeatDaily, setRepeatDaily] = useState(false)
+  const [repeatDays, setRepeatDays] = useState('7')
+
   const [formData, setFormData] = useState({
     venueId: '',
-    date: '',
-    startTime: '06:00',
+    date: todayStr,
+    startTime: defaultTimeStr,
     endTime: '22:00', // for bulk, or end time for single
     duration: '60', // 30, 60, 90 mins
     price: '1000',
@@ -171,7 +187,14 @@ export default function ManageSlotsPage() {
     if (error) {
       console.error(error)
     } else if (slotsData) {
-      setSlots(slotsData)
+      const now = new Date()
+      const processedSlots = slotsData.map((s: any) => {
+        if (!s.is_booked && new Date(s.end_time) < now && s.status !== 'Expired') {
+          return { ...s, status: 'Expired' }
+        }
+        return s
+      })
+      setSlots(processedSlots)
     }
   }
 
@@ -230,7 +253,6 @@ export default function ManageSlotsPage() {
     return conflicting ? conflicting : null
   }
 
-  // Single and Bulk slot submission
   const handleCreateSlot = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!ownerProfileId || !formData.venueId || !formData.date) return
@@ -242,105 +264,48 @@ export default function ManageSlotsPage() {
     const priceNum = parseFloat(formData.price)
     const maxPl = formData.maxPlayers ? parseInt(formData.maxPlayers) : null
 
-    // Date/time constraints checking
-    if (!isBulk) {
-      // Single slot creation
-      const startDateTimeStr = `${formData.date}T${formData.startTime}:00`
+    // Determine how many days to iterate
+    const numDays = repeatDaily ? parseInt(repeatDays) : 1
+    const slotsToInsert = []
 
-      // Calculate End Time based on duration
-      const startDate = new Date(startDateTimeStr)
-      const endDate = new Date(startDate.getTime() + durationMins * 60 * 1000)
+    for (let dayOffset = 0; dayOffset < numDays; dayOffset++) {
+      const currentDate = new Date(formData.date)
+      currentDate.setDate(currentDate.getDate() + dayOffset)
+      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
 
-      // Format End time back to HH:MM
-      const endHours = String(endDate.getHours()).padStart(2, '0')
-      const endMins = String(endDate.getMinutes()).padStart(2, '0')
-      const endTimeStr = `${endHours}:${endMins}`
-      const endDateTimeStr = `${formData.date}T${endTimeStr}:00`
+      if (!isBulk) {
+        // Single slot creation
+        const startDateTimeStr = `${dateStr}T${formData.startTime}:00`
 
-      if (endDate <= startDate) {
-        setToast({ message: 'End time must be after start time.', type: 'error' })
-        setSubmitting(false)
-        return
-      }
+        // Calculate End Time based on duration
+        const startDate = new Date(startDateTimeStr)
+        const endDate = new Date(startDate.getTime() + durationMins * 60 * 1000)
 
-      // Check overlap
-      const conflict = checkOverlapping(
-        formData.venueId,
-        formData.date,
-        formData.startTime,
-        endTimeStr
-      )
-      if (conflict) {
-        setToast({
-          message: `Slot overlaps with an existing slot: ${formatTimeStr(conflict.start_time)} - ${formatTimeStr(conflict.end_time)}`,
-          type: 'error',
-        })
-        setSubmitting(false)
-        return
-      }
+        const endHours = String(endDate.getHours()).padStart(2, '0')
+        const endMins = String(endDate.getMinutes()).padStart(2, '0')
+        const endTimeStr = `${endHours}:${endMins}`
+        const endDateTimeStr = `${dateStr}T${endTimeStr}:00`
 
-      // Create single slot row
-      const { error } = await supabase.from('slots').insert({
-        owner_id: ownerProfileId,
-        venue_id: formData.venueId,
-        date: formData.date,
-        start_time: startDateTimeStr,
-        end_time: endDateTimeStr,
-        duration: durationMins,
-        price: priceNum,
-        max_players: maxPl,
-        sport_type: formData.sportType,
-        status: formData.status,
-        is_booked: formData.status === 'Booked',
-      })
+        if (endDate <= startDate) {
+          setToast({ message: 'End time must be after start time.', type: 'error' })
+          setSubmitting(false)
+          return
+        }
 
-      if (error) {
-        setToast({ message: error.message, type: 'error' })
-      } else {
-        setToast({ message: 'Slot created successfully.', type: 'success' })
-        setShowCreateModal(false)
-      }
-    } else {
-      // Bulk slot creation
-      const startMinutes = parseTimeToMinutes(formData.startTime)
-      const endMinutes = parseTimeToMinutes(formData.endTime)
-
-      if (endMinutes <= startMinutes) {
-        setToast({ message: 'End time must be after start time.', type: 'error' })
-        setSubmitting(false)
-        return
-      }
-
-      const slotsToInsert = []
-      let cursor = startMinutes
-
-      while (cursor + durationMins <= endMinutes) {
-        const currentStartStr = minutesToTimeStr(cursor)
-        const currentEndStr = minutesToTimeStr(cursor + durationMins)
-
-        // Check if there is an overlap for this partition
-        const conflict = checkOverlapping(
-          formData.venueId,
-          formData.date,
-          currentStartStr,
-          currentEndStr
-        )
+        const conflict = checkOverlapping(formData.venueId, dateStr, formData.startTime, endTimeStr)
         if (conflict) {
           setToast({
-            message: `Overlap encountered in bulk generation: ${currentStartStr} - ${currentEndStr}`,
+            message: `Slot overlaps with an existing slot on ${dateStr}: ${formatTimeStr(conflict.start_time)} - ${formatTimeStr(conflict.end_time)}`,
             type: 'error',
           })
           setSubmitting(false)
           return
         }
 
-        const startDateTimeStr = `${formData.date}T${currentStartStr}:00`
-        const endDateTimeStr = `${formData.date}T${currentEndStr}:00`
-
         slotsToInsert.push({
           owner_id: ownerProfileId,
           venue_id: formData.venueId,
-          date: formData.date,
+          date: dateStr,
           start_time: startDateTimeStr,
           end_time: endDateTimeStr,
           duration: durationMins,
@@ -350,30 +315,75 @@ export default function ManageSlotsPage() {
           status: formData.status,
           is_booked: formData.status === 'Booked',
         })
-
-        cursor += durationMins
-      }
-
-      if (slotsToInsert.length === 0) {
-        setToast({
-          message: 'No slots generated. Check your duration vs. range settings.',
-          type: 'error',
-        })
-        setSubmitting(false)
-        return
-      }
-
-      const { error } = await supabase.from('slots').insert(slotsToInsert)
-
-      if (error) {
-        setToast({ message: error.message, type: 'error' })
       } else {
-        setToast({
-          message: `Successfully generated ${slotsToInsert.length} slots in bulk.`,
-          type: 'success',
-        })
-        setShowCreateModal(false)
+        // Bulk slot creation
+        const startMinutes = parseTimeToMinutes(formData.startTime)
+        const endMinutes = parseTimeToMinutes(formData.endTime)
+
+        if (endMinutes <= startMinutes) {
+          setToast({ message: 'End time must be after start time.', type: 'error' })
+          setSubmitting(false)
+          return
+        }
+
+        let cursor = startMinutes
+        while (cursor + durationMins <= endMinutes) {
+          const currentStartStr = minutesToTimeStr(cursor)
+          const currentEndStr = minutesToTimeStr(cursor + durationMins)
+
+          const conflict = checkOverlapping(
+            formData.venueId,
+            dateStr,
+            currentStartStr,
+            currentEndStr
+          )
+          if (conflict) {
+            setToast({
+              message: `Overlap encountered in bulk generation on ${dateStr}: ${currentStartStr} - ${currentEndStr}`,
+              type: 'error',
+            })
+            setSubmitting(false)
+            return
+          }
+
+          slotsToInsert.push({
+            owner_id: ownerProfileId,
+            venue_id: formData.venueId,
+            date: dateStr,
+            start_time: `${dateStr}T${currentStartStr}:00`,
+            end_time: `${dateStr}T${currentEndStr}:00`,
+            duration: durationMins,
+            price: priceNum,
+            max_players: maxPl,
+            sport_type: formData.sportType,
+            status: formData.status,
+            is_booked: formData.status === 'Booked',
+          })
+
+          cursor += durationMins
+        }
       }
+    }
+
+    if (slotsToInsert.length === 0) {
+      setToast({
+        message: 'No slots generated. Check your settings.',
+        type: 'error',
+      })
+      setSubmitting(false)
+      return
+    }
+
+    const { error } = await supabase.from('slots').insert(slotsToInsert)
+
+    if (error) {
+      setToast({ message: error.message, type: 'error' })
+    } else {
+      setToast({
+        message: `Successfully generated ${slotsToInsert.length} slots.`,
+        type: 'success',
+      })
+      setShowCreateModal(false)
     }
 
     setSubmitting(false)
@@ -986,8 +996,59 @@ export default function ManageSlotsPage() {
                 </div>
               </div>
 
+              {/* Repeat Daily Option */}
+              <div className="pt-4 border-t border-white/8 mt-4">
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="repeatDaily"
+                    checked={repeatDaily}
+                    onChange={(e) => setRepeatDaily(e.target.checked)}
+                    className="w-5 h-5 rounded border-gray-600 text-green-500 focus:ring-green-500 bg-transparent"
+                  />
+                  <label
+                    htmlFor="repeatDaily"
+                    className="text-sm font-medium text-white cursor-pointer select-none"
+                  >
+                    Repeat these slots daily
+                  </label>
+                </div>
+
+                {repeatDaily && (
+                  <div className="mt-3 pl-4 border-l-2 border-green-500/30 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="block text-xs text-gray-400 mb-2">
+                      How many days to repeat? (Including today)
+                    </label>
+                    <select
+                      value={repeatDays}
+                      onChange={(e) => setRepeatDays(e.target.value)}
+                      className="w-full sm:w-1/2 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-white text-sm outline-none focus:border-green-500/50"
+                    >
+                      <option value="2" className="text-black">
+                        2 Days
+                      </option>
+                      <option value="3" className="text-black">
+                        3 Days
+                      </option>
+                      <option value="5" className="text-black">
+                        5 Days
+                      </option>
+                      <option value="7" className="text-black">
+                        1 Week (7 Days)
+                      </option>
+                      <option value="14" className="text-black">
+                        2 Weeks (14 Days)
+                      </option>
+                      <option value="30" className="text-black">
+                        1 Month (30 Days)
+                      </option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
               {/* Submit Buttons */}
-              <div className="flex gap-3 justify-end pt-4 border-t border-white/8">
+              <div className="flex gap-3 justify-end pt-4 mt-4 border-t border-white/8">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
