@@ -98,6 +98,21 @@ export default function HomePage() {
 
           {/* Search Glass Panel */}
           <div className="mt-8 p-4 glass-panel rounded-2xl w-full max-w-4xl flex flex-col md:flex-row gap-4 items-center">
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
+              input[type="date"]::-webkit-calendar-picker-indicator {
+                filter: invert(1);
+                cursor: pointer;
+                opacity: 0.7;
+                transition: opacity 0.2s;
+              }
+              input[type="date"]::-webkit-calendar-picker-indicator:hover {
+                opacity: 1;
+              }
+            `,
+              }}
+            />
             {/* Location */}
             <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full justify-between">
               <div className="flex items-center flex-1">
