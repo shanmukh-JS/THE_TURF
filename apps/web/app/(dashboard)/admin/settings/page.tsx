@@ -12,12 +12,19 @@ import {
   DollarSign,
   Bell,
   AlertTriangle,
+  Mail,
+  Activity,
+  RefreshCw,
+  Search,
+  Check,
+  AlertCircle,
 } from 'lucide-react'
 import { logAdminAction } from '@/lib/admin/audit'
 import {
   DashboardAnimationWrapper,
   DashboardAnimationItem,
 } from '@/components/ui/DashboardAnimationWrapper'
+import { cn } from '@/lib/utils'
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true)
@@ -37,13 +44,53 @@ export default function AdminSettingsPage() {
     notify_on_new_booking: true,
   })
 
+  // Email Configuration States
+  const [emailForm, setEmailForm] = useState({
+    sender_name: '',
+    sender_email: '',
+    reply_to_email: '',
+    smtp_host: '',
+    smtp_port: 587,
+    smtp_username: '',
+    smtp_password: '',
+    encryption_type: 'TLS',
+    provider: 'smtp',
+    is_enabled: true,
+    is_verified: false,
+    last_tested_at: '',
+    last_test_status: '',
+  })
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [savingEmail, setSavingEmail] = useState(false)
+
+  // Email Delivery Logs States
+  const [logs, setLogs] = useState<any[]>([])
+  const [logsSearch, setLogsSearch] = useState('')
+  const [logsStatus, setLogsStatus] = useState('')
+  const [logsPage, setLogsPage] = useState(1)
+  const [logsTotalPages, setLogsTotalPages] = useState(1)
+  const [logsCount, setLogsCount] = useState(0)
+  const [logsMetrics, setLogsMetrics] = useState({
+    sentToday: 0,
+    failedToday: 0,
+    successRate: 100,
+    avgDeliveryTime: 0,
+  })
+  const [retryingLogId, setRetryingLogId] = useState<string | null>(null)
+
   const [confirmModal, setConfirmModal] = useState(false)
 
   const supabase = createClient()
 
   useEffect(() => {
     fetchSettings()
+    fetchEmailSettings()
+    fetchEmailLogs()
   }, [])
+
+  useEffect(() => {
+    fetchEmailLogs()
+  }, [logsPage, logsStatus])
 
   async function fetchSettings() {
     setLoading(true)
@@ -59,6 +106,109 @@ export default function AdminSettingsPage() {
       }))
     }
     setLoading(false)
+  }
+
+  async function fetchEmailSettings() {
+    try {
+      const res = await fetch('/api/admin/email-settings')
+      const result = await res.json()
+      if (result.success && result.data) {
+        setEmailForm({
+          ...result.data,
+          smtp_password: result.data.smtp_password || '',
+          smtp_port: result.data.smtp_port || 587,
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching email settings:', err)
+    }
+  }
+
+  async function fetchEmailLogs() {
+    try {
+      const url = `/api/admin/email-logs?page=${logsPage}&limit=10&search=${encodeURIComponent(logsSearch)}&status=${logsStatus}`
+      const res = await fetch(url)
+      const result = await res.json()
+      if (result.success && result.data) {
+        setLogs(result.data.logs || [])
+        setLogsTotalPages(result.data.pagination?.pages || 1)
+        setLogsCount(result.data.pagination?.total || 0)
+        if (result.data.metrics) {
+          setLogsMetrics(result.data.metrics)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching email logs:', err)
+    }
+  }
+
+  const handleSaveEmailSettings = async () => {
+    setSavingEmail(true)
+    try {
+      const res = await fetch('/api/admin/email-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailForm),
+      })
+      const result = await res.json()
+      if (result.success) {
+        setToast('Email configuration saved successfully!')
+        setTimeout(() => setToast(null), 3000)
+        await fetchEmailSettings()
+      } else {
+        alert('Error: ' + result.error?.message)
+      }
+    } catch (err) {
+      alert('Failed to save email settings.')
+    } finally {
+      setSavingEmail(false)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    setTestingEmail(true)
+    try {
+      const res = await fetch('/api/admin/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailForm),
+      })
+      const result = await res.json()
+      if (result.success) {
+        setToast('SMTP connection verified successfully!')
+        setTimeout(() => setToast(null), 3000)
+      } else {
+        alert('Connection test failed: ' + result.error?.message)
+      }
+      await fetchEmailSettings()
+    } catch (err) {
+      alert('Failed to test email connection.')
+    } finally {
+      setTestingEmail(false)
+    }
+  }
+
+  const handleRetryEmail = async (logId: string) => {
+    setRetryingLogId(logId)
+    try {
+      const res = await fetch('/api/admin/email-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logId }),
+      })
+      const result = await res.json()
+      if (result.success) {
+        setToast('Email retry triggered successfully!')
+        setTimeout(() => setToast(null), 3000)
+        await fetchEmailLogs()
+      } else {
+        alert('Retry failed: ' + result.error?.message)
+      }
+    } catch (err) {
+      alert('Failed to retry email delivery.')
+    } finally {
+      setRetryingLogId(null)
+    }
   }
 
   const handleSaveSettings = async () => {
@@ -279,7 +429,7 @@ export default function AdminSettingsPage() {
             </label>
           </DashboardAnimationItem>
 
-          <DashboardAnimationItem className="flex justify-end pt-4">
+          <DashboardAnimationItem className="flex justify-end pt-4 border-b border-white/5 pb-6">
             <button
               onClick={() => setConfirmModal(true)}
               disabled={saving}
@@ -292,6 +442,396 @@ export default function AdminSettingsPage() {
               )}
               Save Platform Settings
             </button>
+          </DashboardAnimationItem>
+
+          {/* Email Settings Configuration */}
+          <DashboardAnimationItem className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-6 space-y-4 mt-6">
+            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Mail className="w-4 h-4 text-green-400" /> Email Configuration
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">Connection Status:</span>
+                <span
+                  className={cn(
+                    'text-xs font-semibold px-2 py-0.5 rounded-full',
+                    emailForm.is_verified
+                      ? 'bg-green-500/10 text-green-400'
+                      : emailForm.last_tested_at
+                        ? 'bg-red-500/10 text-red-400'
+                        : 'bg-yellow-500/10 text-yellow-400'
+                  )}
+                >
+                  {emailForm.is_verified
+                    ? '🟢 Connected'
+                    : emailForm.last_tested_at
+                      ? `🔴 Connection Failed (${emailForm.last_test_status})`
+                      : '🔴 Not Configured'}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Sender Name
+                </label>
+                <input
+                  type="text"
+                  value={emailForm.sender_name}
+                  onChange={(e) => setEmailForm({ ...emailForm, sender_name: e.target.value })}
+                  placeholder="TRUF GAMING"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Sender Email
+                </label>
+                <input
+                  type="email"
+                  value={emailForm.sender_email}
+                  onChange={(e) => setEmailForm({ ...emailForm, sender_email: e.target.value })}
+                  placeholder="3shanmukhkadali@gmail.com"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Reply-To Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={emailForm.reply_to_email || ''}
+                  onChange={(e) => setEmailForm({ ...emailForm, reply_to_email: e.target.value })}
+                  placeholder="reply@trufgaming.com"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  Email Provider
+                </label>
+                <select
+                  value={emailForm.provider}
+                  onChange={(e) => setEmailForm({ ...emailForm, provider: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-green-500"
+                >
+                  <option value="smtp">SMTP (Gmail, Outlook, custom)</option>
+                  <option value="resend">Resend (Simulated)</option>
+                  <option value="sendgrid">SendGrid (Simulated)</option>
+                  <option value="ses">Amazon SES (Simulated)</option>
+                  <option value="mailgun">Mailgun (Simulated)</option>
+                </select>
+              </div>
+
+              {emailForm.provider === 'smtp' && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                      SMTP Host
+                    </label>
+                    <input
+                      type="text"
+                      value={emailForm.smtp_host || ''}
+                      onChange={(e) => setEmailForm({ ...emailForm, smtp_host: e.target.value })}
+                      placeholder="smtp.gmail.com"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                      SMTP Port
+                    </label>
+                    <input
+                      type="number"
+                      value={emailForm.smtp_port || ''}
+                      onChange={(e) =>
+                        setEmailForm({ ...emailForm, smtp_port: Number(e.target.value) })
+                      }
+                      placeholder="587"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                      SMTP Username
+                    </label>
+                    <input
+                      type="text"
+                      value={emailForm.smtp_username || ''}
+                      onChange={(e) =>
+                        setEmailForm({ ...emailForm, smtp_username: e.target.value })
+                      }
+                      placeholder="3shanmukhkadali@gmail.com"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                      SMTP Password
+                    </label>
+                    <input
+                      type="password"
+                      value={emailForm.smtp_password || ''}
+                      onChange={(e) =>
+                        setEmailForm({ ...emailForm, smtp_password: e.target.value })
+                      }
+                      placeholder="••••••••"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Encryption
+                    </label>
+                    <select
+                      value={emailForm.encryption_type || 'TLS'}
+                      onChange={(e) =>
+                        setEmailForm({ ...emailForm, encryption_type: e.target.value })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-green-500"
+                    >
+                      <option value="TLS">TLS</option>
+                      <option value="SSL">SSL</option>
+                      <option value="None">None</option>
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleTestConnection}
+                disabled={testingEmail || !emailForm.sender_email}
+                className="px-4 py-2 border border-white/10 rounded-xl text-xs font-semibold text-gray-400 hover:bg-white/5 transition-colors flex items-center gap-1.5"
+              >
+                {testingEmail ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Activity className="w-3.5 h-3.5" />
+                )}
+                Test Connection
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveEmailSettings}
+                disabled={savingEmail || !emailForm.sender_email}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-green-500 text-black hover:bg-green-400 transition-colors flex items-center gap-1.5"
+              >
+                {savingEmail ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                Save Configuration
+              </button>
+            </div>
+          </DashboardAnimationItem>
+
+          {/* Email Delivery Logs & Analytics */}
+          <DashboardAnimationItem className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-6 space-y-6 mt-6">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-white/5 pb-2">
+              <Activity className="w-4 h-4 text-green-400" /> Email Delivery Logs & Analytics
+            </h3>
+
+            {/* Analytics Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                {
+                  label: 'Sent Today',
+                  value: logsMetrics.sentToday,
+                  icon: Check,
+                  color: 'text-green-400',
+                },
+                {
+                  label: 'Failed Today',
+                  value: logsMetrics.failedToday,
+                  icon: AlertCircle,
+                  color: 'text-red-400',
+                },
+                {
+                  label: 'Success Rate',
+                  value: `${logsMetrics.successRate}%`,
+                  icon: Activity,
+                  color: 'text-green-400',
+                },
+                {
+                  label: 'Avg Delivery Latency',
+                  value: `${logsMetrics.avgDeliveryTime} ms`,
+                  icon: RefreshCw,
+                  color: 'text-emerald-400',
+                },
+              ].map(({ label, value, icon: Icon, color }) => (
+                <div
+                  key={label}
+                  className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center gap-3"
+                >
+                  <div className="p-2 bg-white/5 rounded-lg">
+                    <Icon className={cn('w-4 h-4', color)} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                      {label}
+                    </p>
+                    <p className="text-sm font-bold text-white mt-0.5">{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search recipient or subject..."
+                  value={logsSearch}
+                  onChange={(e) => setLogsSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchEmailLogs()}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                />
+              </div>
+
+              <select
+                value={logsStatus}
+                onChange={(e) => {
+                  setLogsStatus(e.target.value)
+                  setLogsPage(1)
+                }}
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500"
+              >
+                <option value="">All Statuses</option>
+                <option value="Sent">Sent</option>
+                <option value="Failed">Failed</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setLogsPage(1)
+                  fetchEmailLogs()
+                }}
+                className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Logs Table */}
+            <div className="overflow-x-auto border border-white/5 rounded-xl">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-white/[0.02] border-b border-white/5 text-gray-400 font-semibold uppercase tracking-wider">
+                    <th className="p-3">Recipient</th>
+                    <th className="p-3">Subject</th>
+                    <th className="p-3">Template</th>
+                    <th className="p-3">Provider</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Time</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-gray-300">
+                  {logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center p-6 text-gray-500">
+                        No email logs matching criteria found.
+                      </td>
+                    </tr>
+                  ) : (
+                    logs.map((log) => (
+                      <tr key={log.id} className="hover:bg-white/[0.01] transition-colors">
+                        <td className="p-3 font-medium text-white">{log.recipient}</td>
+                        <td className="p-3 max-w-[150px] truncate" title={log.subject}>
+                          {log.subject}
+                        </td>
+                        <td className="p-3 text-gray-500">{log.template}</td>
+                        <td className="p-3 text-gray-500 uppercase">{log.provider}</td>
+                        <td className="p-3">
+                          <span
+                            className={cn(
+                              'px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                              log.status === 'Sent'
+                                ? 'bg-green-500/10 text-green-400'
+                                : 'bg-red-500/10 text-red-400'
+                            )}
+                            title={log.error_message || undefined}
+                          >
+                            {log.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-500">
+                          {new Date(log.created_at).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}{' '}
+                          {new Date(log.created_at).toLocaleDateString([], {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </td>
+                        <td className="p-3 text-right">
+                          {log.status === 'Failed' && (
+                            <button
+                              type="button"
+                              onClick={() => handleRetryEmail(log.id)}
+                              disabled={retryingLogId === log.id}
+                              className="px-2 py-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 ml-auto"
+                            >
+                              {retryingLogId === log.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-3 h-3" />
+                              )}
+                              Retry
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {logsTotalPages > 1 && (
+              <div className="flex justify-between items-center text-xs text-gray-400 pt-2">
+                <span>
+                  Showing page {logsPage} of {logsTotalPages} ({logsCount} entries)
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={logsPage === 1}
+                    onClick={() => setLogsPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={logsPage === logsTotalPages}
+                    onClick={() => setLogsPage((p) => Math.min(logsTotalPages, p + 1))}
+                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </DashboardAnimationItem>
         </div>
       )}
