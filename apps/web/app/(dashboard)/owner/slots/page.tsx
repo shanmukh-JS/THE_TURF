@@ -873,7 +873,8 @@ export default function ManageSlotsPage() {
 
                   {formData.venueId && (
                     <div className="mt-2 text-xs">
-                      {venues.find((v) => v.id === formData.venueId)?.verification_status === 'APPROVED' ? (
+                      {venues.find((v) => v.id === formData.venueId)?.verification_status ===
+                      'APPROVED' ? (
                         <span className="text-green-400 font-semibold flex items-center gap-1">
                           🟢 Approved & Live
                         </span>
@@ -1105,7 +1106,11 @@ export default function ManageSlotsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || (venues.find((v) => v.id === formData.venueId)?.verification_status !== 'APPROVED')}
+                  disabled={
+                    submitting ||
+                    venues.find((v) => v.id === formData.venueId)?.verification_status !==
+                      'APPROVED'
+                  }
                   className="px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all shadow-lg shadow-green-900/30 disabled:opacity-55"
                 >
                   {submitting ? 'Creating...' : 'Create Slot'}
