@@ -75,20 +75,16 @@ export default function HomePage() {
   }, [])
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-[#030703] text-white selection:bg-green-500 selection:text-black overflow-x-hidden relative">
-      {/* Background glow highlights */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-green-500/5 blur-[150px] pointer-events-none" />
-      <div className="absolute top-[45%] right-[-10%] w-[60%] h-[60%] rounded-full bg-green-500/3 blur-[180px] pointer-events-none" />
-
+    <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
       <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
         {/* Background Image/Gradient Mock */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#030703]/10 via-[#030703]/70 to-[#030703] z-0" />
+        <div className="absolute inset-0 bg-gradient-to-br from-green-900/40 to-black z-0" />
         <div
-          className="absolute inset-0 opacity-40 bg-cover bg-center z-[-1]"
+          className="absolute inset-0 opacity-30 bg-cover bg-center z-[-1]"
           style={{
             backgroundImage:
-              "url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2000&auto=format&fit=crop')",
+              "url('https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=2067&auto=format&fit=crop')",
           }}
         />
 
