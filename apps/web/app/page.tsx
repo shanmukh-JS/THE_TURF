@@ -5,7 +5,6 @@ import React, { useEffect, useState } from 'react'
 import { MapPin, Calendar, Clock, Search, Loader2, Navigation, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import BoomerangVideoBg from '@/components/ui/BoomerangVideoBg'
 
 export default function HomePage() {
   const supabase = createClient()
@@ -79,10 +78,13 @@ export default function HomePage() {
     <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
       <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
-        {/* Background Boomerang Video */}
-        <BoomerangVideoBg
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260511_131941_d136af49-e243-493a-be14-6ff3f24e09e6.mp4"
-          className="absolute inset-0 w-full h-full opacity-40 z-0"
+        {/* Background Stadium Image with CSS Boomerang Animation */}
+        <div
+          className="absolute inset-0 opacity-40 bg-cover bg-center z-0 animate-boomerang"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1562074244-3523ba7ad800?q=80&w=2000&auto=format&fit=crop')",
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-[#0a0f0a] z-10" />
 
@@ -103,6 +105,20 @@ export default function HomePage() {
               input[type="date"]::-webkit-calendar-picker-indicator {
                 display: none !important;
                 -webkit-appearance: none !important;
+              }
+              @keyframes boomerang {
+                0% {
+                  transform: scale(1) translate(0, 0);
+                }
+                50% {
+                  transform: scale(1.08) translate(-0.5%, -0.5%);
+                }
+                100% {
+                  transform: scale(1) translate(0, 0);
+                }
+              }
+              .animate-boomerang {
+                animation: boomerang 18s ease-in-out infinite;
               }
             `,
               }}
