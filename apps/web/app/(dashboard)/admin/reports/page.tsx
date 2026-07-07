@@ -19,32 +19,7 @@ import {
 } from '@/components/ui/DashboardAnimationWrapper'
 
 export default function AdminReportsPage() {
-  const [reports, setReports] = useState<any[]>([
-    {
-      id: 'rep-1',
-      turfName: 'Olympia Turf',
-      ownerName: 'Rajesh Kumar',
-      reporterEmail: 'arjun@gmail.com',
-      complaint: 'Overlapping bookings: The slot from 6pm to 7pm was double-booked.',
-      status: 'PENDING',
-      priority: 'HIGH',
-      category: 'Booking Conflict',
-      assignedAdmin: 'Super Admin',
-      createdAt: '2 hours ago',
-    },
-    {
-      id: 'rep-2',
-      turfName: 'Gachibowli Arena',
-      ownerName: 'Vikas Reddy',
-      reporterEmail: 'karan@gmail.com',
-      complaint: 'Floodlights did not work during the booked night slot.',
-      status: 'RESOLVED',
-      priority: 'MEDIUM',
-      category: 'Equipment Failure',
-      assignedAdmin: 'Super Admin',
-      createdAt: '1 day ago',
-    },
-  ])
+  const [reports, setReports] = useState<any[]>([])
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
