@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -12,9 +13,9 @@ import {
   CheckSquare,
   Flag,
   Settings,
-  LogOut,
   Zap,
   ChevronRight,
+  Menu,
   X,
 } from 'lucide-react'
 
@@ -29,72 +30,91 @@ const navItems = [
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
-export function AdminSidebar({ onClose }: { onClose?: () => void }) {
+export function AdminSidebar() {
   const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(false)
+
+  // Close sidebar on navigation
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
 
   return (
-    <aside className="flex flex-col w-64 h-screen bg-[#080808] border-r border-white/8 sticky top-0">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-white/8 justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-900/40">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-white text-sm tracking-wide">TURF GAMING</p>
-            <p className="text-[11px] text-rose-400 font-medium">Super Admin</p>
-          </div>
+    <>
+      {/* Mobile Toggle Bar */}
+      <div className="md:hidden flex items-center justify-between px-6 py-4 bg-[#080808] border-b border-white/8 sticky top-16 z-30 shadow-md shadow-black/50">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-green-400" />
+          <span className="font-bold text-white text-sm tracking-wide">Admin Panel</span>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="md:hidden p-2 text-gray-400 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2 -mr-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+        >
+          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* Mobile Overlay Background */}
+      {isOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'flex flex-col w-64 h-[calc(100vh-64px)] bg-[#080808] border-r border-white/8 z-50 transition-transform duration-300',
+          'fixed top-16 left-0',
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
-      </div>
+      >
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navItems.map(({ href, icon: Icon, label }) => {
+            const active =
+              href === '/admin'
+                ? pathname === '/admin'
+                : pathname === href || pathname.startsWith(href + '/')
 
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={cn(
-                'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
-                active
-                  ? 'bg-green-500/15 text-green-400 border border-green-500/20'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              )}
-            >
-              <Icon
+            return (
+              <Link
+                key={href}
+                href={href}
                 className={cn(
-                  'w-4 h-4 flex-shrink-0',
-                  active ? 'text-green-400' : 'text-gray-500 group-hover:text-gray-300'
+                  'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                  active
+                    ? 'bg-green-500/15 text-green-400 border border-green-500/20'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                 )}
-              />
-              <span>{label}</span>
-              {active && <ChevronRight className="ml-auto w-3.5 h-3.5 text-green-500/60" />}
-            </Link>
-          )
-        })}
-      </nav>
+              >
+                <Icon
+                  className={cn(
+                    'w-4.5 h-4.5 flex-shrink-0',
+                    active ? 'text-green-400' : 'text-gray-500 group-hover:text-gray-300'
+                  )}
+                />
+                <span>{label}</span>
+                {active && <ChevronRight className="ml-auto w-4 h-4 text-green-500/60" />}
+              </Link>
+            )
+          })}
+        </nav>
 
-      <div className="p-4 border-t border-white/8">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-            SA
+        {/* Footer */}
+        <div className="p-4 border-t border-white/8">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+              SA
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">Super Admin</p>
+              <p className="text-xs text-gray-500 truncate">admin@turfgaming.com</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Super Admin</p>
-            <p className="text-xs text-gray-500 truncate">admin@turfgaming.com</p>
-          </div>
-          <LogOut className="w-4 h-4 text-gray-600 group-hover:text-red-400 transition-colors flex-shrink-0" />
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }
