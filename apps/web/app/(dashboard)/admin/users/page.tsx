@@ -61,8 +61,8 @@ export default function AdminUsersPage() {
       .select(
         `
         *,
-        owner_profiles(full_name, business_name, business_phone),
-        customer_profiles(full_name, phone, city)
+        owner_profiles(full_name, business_name),
+        customer_profiles(full_name)
       `
       )
       .order('created_at', { ascending: false })
@@ -174,10 +174,6 @@ export default function AdminUsersPage() {
   // Get cities for filtering
   const cities = useMemo(() => {
     const list = new Set<string>()
-    users.forEach((u) => {
-      const city = u.customer_profiles?.[0]?.city || ''
-      if (city) list.add(city)
-    })
     return Array.from(list)
   }, [users])
 
@@ -203,7 +199,7 @@ export default function AdminUsersPage() {
 
     // City filter
     if (cityFilter !== 'ALL') {
-      result = result.filter((u) => u.customer_profiles?.[0]?.city === cityFilter)
+      result = result.filter((u) => '—' === cityFilter)
     }
 
     // Sorting
@@ -212,10 +208,10 @@ export default function AdminUsersPage() {
       let bVal: any = b[sortField]
 
       if (sortField === 'name') {
-        const aProfile = activeTab === 'OWNER' ? a.owner_profiles?.[0] : a.customer_profiles?.[0]
-        const bProfile = activeTab === 'OWNER' ? b.owner_profiles?.[0] : b.customer_profiles?.[0]
-        aVal = aProfile?.full_name || ''
-        bVal = bProfile?.full_name || ''
+        const aProfile = activeTab === 'OWNER' ? a.owner_profiles : a.customer_profiles
+        const bProfile = activeTab === 'OWNER' ? b.owner_profiles : b.customer_profiles
+        aVal = (aProfile as any)?.full_name || ''
+        bVal = (bProfile as any)?.full_name || ''
       }
 
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
@@ -247,12 +243,12 @@ export default function AdminUsersPage() {
   const handleExportCSV = () => {
     const headers = ['Name', 'Email', 'Role', 'City', 'Registered Date', 'Status']
     const rows = processedUsers.map((u) => {
-      const profile = activeTab === 'OWNER' ? u.owner_profiles?.[0] : u.customer_profiles?.[0]
+      const profile = activeTab === 'OWNER' ? u.owner_profiles : u.customer_profiles
       return [
-        profile?.full_name || 'No Name Added',
+        (profile as any)?.full_name || 'No Name Added',
         u.email,
         u.role,
-        profile?.city || '—',
+        '—',
         new Date(u.created_at).toLocaleDateString(),
         u.is_suspended ? 'SUSPENDED' : 'ACTIVE',
       ]
@@ -418,10 +414,9 @@ export default function AdminUsersPage() {
               </thead>
               <tbody className="divide-y divide-white/5 text-sm text-gray-200">
                 {paginatedUsers.map((u) => {
-                  const profile =
-                    activeTab === 'OWNER' ? u.owner_profiles?.[0] : u.customer_profiles?.[0]
-                  const name = profile?.full_name || 'No Name Added'
-                  const city = profile?.city || '—'
+                  const profile = activeTab === 'OWNER' ? u.owner_profiles : u.customer_profiles
+                  const name = (profile as any)?.full_name || 'No Name Added'
+                  const city = '—'
 
                   return (
                     <tr key={u.id} className="hover:bg-white/[0.01] transition-colors group">
@@ -575,19 +570,13 @@ export default function AdminUsersPage() {
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
                     Mobile
                   </p>
-                  <p className="text-xs font-semibold text-white">
-                    {activeTab === 'OWNER'
-                      ? selectedUser.owner_profiles?.[0]?.business_phone || '—'
-                      : selectedUser.customer_profiles?.[0]?.phone || '—'}
-                  </p>
+                  <p className="text-xs font-semibold text-white">{selectedUser.phone || '—'}</p>
                 </div>
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">
                     City
                   </p>
-                  <p className="text-xs font-semibold text-white">
-                    {selectedUser.customer_profiles?.[0]?.city || '—'}
-                  </p>
+                  <p className="text-xs font-semibold text-white">—</p>
                 </div>
                 <div className="rounded-xl bg-white/5 border border-white/8 p-3">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">

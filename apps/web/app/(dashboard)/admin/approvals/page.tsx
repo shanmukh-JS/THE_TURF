@@ -48,8 +48,8 @@ export default function AdminApprovalsPage() {
         `
         *,
         owner_profiles(
-          id, full_name, business_name, business_phone, user_id,
-          owner_settings(bank_account_name, bank_account_number, bank_ifsc, bank_upi)
+          id, full_name, business_name, user_id,
+          owner_settings(business_phone, bank_account_name, bank_account_number, bank_ifsc, bank_upi)
         )
       `
       )
@@ -124,7 +124,7 @@ export default function AdminApprovalsPage() {
 
     return {
       emailVerified: true,
-      phoneVerified: !!v.owner_profiles?.business_phone,
+      phoneVerified: !!settings?.business_phone,
       idUploaded: true,
       bankAdded: !!settings?.bank_account_number,
       imagesUploaded: true,
@@ -266,7 +266,9 @@ export default function AdminApprovalsPage() {
                   </p>
                   <p>
                     <strong className="text-white">Phone:</strong>{' '}
-                    {selectedVenue.owner_profiles?.business_phone || 'N/A'}
+                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
+                      ? selectedVenue.owner_profiles?.owner_settings[0]?.business_phone
+                      : selectedVenue.owner_profiles?.owner_settings?.business_phone) || 'N/A'}
                   </p>
                   <p>
                     <strong className="text-white">Address:</strong>{' '}

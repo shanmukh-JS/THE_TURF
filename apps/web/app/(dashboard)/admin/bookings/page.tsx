@@ -63,7 +63,7 @@ export default function AdminBookingsPage() {
         `
         *,
         users(email),
-        venues(name, owner_profiles(full_name, business_phone)),
+        venues(name, owner_profiles(full_name)),
         slots(date, start_time, end_time)
       `
       )

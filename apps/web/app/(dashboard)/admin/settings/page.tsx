@@ -93,7 +93,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <DashboardAnimationWrapper className="p-8 space-y-6 max-w-4xl">
+    <DashboardAnimationWrapper className="p-8 space-y-6 w-full">
       {/* Header */}
       <DashboardAnimationItem>
         <h1 className="text-2xl font-bold text-white">System Settings</h1>
