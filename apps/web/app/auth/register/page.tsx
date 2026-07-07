@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Zap, User, Building2, type LucideIcon } from 'lucide-react'
+import { Zap, User, Building2, Eye, EyeOff, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,9 @@ export default function RegisterPage() {
   const [verifying, setVerifying] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })
   const [error, setError] = useState<string | null>(null)
+
+  // Passwords show/hide state
+  const [showPass, setShowPass] = useState(false)
 
   // OTP States
   const [showOtp, setShowOtp] = useState(false)
@@ -202,27 +205,45 @@ export default function RegisterPage() {
                   ({ field, label, type, placeholder, pattern, title, maxLength, minLength }) => (
                     <div key={field}>
                       <label className="block text-sm text-gray-400 mb-2">{label}</label>
-                      <input
-                        type={type}
-                        required
-                        placeholder={placeholder}
-                        pattern={pattern}
-                        title={title}
-                        maxLength={maxLength}
-                        minLength={minLength}
-                        value={form[field as keyof typeof form]}
-                        onChange={(e) => {
-                          if (field === 'phone') {
-                            const val = e.target.value.replace(/\D/g, '')
-                            if (val.length <= 10) {
-                              setForm({ ...form, [field]: val })
+                      <div className="relative">
+                        <input
+                          type={field === 'password' ? (showPass ? 'text' : 'password') : type}
+                          required
+                          placeholder={placeholder}
+                          pattern={pattern}
+                          title={title}
+                          maxLength={maxLength}
+                          minLength={minLength}
+                          value={form[field as keyof typeof form]}
+                          onChange={(e) => {
+                            if (field === 'phone') {
+                              const val = e.target.value.replace(/\D/g, '')
+                              if (val.length <= 10) {
+                                setForm({ ...form, [field]: val })
+                              }
+                            } else {
+                              setForm({ ...form, [field]: e.target.value })
                             }
-                          } else {
-                            setForm({ ...form, [field]: e.target.value })
-                          }
-                        }}
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm"
-                      />
+                          }}
+                          className={cn(
+                            'w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none placeholder:text-gray-600 focus:border-green-500/50 transition-colors text-sm',
+                            field === 'password' && 'pr-11'
+                          )}
+                        />
+                        {field === 'password' && (
+                          <button
+                            type="button"
+                            onClick={() => setShowPass(!showPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                          >
+                            {showPass ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )
                 )}
