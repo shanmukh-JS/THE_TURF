@@ -35,23 +35,41 @@ export default function OwnerRevenuePage() {
         return
       }
 
-      const { data: profile } = await supabase
-        .from('owner_profiles')
-        .select('id')
-        .eq('user_id', user.id)
+      // Check user role
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
         .single()
 
-      if (!profile) {
-        setLoading(false)
-        return
+      const isAdmin = userData?.role === 'ADMIN'
+
+      // For ADMIN: fetch ALL venues. For OWNER: fetch only their venues.
+      let venues: any[] = []
+      if (isAdmin) {
+        const { data: allVenues } = await supabase.from('venues').select('id, name')
+        venues = allVenues || []
+      } else {
+        const { data: profile } = await supabase
+          .from('owner_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (!profile) {
+          setLoading(false)
+          return
+        }
+
+        const { data: ownerVenues } = await supabase
+          .from('venues')
+          .select('id, name')
+          .eq('owner_id', profile.id)
+
+        venues = ownerVenues || []
       }
 
-      const { data: venues } = await supabase
-        .from('venues')
-        .select('id, name')
-        .eq('owner_id', profile.id)
-
-      if (!venues || venues.length === 0) {
+      if (venues.length === 0) {
         setLoading(false)
         return
       }
@@ -84,14 +102,30 @@ export default function OwnerRevenuePage() {
       if (bookings && bookings.length > 0) {
         const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id)))
 
-        const { data: customerProfiles } = await supabase
-          .from('customer_profiles')
-          .select('user_id, full_name')
-          .in('user_id', customerIds as string[])
-
-        const customerMap = new Map<string, string>()
-        if (customerProfiles) {
-          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        let customerMap = new Map<string, string>()
+        if (isAdmin) {
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, email')
+            .in('id', customerIds as string[])
+          if (users) {
+            users.forEach((u) => customerMap.set(u.id, u.email.split('@')[0]))
+          }
+          const { data: cp } = await supabase
+            .from('customer_profiles')
+            .select('user_id, full_name')
+            .in('user_id', customerIds as string[])
+          if (cp) {
+            cp.forEach((p) => customerMap.set(p.user_id, p.full_name))
+          }
+        } else {
+          const { data: customerProfiles } = await supabase
+            .from('customer_profiles')
+            .select('user_id, full_name')
+            .in('user_id', customerIds as string[])
+          if (customerProfiles) {
+            customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+          }
         }
 
         let totalRev = 0
