@@ -39,6 +39,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
   const [venue, setVenue] = useState<any | null>(null)
   const [reviews, setReviews] = useState<any[]>([])
   const [slots, setSlots] = useState<any[]>([])
+  const [ownerSettings, setOwnerSettings] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<any | null>(null)
@@ -152,6 +153,15 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       }
     }
 
+    // Fetch owner settings for buffer time and auto-accept
+    const { data: ownerSettingsData } = await supabase
+      .from('owner_settings')
+      .select('auto_accept_bookings, booking_buffer_time, cancellation_policy')
+      .eq('owner_id', venueData.owner_id)
+      .maybeSingle()
+
+    setOwnerSettings(ownerSettingsData)
+
     // Fetch available future slots
     const todayStr = new Date().toISOString().split('T')[0]
     const { data: slotsData } = await supabase
@@ -164,7 +174,26 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       .order('start_time', { ascending: true })
 
     if (slotsData) {
-      setSlots(slotsData)
+      let activeSlots = slotsData
+
+      // Apply buffer time
+      if (ownerSettingsData?.booking_buffer_time && ownerSettingsData.booking_buffer_time !== '0') {
+        const now = new Date()
+        let bufferMs = 0
+        if (ownerSettingsData.booking_buffer_time === '15_mins') bufferMs = 15 * 60 * 1000
+        else if (ownerSettingsData.booking_buffer_time === '30_mins') bufferMs = 30 * 60 * 1000
+        else if (ownerSettingsData.booking_buffer_time === '1_hour') bufferMs = 60 * 60 * 1000
+
+        const thresholdTime = now.getTime() + bufferMs
+
+        activeSlots = activeSlots.filter((slot: any) => {
+          // Create date obj assuming slot.start_time is "HH:mm:ss" and slot.date is "YYYY-MM-DD"
+          const slotStart = new Date(`${slot.date}T${slot.start_time}`)
+          return slotStart.getTime() >= thresholdTime
+        })
+      }
+
+      setSlots(activeSlots)
     }
 
     setLoading(false)
@@ -225,13 +254,15 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     }
 
     // 2. Create the booking entry
+    const bookingStatus = ownerSettings?.auto_accept_bookings === false ? 'PENDING' : 'CONFIRMED'
+
     const { error: bookingError } = await supabase.from('bookings').insert({
       slot_id: selectedSlot.id,
       venue_id: id,
       customer_id: currentUser.id,
       total_amount: selectedSlot.price,
       advance_paid: advanceAmount,
-      status: 'CONFIRMED',
+      status: bookingStatus,
     })
 
     if (bookingError) {
@@ -487,13 +518,29 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Rules */}
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
-            <h2 className="text-lg font-semibold mb-4 text-amber-300">Venue Rules</h2>
+            <h2 className="text-lg font-semibold mb-4 text-amber-300">Venue Rules & Policy</h2>
             <ul className="space-y-2">
               {defaultRules.map((r) => (
                 <li key={r} className="flex items-start gap-2 text-sm text-gray-300">
                   <span className="text-amber-400 mt-0.5">•</span> {r}
                 </li>
               ))}
+              {ownerSettings?.cancellation_policy && (
+                <li className="flex items-start gap-2 text-sm text-gray-300 mt-4 pt-4 border-t border-amber-500/20">
+                  <span className="text-amber-400 mt-0.5">•</span>
+                  <div>
+                    <strong>Cancellation Policy:</strong>
+                    <span className="ml-1 text-gray-400">
+                      {ownerSettings.cancellation_policy === 'flexible' &&
+                        'Flexible (Cancel anytime before the slot begins)'}
+                      {ownerSettings.cancellation_policy === 'moderate' &&
+                        'Moderate (Cancel up to 24 hours before the slot begins)'}
+                      {ownerSettings.cancellation_policy === 'strict' &&
+                        'Strict (No cancellations allowed)'}
+                    </span>
+                  </div>
+                </li>
+              )}
             </ul>
           </div>
 

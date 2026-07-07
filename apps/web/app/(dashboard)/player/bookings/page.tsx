@@ -30,10 +30,27 @@ export default async function CustomerBookingsPage() {
       advance_paid,
       status,
       slots!inner(date, start_time, end_time),
-      venues!inner(id, name, areas(name), venue_images(url, is_cover))
+      venues!inner(id, name, owner_id, areas(name), venue_images(url, is_cover))
     `
     )
     .eq('customer_id', user.id)
+
+  // Fetch owner settings to get cancellation policies
+  const ownerIds = Array.from(
+    new Set((rawBookings || []).map((b: any) => b.venues?.owner_id).filter(Boolean))
+  )
+
+  let ownerSettingsMap = new Map<string, string>()
+  if (ownerIds.length > 0) {
+    const { data: settingsData } = await supabase
+      .from('owner_settings')
+      .select('owner_id, cancellation_policy')
+      .in('owner_id', ownerIds as string[])
+
+    if (settingsData) {
+      settingsData.forEach((s) => ownerSettingsMap.set(s.owner_id, s.cancellation_policy))
+    }
+  }
 
   // Transform raw data into the UI shape
   const bookings = (rawBookings || []).map((b: any) => {
@@ -78,6 +95,8 @@ export default async function CustomerBookingsPage() {
       status: derivedStatus,
       image: coverImage,
       rawStartTime: b.slots.start_time,
+      rawDate: b.slots.date,
+      cancellationPolicy: ownerSettingsMap.get(b.venues?.owner_id) || 'flexible',
     }
   })
 

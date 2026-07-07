@@ -18,7 +18,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
 const statusMap = {
-  CONFIRMED: { icon: AlertCircle, color: 'text-blue-400', bg: 'bg-blue-400/10', label: 'Upcoming' },
+  CONFIRMED: { icon: CheckCircle, color: 'text-blue-400', bg: 'bg-blue-400/10', label: 'Upcoming' },
+  PENDING: {
+    icon: AlertCircle,
+    color: 'text-amber-400',
+    bg: 'bg-amber-400/10',
+    label: 'Awaiting Approval',
+  },
   COMPLETED: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', label: 'Played' },
   CANCELLED: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10', label: 'Cancelled' },
 }
@@ -35,6 +41,8 @@ interface Booking {
   status: string
   image: string
   rawStartTime: string
+  rawDate?: string
+  cancellationPolicy?: string
 }
 
 interface BookingListClientProps {
@@ -64,8 +72,16 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
     const updateCountdowns = () => {
       const newCountdowns: Record<string, string> = {}
       bookings.forEach((b) => {
-        if (b.status !== 'CONFIRMED') return
-        const slotTime = new Date(b.rawStartTime).getTime()
+        if (b.status !== 'CONFIRMED' && b.status !== 'PENDING') return
+
+        let slotTime = 0
+        if (b.rawDate) {
+          slotTime = new Date(`${b.rawDate}T${b.rawStartTime}`).getTime()
+        } else {
+          // Fallback if rawDate is missing for some reason
+          slotTime = new Date(b.rawStartTime).getTime()
+        }
+
         const now = Date.now()
         const diff = slotTime - now
 
@@ -139,7 +155,7 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
   }
 
   const filteredBookings = bookings.filter((b) => {
-    if (activeTab === 'Upcoming') return b.status === 'CONFIRMED'
+    if (activeTab === 'Upcoming') return b.status === 'CONFIRMED' || b.status === 'PENDING'
     if (activeTab === 'Completed') return b.status === 'COMPLETED'
     if (activeTab === 'Cancelled') return b.status === 'CANCELLED'
     return true
@@ -229,7 +245,7 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                   </span>
 
                   {/* Countdown for upcoming */}
-                  {b.status === 'CONFIRMED' && countdowns[b.id] && (
+                  {(b.status === 'CONFIRMED' || b.status === 'PENDING') && countdowns[b.id] && (
                     <span className="absolute top-4 right-4 flex items-center gap-1 px-2.5 py-1 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-[10px] font-extrabold tracking-wider uppercase">
                       <Clock className="w-3 h-3" /> {countdowns[b.id]}
                     </span>
@@ -282,15 +298,35 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                       </button>
 
                       {/* Cancel Booking for upcoming */}
-                      {b.status === 'CONFIRMED' && (
-                        <button
-                          onClick={() => handleCancelBooking(b.id)}
-                          disabled={loadingId === b.id}
-                          className="px-3.5 py-2 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-black hover:border-red-500 text-red-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Cancel
-                        </button>
-                      )}
+                      {(b.status === 'CONFIRMED' || b.status === 'PENDING') &&
+                        b.cancellationPolicy !== 'strict' && (
+                          <button
+                            onClick={() => {
+                              if (b.cancellationPolicy === 'moderate' && b.rawDate) {
+                                const slotTime = new Date(
+                                  `${b.rawDate}T${b.rawStartTime}`
+                                ).getTime()
+                                const diff = slotTime - Date.now()
+                                if (diff < 86400000) {
+                                  alert(
+                                    'This venue has a moderate cancellation policy. You cannot cancel within 24 hours of the slot.'
+                                  )
+                                  return
+                                }
+                              }
+                              handleCancelBooking(b.id)
+                            }}
+                            disabled={loadingId === b.id}
+                            className="px-3.5 py-2 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-black hover:border-red-500 text-red-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={
+                              b.cancellationPolicy === 'moderate'
+                                ? 'Moderate Policy: Can only cancel 24h before'
+                                : ''
+                            }
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Cancel
+                          </button>
+                        )}
 
                       {/* Rebook Button for completed/cancelled */}
                       {(b.status === 'COMPLETED' || b.status === 'CANCELLED') && (
@@ -389,17 +425,39 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                   >
                     Close
                   </button>
-                  {selectedBooking.status === 'CONFIRMED' && (
-                    <button
-                      onClick={() => {
-                        setSelectedBooking(null)
-                        handleCancelBooking(selectedBooking.id)
-                      }}
-                      className="flex-1 py-3 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-black font-bold text-xs uppercase tracking-wider transition-colors"
-                    >
-                      Cancel Match
-                    </button>
-                  )}
+                  {(selectedBooking.status === 'CONFIRMED' ||
+                    selectedBooking.status === 'PENDING') &&
+                    selectedBooking.cancellationPolicy !== 'strict' && (
+                      <button
+                        onClick={() => {
+                          if (
+                            selectedBooking.cancellationPolicy === 'moderate' &&
+                            selectedBooking.rawDate
+                          ) {
+                            const slotTime = new Date(
+                              `${selectedBooking.rawDate}T${selectedBooking.rawStartTime}`
+                            ).getTime()
+                            const diff = slotTime - Date.now()
+                            if (diff < 86400000) {
+                              alert(
+                                'This venue has a moderate cancellation policy. You cannot cancel within 24 hours of the slot.'
+                              )
+                              return
+                            }
+                          }
+                          setSelectedBooking(null)
+                          handleCancelBooking(selectedBooking.id)
+                        }}
+                        className="flex-1 py-3 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-black font-bold text-xs uppercase tracking-wider transition-colors"
+                        title={
+                          selectedBooking.cancellationPolicy === 'moderate'
+                            ? 'Moderate Policy: Can only cancel 24h before'
+                            : ''
+                        }
+                      >
+                        Cancel Match
+                      </button>
+                    )}
                 </div>
               </div>
             </motion.div>

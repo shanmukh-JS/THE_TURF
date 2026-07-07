@@ -267,6 +267,23 @@ export default function OwnerBookingsPage() {
     setActionLoading(false)
   }
 
+  const handleAcceptBooking = async (bookingId: string) => {
+    setActionLoading(true)
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'CONFIRMED' })
+      .eq('id', bookingId)
+
+    if (error) {
+      setToast({ message: error.message, type: 'error' })
+    } else {
+      setToast({ message: 'Booking accepted!', type: 'success' })
+      setSelectedBooking(null)
+      fetchBookings()
+    }
+    setActionLoading(false)
+  }
+
   const handleCancelBooking = async (bookingId: string) => {
     if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.'))
       return
@@ -501,6 +518,15 @@ export default function OwnerBookingsPage() {
                               <CheckCircle2 className="w-4 h-4" />
                             </button>
                           )}
+                          {b.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleAcceptBooking(b.id)}
+                              className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors"
+                              title="Accept Booking"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                          )}
                           {(b.status === 'CONFIRMED' || b.status === 'PENDING') && (
                             <button
                               onClick={() => handleCancelBooking(b.id)}
@@ -607,12 +633,20 @@ export default function OwnerBookingsPage() {
                   <button
                     onClick={() => handleMarkCompleted(selectedBooking.id)}
                     disabled={actionLoading}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-black font-semibold text-sm hover:bg-green-400 transition-all disabled:opacity-50"
+                    className="flex-1 w-full py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-sm transition-all"
                   >
-                    <CheckCircle2 className="w-4 h-4" /> Mark as Completed
+                    Mark as Completed
                   </button>
                 )}
-
+                {selectedBooking.status === 'PENDING' && (
+                  <button
+                    onClick={() => handleAcceptBooking(selectedBooking.id)}
+                    disabled={actionLoading}
+                    className="flex-1 w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-black font-semibold text-sm transition-all"
+                  >
+                    Accept Booking
+                  </button>
+                )}
                 {(selectedBooking.status === 'CONFIRMED' ||
                   selectedBooking.status === 'PENDING') && (
                   <button
