@@ -1,101 +1,169 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   DashboardAnimationWrapper,
   DashboardAnimationItem,
 } from '@/components/ui/DashboardAnimationWrapper'
-import { CalendarCheck, Clock, CheckCircle, XCircle, AlertCircle, Search } from 'lucide-react'
+import {
+  CalendarCheck,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Search,
+  RefreshCw,
+} from 'lucide-react'
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: any; color: string; bg: string }> = {
   CONFIRMED: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
   PENDING: { icon: AlertCircle, color: 'text-amber-400', bg: 'bg-amber-400/10' },
   CANCELLED: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
 }
 
-export default async function OwnerBookingsPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function OwnerBookingsPage() {
+  const supabase = createClient()
+  const [bookings, setBookings] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
 
-  let formattedBookings: any[] = []
+  useEffect(() => {
+    async function fetchBookings() {
+      setLoading(true)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('owner_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+      if (!user) {
+        setLoading(false)
+        return
+      }
 
-    if (profile) {
+      const { data: profile } = await supabase
+        .from('owner_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!profile) {
+        setLoading(false)
+        return
+      }
+
       const { data: venues } = await supabase
         .from('venues')
         .select('id, name')
         .eq('owner_id', profile.id)
 
-      if (venues && venues.length > 0) {
-        const venueIds = venues.map((v) => v.id)
+      if (!venues || venues.length === 0) {
+        setLoading(false)
+        return
+      }
 
-        const { data: bookings } = await supabase
-          .from('bookings')
-          .select(
-            `
-            id, 
-            total_amount, 
-            status, 
-            customer_id,
-            slot:slots(date, start_time),
-            venue:venues(name)
+      const venueIds = venues.map((v) => v.id)
+      const venueMap = new Map(venues.map((v) => [v.id, v.name]))
+
+      const { data: bookingsData, error } = await supabase
+        .from('bookings')
+        .select(
           `
-          )
-          .in('venue_id', venueIds)
-          .order('id', { ascending: false })
+          id, 
+          total_amount, 
+          status, 
+          customer_id,
+          venue_id,
+          created_at,
+          slot_id,
+          slots(date, start_time)
+        `
+        )
+        .in('venue_id', venueIds)
+        .order('created_at', { ascending: false })
 
-        if (bookings && bookings.length > 0) {
-          const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id)))
+      if (error) {
+        console.error('Error fetching bookings:', error)
+        setLoading(false)
+        return
+      }
 
-          const { data: customerProfiles } = await supabase
-            .from('customer_profiles')
-            .select('user_id, full_name')
-            .in('user_id', customerIds as string[])
+      if (bookingsData && bookingsData.length > 0) {
+        const customerIds = Array.from(new Set(bookingsData.map((b) => b.customer_id)))
 
-          const customerMap = new Map()
-          if (customerProfiles) {
-            customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        const { data: customerProfiles } = await supabase
+          .from('customer_profiles')
+          .select('user_id, full_name')
+          .in('user_id', customerIds as string[])
+
+        const customerMap = new Map<string, string>()
+        if (customerProfiles) {
+          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        }
+
+        const formatted = bookingsData.map((b: any) => {
+          const slot = b.slots && !Array.isArray(b.slots) ? b.slots : null
+          let dateStr = 'N/A'
+          let timeStr = 'N/A'
+
+          if (slot) {
+            const d = new Date(slot.date)
+            dateStr = d.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })
+            if (slot.start_time) {
+              timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })
+            }
           }
 
-          formattedBookings = bookings.map((b: any) => {
-            const slot = b.slot && !Array.isArray(b.slot) ? b.slot : null
-            let dateStr = 'N/A'
-            let timeStr = 'N/A'
+          return {
+            id: b.id,
+            customerName: customerMap.get(b.customer_id) || 'Unknown Customer',
+            venueName: venueMap.get(b.venue_id) || 'Unknown Venue',
+            date: dateStr,
+            time: timeStr,
+            amount: b.total_amount,
+            status: b.status || 'PENDING',
+            createdAt: b.created_at,
+          }
+        })
 
-            if (slot) {
-              const d = new Date(slot.date)
-              dateStr = d.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })
-              if (slot.start_time) {
-                timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })
-              }
-            }
-
-            return {
-              id: b.id,
-              customerName: customerMap.get(b.customer_id) || 'Unknown Customer',
-              venueName: b.venue && !Array.isArray(b.venue) ? b.venue.name : 'Unknown Venue',
-              date: dateStr,
-              time: timeStr,
-              amount: b.total_amount,
-              status: b.status || 'PENDING',
-            }
-          })
-        }
+        setBookings(formatted)
       }
+
+      setLoading(false)
     }
+
+    fetchBookings()
+  }, [])
+
+  // Filter bookings based on search query and status filter
+  const filteredBookings = bookings.filter((b) => {
+    const matchesSearch =
+      searchQuery === '' ||
+      b.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.venueName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.id.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesStatus = statusFilter === 'ALL' || b.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] w-full">
+        <RefreshCw className="w-8 h-8 text-green-500 animate-spin" />
+        <p className="mt-4 text-sm text-gray-400 font-medium tracking-wide animate-pulse">
+          Loading bookings...
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -108,26 +176,53 @@ export default async function OwnerBookingsPage() {
       <DashboardAnimationItem className="rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
         <div className="px-6 py-5 border-b border-white/8 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <h2 className="text-sm font-semibold text-white">
-            All Bookings ({formattedBookings.length})
+            All Bookings ({filteredBookings.length})
           </h2>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search by customer or venue..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-green-500/50"
-            />
+          <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Search customer, venue or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-green-500/50"
+              />
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/50"
+            >
+              <option value="ALL" className="text-black">
+                All Statuses
+              </option>
+              <option value="CONFIRMED" className="text-black">
+                Confirmed
+              </option>
+              <option value="PENDING" className="text-black">
+                Pending
+              </option>
+              <option value="CANCELLED" className="text-black">
+                Cancelled
+              </option>
+            </select>
           </div>
         </div>
 
         <div className="overflow-x-auto min-h-[400px]">
-          {formattedBookings.length === 0 ? (
+          {filteredBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[400px] text-center">
               <CalendarCheck className="w-12 h-12 text-gray-600 mb-4" />
-              <p className="text-gray-400 font-medium">No bookings found</p>
+              <p className="text-gray-400 font-medium">
+                {bookings.length === 0 ? 'No bookings found' : 'No bookings match your search'}
+              </p>
               <p className="text-gray-500 text-sm mt-1">
-                Your bookings will appear here once customers reserve your venues.
+                {bookings.length === 0
+                  ? 'Your bookings will appear here once customers reserve your venues.'
+                  : 'Try adjusting your search query or filters.'}
               </p>
             </div>
           ) : (
@@ -152,9 +247,8 @@ export default async function OwnerBookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {formattedBookings.map((b, i) => {
-                  const s =
-                    statusConfig[b.status as keyof typeof statusConfig] || statusConfig.PENDING
+                {filteredBookings.map((b, i) => {
+                  const s = statusConfig[b.status] ?? statusConfig['PENDING']!
                   const StatusIcon = s.icon
 
                   return (

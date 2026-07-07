@@ -1,100 +1,156 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   DashboardAnimationWrapper,
   DashboardAnimationItem,
 } from '@/components/ui/DashboardAnimationWrapper'
-import { TrendingUp, DollarSign, Wallet, ArrowUpRight, ArrowDownRight, Clock } from 'lucide-react'
+import {
+  TrendingUp,
+  DollarSign,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight,
+  Clock,
+  RefreshCw,
+} from 'lucide-react'
 
-export default async function OwnerRevenuePage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+export default function OwnerRevenuePage() {
+  const supabase = createClient()
+  const [totalRevenue, setTotalRevenue] = useState(0)
+  const [pendingRevenue, setPendingRevenue] = useState(0)
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  let totalRevenue = 0
-  let pendingRevenue = 0
-  let formattedTransactions: any[] = []
+  useEffect(() => {
+    async function fetchRevenue() {
+      setLoading(true)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('owner_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+      if (!user) {
+        setLoading(false)
+        return
+      }
 
-    if (profile) {
+      const { data: profile } = await supabase
+        .from('owner_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!profile) {
+        setLoading(false)
+        return
+      }
+
       const { data: venues } = await supabase
         .from('venues')
         .select('id, name')
         .eq('owner_id', profile.id)
 
-      if (venues && venues.length > 0) {
-        const venueIds = venues.map((v) => v.id)
+      if (!venues || venues.length === 0) {
+        setLoading(false)
+        return
+      }
 
-        const { data: bookings } = await supabase
-          .from('bookings')
-          .select(
-            `
-            id, 
-            total_amount, 
-            status, 
-            customer_id,
-            created_at,
-            slot:slots(date),
-            venue:venues(name)
+      const venueIds = venues.map((v) => v.id)
+      const venueMap = new Map(venues.map((v) => [v.id, v.name]))
+
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select(
           `
-          )
-          .in('venue_id', venueIds)
-          .order('created_at', { ascending: false })
+          id, 
+          total_amount, 
+          status, 
+          customer_id,
+          venue_id,
+          created_at,
+          slots(date)
+        `
+        )
+        .in('venue_id', venueIds)
+        .order('created_at', { ascending: false })
 
-        if (bookings && bookings.length > 0) {
-          const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id)))
+      if (error) {
+        console.error('Error fetching revenue data:', error)
+        setLoading(false)
+        return
+      }
 
-          const { data: customerProfiles } = await supabase
-            .from('customer_profiles')
-            .select('user_id, full_name')
-            .in('user_id', customerIds as string[])
+      if (bookings && bookings.length > 0) {
+        const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id)))
 
-          const customerMap = new Map()
-          if (customerProfiles) {
-            customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        const { data: customerProfiles } = await supabase
+          .from('customer_profiles')
+          .select('user_id, full_name')
+          .in('user_id', customerIds as string[])
+
+        const customerMap = new Map<string, string>()
+        if (customerProfiles) {
+          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        }
+
+        let totalRev = 0
+        let pendingRev = 0
+
+        bookings.forEach((b: any) => {
+          if (b.status === 'CONFIRMED') {
+            totalRev += Number(b.total_amount)
+          } else if (b.status === 'PENDING') {
+            pendingRev += Number(b.total_amount)
           }
+        })
 
-          bookings.forEach((b: any) => {
-            if (b.status === 'CONFIRMED') {
-              totalRevenue += Number(b.total_amount)
-            } else if (b.status === 'PENDING') {
-              pendingRevenue += Number(b.total_amount)
+        setTotalRevenue(totalRev)
+        setPendingRevenue(pendingRev)
+
+        const formattedTx = bookings
+          .filter((b) => b.status === 'CONFIRMED' || b.status === 'PENDING')
+          .map((b: any) => {
+            const dateStr = new Date(b.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })
+            const timeStr = new Date(b.created_at).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+            })
+
+            return {
+              id: b.id,
+              customerName: customerMap.get(b.customer_id) || 'Unknown Customer',
+              venueName: venueMap.get(b.venue_id) || 'Unknown Venue',
+              date: dateStr,
+              time: timeStr,
+              amount: b.total_amount,
+              status: b.status,
+              type: b.status === 'CONFIRMED' ? 'received' : 'pending',
             }
           })
 
-          formattedTransactions = bookings
-            .filter((b) => b.status === 'CONFIRMED' || b.status === 'PENDING')
-            .map((b: any) => {
-              const dateStr = new Date(b.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })
-              const timeStr = new Date(b.created_at).toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-              })
-
-              return {
-                id: b.id,
-                customerName: customerMap.get(b.customer_id) || 'Unknown Customer',
-                venueName: b.venue && !Array.isArray(b.venue) ? b.venue.name : 'Unknown Venue',
-                date: dateStr,
-                time: timeStr,
-                amount: b.total_amount,
-                status: b.status,
-                type: b.status === 'CONFIRMED' ? 'received' : 'pending',
-              }
-            })
-        }
+        setTransactions(formattedTx)
       }
+
+      setLoading(false)
     }
+
+    fetchRevenue()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] w-full">
+        <RefreshCw className="w-8 h-8 text-green-500 animate-spin" />
+        <p className="mt-4 text-sm text-gray-400 font-medium tracking-wide animate-pulse">
+          Loading revenue data...
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -151,7 +207,7 @@ export default async function OwnerRevenuePage() {
         </div>
 
         <div className="overflow-x-auto min-h-[300px]">
-          {formattedTransactions.length === 0 ? (
+          {transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[300px] text-center">
               <Wallet className="w-12 h-12 text-gray-600 mb-4" />
               <p className="text-gray-400 font-medium">No transactions yet</p>
@@ -178,7 +234,7 @@ export default async function OwnerRevenuePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {formattedTransactions.map((t, i) => (
+                {transactions.map((t, i) => (
                   <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-6 py-4">
                       <p className="text-xs text-gray-400 font-mono">#{t.id.split('-')[0]}</p>
