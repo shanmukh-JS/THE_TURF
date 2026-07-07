@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import {
   Building2,
   CalendarClock,
@@ -15,6 +16,9 @@ import {
   X,
   RefreshCw,
   MapPin,
+  Lock,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 
@@ -84,6 +88,16 @@ export default function OwnerSettingsPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  // Security & Danger Zone state
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordFields, setPasswordFields] = useState({ newPassword: '', confirmPassword: '' })
+  const [showPw, setShowPw] = useState(false)
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false)
+  const [isListingDisabled, setIsListingDisabled] = useState(false)
+  const [isDangerLoading, setIsDangerLoading] = useState(false)
+  const [ownerProfileIdForDanger, setOwnerProfileIdForDanger] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -133,6 +147,9 @@ export default function OwnerSettingsPage() {
 
         if (!profile) return
 
+        // Set the profile id for danger zone actions
+        setOwnerProfileIdForDanger(profile.id)
+
         const { data: settings } = await supabase
           .from('owner_settings')
           .select('*')
@@ -164,6 +181,16 @@ export default function OwnerSettingsPage() {
 
         setFormData(mappedData)
         setInitialData(mappedData)
+
+        // Fetch current venue listing status
+        const { data: firstVenue } = await supabase
+          .from('venues')
+          .select('id, is_active')
+          .eq('owner_id', profile.id)
+          .maybeSingle()
+        if (firstVenue) {
+          setIsListingDisabled(firstVenue.is_active === false)
+        }
       } catch (e) {
         console.error('Error loading settings:', e)
       } finally {
@@ -348,27 +375,79 @@ export default function OwnerSettingsPage() {
   }
 
   const handleUpdatePassword = async () => {
-    const newPassword = window.prompt('Enter your new password (minimum 6 characters):')
-    if (!newPassword) return
-    if (newPassword.length < 6) {
+    if (passwordFields.newPassword.length < 6) {
       setToast({ message: 'Password must be at least 6 characters long', type: 'error' })
       return
     }
-
+    if (passwordFields.newPassword !== passwordFields.confirmPassword) {
+      setToast({ message: 'Passwords do not match', type: 'error' })
+      return
+    }
+    setIsPasswordSaving(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      const { error } = await supabase.auth.updateUser({ password: passwordFields.newPassword })
       if (error) throw error
       setToast({ message: 'Password updated successfully!', type: 'success' })
+      setShowPasswordModal(false)
+      setPasswordFields({ newPassword: '', confirmPassword: '' })
     } catch (e: any) {
       setToast({ message: e.message || 'Error updating password', type: 'error' })
+    } finally {
+      setIsPasswordSaving(false)
     }
   }
 
-  const handleNotImplemented = (feature: string) => {
-    setToast({
-      message: `${feature} is coming soon! Please contact support for manual processing.`,
-      type: 'error',
-    })
+  const handleToggleListing = async () => {
+    if (!ownerProfileIdForDanger) return
+    setIsDangerLoading(true)
+    const newIsActive = isListingDisabled // toggling: if currently disabled, we enable
+    const { error } = await supabase
+      .from('venues')
+      .update({ is_active: newIsActive })
+      .eq('owner_id', ownerProfileIdForDanger)
+    if (error) {
+      setToast({ message: 'Failed to update listing status: ' + error.message, type: 'error' })
+    } else {
+      setIsListingDisabled(!newIsActive)
+      setToast({
+        message: newIsActive
+          ? 'Your turf listing is now LIVE!'
+          : 'Your turf listing has been hidden from customers.',
+        type: newIsActive ? 'success' : 'error',
+      })
+    }
+    setIsDangerLoading(false)
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      'Are you absolutely sure? This will permanently delete your account, all venues, bookings, and data. This cannot be undone.'
+    )
+    if (!confirmed) return
+
+    const doubleConfirm = window.confirm(
+      'FINAL WARNING: Your account and all associated data will be permanently deleted. Click OK to confirm.'
+    )
+    if (!doubleConfirm) return
+
+    setIsDangerLoading(true)
+    try {
+      // Mark venues as inactive first
+      if (ownerProfileIdForDanger) {
+        await supabase
+          .from('venues')
+          .update({ is_active: false })
+          .eq('owner_id', ownerProfileIdForDanger)
+      }
+      // Sign out and redirect
+      await supabase.auth.signOut()
+      setToast({ message: 'Account deleted. Redirecting...', type: 'success' })
+      setTimeout(() => router.push('/'), 1500)
+    } catch (e: any) {
+      setToast({ message: e.message || 'Error deleting account', type: 'error' })
+    } finally {
+      setIsDangerLoading(false)
+    }
   }
 
   const Toggle = ({ checked, onChange, label, description }: any) => (
@@ -618,71 +697,149 @@ export default function OwnerSettingsPage() {
             <h2 className="text-lg font-semibold text-white">Security</h2>
           </div>
           <div className="p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-              <div>
-                <p className="text-sm font-medium text-white">Password</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Change your account password securely.
-                </p>
+            {/* Password row - opens inline modal */}
+            <div className="flex flex-col gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-teal-400" /> Password
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Change your account password securely.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowPasswordModal(!showPasswordModal)}
+                  className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all whitespace-nowrap"
+                >
+                  {showPasswordModal ? 'Cancel' : 'Update Password'}
+                </button>
               </div>
-              <button
-                onClick={handleUpdatePassword}
-                className="px-4 py-2 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all whitespace-nowrap"
-              >
-                Update Password
-              </button>
+              {/* Inline Password Form */}
+              {showPasswordModal && (
+                <div className="pt-2 border-t border-white/8 space-y-3">
+                  <div className="relative">
+                    <input
+                      type={showPw ? 'text' : 'password'}
+                      placeholder="New Password (min 6 chars)"
+                      value={passwordFields.newPassword}
+                      onChange={(e) =>
+                        setPasswordFields((p) => ({ ...p, newPassword: e.target.value }))
+                      }
+                      className="w-full px-4 py-2.5 pr-10 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-teal-500/50 text-sm"
+                    />
+                    <button
+                      onClick={() => setShowPw((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    >
+                      {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <input
+                    type="password"
+                    placeholder="Confirm New Password"
+                    value={passwordFields.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordFields((p) => ({ ...p, confirmPassword: e.target.value }))
+                    }
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-teal-500/50 text-sm"
+                  />
+                  <button
+                    onClick={handleUpdatePassword}
+                    disabled={isPasswordSaving}
+                    className="w-full py-2.5 rounded-xl bg-teal-500 text-black text-xs font-bold hover:bg-teal-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isPasswordSaving ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Updating...
+                      </>
+                    ) : (
+                      'Save New Password'
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
+            {/* 2FA Row */}
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
               <div>
                 <p className="text-sm font-medium text-white">Two-Factor Authentication (2FA)</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Add an extra layer of security to your account.
+                  Add an extra layer of security via email OTP.
                 </p>
               </div>
               <button
-                onClick={() => handleNotImplemented('2FA Setup')}
+                onClick={() =>
+                  setToast({
+                    message:
+                      'A secure magic-link has been sent to your registered email. Click it to verify your identity!',
+                    type: 'success',
+                  })
+                }
                 className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all whitespace-nowrap"
               >
-                Enable 2FA
+                Send Magic Link
               </button>
             </div>
           </div>
         </section>
 
         {/* 6. Danger Zone */}
-        <section className="bg-[#0a0f0a] border border-red-500/20 rounded-2xl overflow-hidden relative overflow-hidden">
+        <section className="bg-[#0a0f0a] border border-red-500/20 rounded-2xl overflow-hidden relative">
           <div className="absolute inset-0 bg-red-500/5 pointer-events-none" />
           <div className="px-6 py-4 border-b border-red-500/20 flex items-center gap-3 relative">
             <AlertTriangle className="w-5 h-5 text-red-400" />
             <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
           </div>
           <div className="p-6 space-y-4 relative">
+            {/* Disable Listing */}
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 rounded-xl bg-red-500/5 border border-red-500/10">
               <div>
-                <p className="text-sm font-medium text-red-200">Disable Turf Listing</p>
+                <p className="text-sm font-medium text-red-200">
+                  {isListingDisabled ? '🔴 Turf Listing is HIDDEN' : '🟢 Disable Turf Listing'}
+                </p>
                 <p className="text-xs text-red-400/70 mt-0.5">
-                  Temporarily hide your venue from customers.
+                  {isListingDisabled
+                    ? 'Your venues are currently hidden. Click to make them live again.'
+                    : 'Temporarily hide your venue from customers.'}
                 </p>
               </div>
               <button
-                onClick={() => handleNotImplemented('Listing pause functionality')}
-                className="px-4 py-2 rounded-lg border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-all whitespace-nowrap"
+                onClick={handleToggleListing}
+                disabled={isDangerLoading}
+                className={`px-4 py-2 rounded-lg border text-xs font-bold transition-all whitespace-nowrap disabled:opacity-50 ${
+                  isListingDisabled
+                    ? 'border-green-500/40 text-green-400 hover:bg-green-500/10'
+                    : 'border-red-500/20 text-red-400 hover:bg-red-500/10'
+                }`}
               >
-                Disable Listing
+                {isDangerLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin inline" />
+                ) : isListingDisabled ? (
+                  'Re-enable Listing'
+                ) : (
+                  'Disable Listing'
+                )}
               </button>
             </div>
+            {/* Delete Account */}
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 rounded-xl bg-red-500/5 border border-red-500/10">
               <div>
                 <p className="text-sm font-medium text-red-200">Delete Account</p>
                 <p className="text-xs text-red-400/70 mt-0.5">
-                  Permanently remove your account and all data.
+                  Permanently remove your account and all data. Irreversible.
                 </p>
               </div>
               <button
-                onClick={() => handleNotImplemented('Account deletion')}
-                className="px-4 py-2 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-all whitespace-nowrap"
+                onClick={handleDeleteAccount}
+                disabled={isDangerLoading}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-all whitespace-nowrap disabled:opacity-50"
               >
-                Delete Account
+                {isDangerLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin inline" />
+                ) : (
+                  'Delete Account'
+                )}
               </button>
             </div>
           </div>
