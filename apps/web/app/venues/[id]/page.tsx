@@ -119,8 +119,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         id,
         rating,
         comment,
-        created_at,
-        customer_profiles(full_name)
+        created_at
       `
       )
       .eq('venue_id', id)

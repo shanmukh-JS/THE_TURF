@@ -31,30 +31,45 @@ export default async function PlayerDashboard() {
     redirect('/auth/login')
   }
 
-  // Get customer profile name
-  const { data: profile } = await supabase
-    .from('customer_profiles')
-    .select('full_name')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  const displayName =
-    profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player'
-
-  // Fetch customer bookings
-  const { data: bookingsData } = await supabase
-    .from('bookings')
-    .select(
-      `
+  // Fetch everything in parallel
+  const [
+    { data: profile },
+    { data: bookingsData },
+    { data: venuesData },
+    { count: favoritesCount },
+  ] = await Promise.all([
+    supabase.from('customer_profiles').select('full_name').eq('user_id', user.id).maybeSingle(),
+    supabase
+      .from('bookings')
+      .select(
+        `
       id,
       total_amount,
       status,
       slots(date, start_time, end_time),
       venues(name, address)
     `
-    )
-    .eq('customer_id', user.id)
+      )
+      .eq('customer_id', user.id),
+    supabase
+      .from('venues')
+      .select(
+        `
+      id,
+      name,
+      address,
+      areas(name),
+      venue_pricing(price)
+    `
+      )
+      .eq('verification_status', 'APPROVED')
+      .eq('is_disabled', false)
+      .limit(3),
+    supabase.from('favorites').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+  ])
 
+  const displayName =
+    profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player'
   const bookings = bookingsData || []
 
   // Calculations
@@ -86,30 +101,7 @@ export default async function PlayerDashboard() {
     .filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
     .reduce((sum, b) => sum + Number(b.total_amount), 0)
 
-  // Get some venues to show in "Nearby/Explore Turfs"
-  const { data: venuesData } = await supabase
-    .from('venues')
-    .select(
-      `
-      id,
-      name,
-      address,
-      areas(name),
-      venue_pricing(price)
-    `
-    )
-    .eq('verification_status', 'APPROVED')
-    .eq('is_disabled', false)
-    .limit(3)
-
   const venues = venuesData || []
-
-  // Fetch favorites count
-  const { count: favoritesCount } = await supabase
-    .from('favorites')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-
   const totalFavorites = favoritesCount || 0
 
   // Next upcoming booking highlight
