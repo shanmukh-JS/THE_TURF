@@ -77,15 +77,18 @@ export function Navbar() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-              >
-                {l.label}
-              </Link>
-            ))}
+            {!pathname.startsWith('/owner') &&
+              !pathname.startsWith('/player') &&
+              !pathname.startsWith('/admin') &&
+              navLinks.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  {l.label}
+                </Link>
+              ))}
           </nav>
 
           {/* Desktop Auth */}
@@ -203,16 +206,19 @@ export function Navbar() {
         {/* Mobile Menu */}
         {mobileOpen && (
           <div className="md:hidden border-t border-white/8 bg-black/90 backdrop-blur-xl px-6 py-4 space-y-1">
-            {navLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setMobileOpen(false)}
-                className="block px-4 py-3 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
-              >
-                {l.label}
-              </Link>
-            ))}
+            {!pathname.startsWith('/owner') &&
+              !pathname.startsWith('/player') &&
+              !pathname.startsWith('/admin') &&
+              navLinks.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-3 rounded-xl text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  {l.label}
+                </Link>
+              ))}
             {!user ? (
               <div className="border-t border-white/8 pt-3 mt-3 flex flex-col gap-2">
                 <Link
