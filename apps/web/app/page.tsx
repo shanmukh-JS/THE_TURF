@@ -77,10 +77,10 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
-      <section className="relative w-full h-[85vh] min-h-[500px] max-h-[750px] flex items-center justify-center overflow-hidden">
+      <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
         {/* Background Stadium Image with CSS Boomerang Animation */}
         <div
-          className="absolute inset-0 w-full h-full opacity-75 bg-cover bg-center bg-no-repeat z-0 animate-boomerang"
+          className="absolute inset-0 opacity-75 bg-cover bg-center z-0 animate-boomerang"
           style={{
             backgroundImage: "url('/images/stadium-bg.png')",
           }}
