@@ -73,6 +73,7 @@ const statusConfig = {
 
 export default async function OwnerDashboardPage() {
   const supabase = await createClient()
+  let customerMap = new Map()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -165,7 +166,6 @@ export default async function OwnerDashboardPage() {
             .select('user_id, full_name')
             .in('user_id', customerIds as string[])
 
-          const customerMap = new Map()
           if (customerProfiles) {
             customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
           }
