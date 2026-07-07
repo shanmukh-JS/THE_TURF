@@ -56,18 +56,42 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('users')
-      .select(
-        `
-        *,
-        owner_profiles(full_name, business_name),
-        customer_profiles(full_name)
-      `
-      )
-      .order('created_at', { ascending: false })
 
-    if (data) setUsers(data)
+    // Fetch all owners
+    const { data: owners } = await supabase.from('owner_profiles').select(`
+        *,
+        users(email, created_at, is_suspended, phone)
+      `)
+
+    // Fetch all players
+    const { data: customers } = await supabase.from('customer_profiles').select(`
+        *,
+        users(email, created_at, is_suspended, phone)
+      `)
+
+    const formattedOwners = (owners || []).map((o: any) => ({
+      id: o.user_id,
+      email: o.users?.email || 'owner@truf.com',
+      phone: o.users?.phone || '—',
+      role: 'OWNER',
+      created_at: o.users?.created_at || new Date().toISOString(),
+      is_suspended: o.users?.is_suspended || false,
+      owner_profiles: o,
+      customer_profiles: null,
+    }))
+
+    const formattedCustomers = (customers || []).map((c: any) => ({
+      id: c.user_id,
+      email: c.users?.email || 'player@truf.com',
+      phone: c.users?.phone || '—',
+      role: 'CUSTOMER',
+      created_at: c.users?.created_at || new Date().toISOString(),
+      is_suspended: c.users?.is_suspended || false,
+      owner_profiles: null,
+      customer_profiles: c,
+    }))
+
+    setUsers([...formattedOwners, ...formattedCustomers])
     setLoading(false)
   }
 
@@ -80,6 +104,12 @@ export default function AdminUsersPage() {
     const channel = supabase
       .channel('admin-users-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchUsers())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'owner_profiles' }, () =>
+        fetchUsers()
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customer_profiles' }, () =>
+        fetchUsers()
+      )
       .subscribe()
 
     return () => {
