@@ -82,8 +82,7 @@ export default function HomePage() {
         <div
           className="absolute inset-0 opacity-75 bg-cover bg-center z-0 animate-boomerang"
           style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2000&auto=format&fit=crop')",
+            backgroundImage: "url('/images/stadium-bg.png')",
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black z-10" />
