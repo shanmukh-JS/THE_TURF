@@ -281,8 +281,33 @@ export default function AdminApprovalsPage() {
 
       {/* REVIEW DETAILS MODAL */}
       {selectedVenue && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-40 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-5xl bg-[#070c07] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-40 flex items-center justify-center p-6 overflow-y-auto">
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+            .transparent-scrollbar::-webkit-scrollbar {
+              width: 6px;
+              height: 6px;
+              background: transparent;
+            }
+            .transparent-scrollbar::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            .transparent-scrollbar::-webkit-scrollbar-thumb {
+              background: rgba(255, 255, 255, 0.15);
+              border-radius: 9999px;
+            }
+            .transparent-scrollbar::-webkit-scrollbar-thumb:hover {
+              background: rgba(255, 255, 255, 0.3);
+            }
+            .transparent-scrollbar {
+              scrollbar-width: thin;
+              scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+            }
+          `,
+            }}
+          />
+          <div className="w-full max-w-5xl bg-[#070c07] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 max-h-[85vh] overflow-y-auto transparent-scrollbar my-auto">
             {/* Modal Header */}
             <div className="flex justify-between items-start border-b border-white/10 pb-4">
               <div>
