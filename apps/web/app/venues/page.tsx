@@ -31,40 +31,62 @@ export default function VenuesPage() {
           city:cities(name),
           area:areas(name),
           venue_pricing(price),
-          venue_images(url, is_cover)
+          venue_images(url, is_cover),
+          slots(status),
+          reviews(rating)
         `
         )
         .eq('verification_status', 'APPROVED')
         .eq('is_disabled', false)
 
       if (!error && data) {
-        // Map data to the format UI expects
-        // Map data to the format UI expects
         const mappedVenues = data.map((v) => {
           const isTrending = v.id.charCodeAt(0) % 3 === 0
-          const distance = (1.2 + (v.id.charCodeAt(1) % 4) * 0.6).toFixed(1)
-          const slotsCount = 3 + (v.id.charCodeAt(2) % 5)
-          const friendPlayed = v.id.charCodeAt(3) % 4 === 0
+
+          // Live available slots count
+          const availableSlots = v.slots || []
+          const slotsCount = availableSlots.filter((s: any) => s.status === 'Available').length
+
+          // Live ratings calculation from reviews table
+          const venueReviews = v.reviews || []
+          const hasReviews = venueReviews.length > 0
+          const rating = hasReviews
+            ? (
+                venueReviews.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
+                venueReviews.length
+              ).toFixed(1)
+            : null
+          const reviewsCount = venueReviews.length
+
+          // Live amenities list
+          const amenities =
+            v.facilities && v.facilities.length > 0
+              ? v.facilities
+              : ['Parking', 'WiFi', 'Floodlights']
+
+          // Live operating hours
+          const peakHours = v.operating_hours || '7:00 PM – 10:00 PM'
 
           return {
             id: v.id,
             name: v.name,
             area: v.area?.name || 'Unknown Area',
             city: v.city?.name || 'Unknown City',
-            rating: (4.5 + (v.id.charCodeAt(0) % 5) * 0.1).toFixed(1),
-            reviews: Math.floor(Math.random() * 200) + 10,
+            rating,
+            reviews: reviewsCount,
             price: v.venue_pricing?.[0]?.price || 1000,
             pitches: v.pitches,
-            amenities: ['Parking', 'WiFi', 'Floodlights'],
+            amenities,
             image:
               v.venue_images?.find((img: any) => img.is_cover)?.url ||
+              v.venue_images?.[0]?.url ||
               'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop',
             badge: isTrending ? 'Trending' : null,
             isIndoor: v.is_indoor,
-            distance,
+            distance: null, // Only show real distance if GPS coordinate matches are implemented
             slotsCount,
-            friendPlayed,
-            peakHours: '7:00 PM – 10:00 PM',
+            friendPlayed: false,
+            peakHours,
           }
         })
         setAllVenues(mappedVenues)
@@ -209,16 +231,25 @@ export default function VenuesPage() {
                     </h2>
                     <div className="flex items-center gap-1 text-yellow-400 text-sm font-semibold flex-shrink-0">
                       <Star className="w-3.5 h-3.5 fill-yellow-400" />
-                      {v.rating}
-                      <span className="text-gray-500 font-normal text-[10px]">({v.reviews})</span>
+                      {v.rating ? (
+                        <>
+                          {v.rating}
+                          <span className="text-gray-500 font-normal text-[10px]">
+                            ({v.reviews})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-gray-400 font-normal text-xs">New</span>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-green-400" /> {v.distance} km
+                      <MapPin className="w-3.5 h-3.5 text-green-400" />
+                      {v.distance ? `${v.distance} km · ` : ''}
+                      {v.area}
                     </span>
-                    <span>{v.area}</span>
                   </div>
                 </div>
 
