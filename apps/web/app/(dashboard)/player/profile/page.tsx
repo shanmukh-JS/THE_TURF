@@ -16,29 +16,35 @@ export default async function CustomerProfilePage() {
     redirect('/auth/login')
   }
 
-  // Fetch bookings and favorites to populate profile stats
-  const [{ data: bookingsData }, { data: favoritesData }] = await Promise.all([
-    supabase
-      .from('bookings')
-      .select(
-        `
+  // Fetch bookings, favorites, and customer profile
+  const [{ data: bookingsData }, { data: favoritesData }, { data: profileData }] =
+    await Promise.all([
+      supabase
+        .from('bookings')
+        .select(
+          `
         id,
         status,
         slots(date, start_time),
         venues(name)
       `
-      )
-      .eq('customer_id', user.id),
-    supabase
-      .from('favorites')
-      .select(
-        `
+        )
+        .eq('customer_id', user.id),
+      supabase
+        .from('favorites')
+        .select(
+          `
         venues:venue_id (name)
       `
-      )
-      .eq('user_id', user.id)
-      .limit(1),
-  ])
+        )
+        .eq('user_id', user.id)
+        .limit(1),
+      supabase
+        .from('customer_profiles')
+        .select('profile_image_url, banner_image_url, full_name')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ])
 
   const bookings = bookingsData || []
 
@@ -61,6 +67,7 @@ export default async function CustomerProfilePage() {
   return (
     <PlayerProfileClient
       user={user}
+      customerProfile={profileData}
       bookings={bookings}
       favoriteTurf={favoriteTurf}
       memberSince={memberSince}

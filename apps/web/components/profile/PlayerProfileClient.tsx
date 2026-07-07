@@ -23,6 +23,7 @@ import {
 
 interface PlayerProfileClientProps {
   user: any
+  customerProfile?: any
   bookings: any[]
   favoriteTurf: string
   memberSince: string
@@ -31,6 +32,7 @@ interface PlayerProfileClientProps {
 
 export function PlayerProfileClient({
   user,
+  customerProfile,
   bookings,
   favoriteTurf,
   memberSince,
@@ -41,8 +43,12 @@ export function PlayerProfileClient({
 
   // State management
   const [isEditing, setIsEditing] = useState(false)
-  const [fullName, setFullName] = useState(user.user_metadata?.full_name || 'Valued Gamer')
+  const [fullName, setFullName] = useState(
+    customerProfile?.full_name || user.user_metadata?.full_name || 'Valued Gamer'
+  )
   const [editName, setEditName] = useState(fullName)
+  const [profileImage, setProfileImage] = useState<File | null>(null)
+  const [bannerImage, setBannerImage] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -76,11 +82,38 @@ export function PlayerProfileClient({
     setToast(null)
 
     try {
+      let profileImageUrl = customerProfile?.profile_image_url || null
+      let bannerImageUrl = customerProfile?.banner_image_url || null
+
+      if (profileImage) {
+        const fileExt = profileImage.name.split('.').pop()
+        const filePath = `${user.id}/profile_${Math.random()}.${fileExt}`
+        const { error: uploadError } = await supabase.storage
+          .from('player_profiles')
+          .upload(filePath, profileImage, { upsert: true })
+        if (uploadError) throw uploadError
+        const { data } = supabase.storage.from('player_profiles').getPublicUrl(filePath)
+        profileImageUrl = data.publicUrl
+      }
+
+      if (bannerImage) {
+        const fileExt = bannerImage.name.split('.').pop()
+        const filePath = `${user.id}/banner_${Math.random()}.${fileExt}`
+        const { error: uploadError } = await supabase.storage
+          .from('player_profiles')
+          .upload(filePath, bannerImage, { upsert: true })
+        if (uploadError) throw uploadError
+        const { data } = supabase.storage.from('player_profiles').getPublicUrl(filePath)
+        bannerImageUrl = data.publicUrl
+      }
+
       // 1. Update public.customer_profiles table
       const { error: profileError } = await supabase.from('customer_profiles').upsert(
         {
           user_id: user.id,
           full_name: editName.trim(),
+          profile_image_url: profileImageUrl,
+          banner_image_url: bannerImageUrl,
         },
         { onConflict: 'user_id' }
       )
@@ -134,7 +167,7 @@ export function PlayerProfileClient({
         <div
           className="h-44 bg-cover bg-center relative"
           style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1200&auto=format&fit=crop')`,
+            backgroundImage: `url('${customerProfile?.banner_image_url || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1200&auto=format&fit=crop'}')`,
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
@@ -144,8 +177,16 @@ export function PlayerProfileClient({
         <div className="px-8 pb-6 flex flex-col sm:flex-row sm:items-end gap-5 -mt-10 relative z-10">
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl blur opacity-30" />
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0f240f] to-green-950 border-2 border-green-500/40 flex items-center justify-center text-4xl font-extrabold text-green-400 relative">
-              {fullName.charAt(0).toUpperCase()}
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0f240f] to-green-950 border-2 border-green-500/40 flex items-center justify-center text-4xl font-extrabold text-green-400 relative overflow-hidden">
+              {customerProfile?.profile_image_url ? (
+                <img
+                  src={customerProfile.profile_image_url}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                fullName.charAt(0).toUpperCase()
+              )}
             </div>
             <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-green-500 border-2 border-black flex items-center justify-center text-xs font-black text-black shadow-lg">
               {level}
@@ -341,6 +382,32 @@ export function PlayerProfileClient({
                     disabled={loading}
                     placeholder="Enter your name"
                     className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
+                    Profile Image
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setProfileImage(e.target.files?.[0] || null)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-500/20 file:text-green-400 hover:file:bg-green-500/30"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
+                    Banner Background
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setBannerImage(e.target.files?.[0] || null)}
+                    disabled={loading}
+                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-500/20 file:text-green-400 hover:file:bg-green-500/30"
                   />
                 </div>
 
