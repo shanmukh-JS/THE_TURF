@@ -83,7 +83,7 @@ export default async function PlayerDashboard() {
   const upcomingBookingsCount = upcomingList.length
 
   const totalSpent = bookings
-    .filter((b: any) => b.status === 'CONFIRMED')
+    .filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
     .reduce((sum, b) => sum + Number(b.total_amount), 0)
 
   // Get some venues to show in "Nearby/Explore Turfs"
