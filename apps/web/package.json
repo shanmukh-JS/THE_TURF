@@ -23,6 +23,7 @@
     "nodemailer": "^9.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-easy-crop": "^6.2.0",
     "tailwind-merge": "^3.6.0",
     "zustand": "^5.0.14"
   },

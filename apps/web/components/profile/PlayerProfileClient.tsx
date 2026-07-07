@@ -20,6 +20,7 @@ import {
   DashboardAnimationWrapper,
   DashboardAnimationItem,
 } from '@/components/ui/DashboardAnimationWrapper'
+import { ImageCropperModal } from '@/components/ui/ImageCropperModal'
 
 interface PlayerProfileClientProps {
   user: any
@@ -49,8 +50,25 @@ export function PlayerProfileClient({
   const [editName, setEditName] = useState(fullName)
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [bannerImage, setBannerImage] = useState<File | null>(null)
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null)
+  const [cropTarget, setCropTarget] = useState<'profile' | 'banner' | null>(null)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  const handleFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: 'profile' | 'banner'
+  ) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setCropImageSrc(reader.result as string)
+        setCropTarget(target)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   // Leveling engine parameters
   const totalXp = bookings.length * 250
@@ -387,12 +405,17 @@ export function PlayerProfileClient({
 
                 <div className="space-y-2">
                   <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                    Profile Image
+                    Profile Image{' '}
+                    {profileImage && (
+                      <span className="text-green-400 lowercase normal-case">
+                        (Ready to upload)
+                      </span>
+                    )}
                   </label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setProfileImage(e.target.files?.[0] || null)}
+                    onChange={(e) => handleFileSelect(e, 'profile')}
                     disabled={loading}
                     className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-500/20 file:text-green-400 hover:file:bg-green-500/30"
                   />
@@ -400,12 +423,17 @@ export function PlayerProfileClient({
 
                 <div className="space-y-2">
                   <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                    Banner Background
+                    Banner Background{' '}
+                    {bannerImage && (
+                      <span className="text-green-400 lowercase normal-case">
+                        (Ready to upload)
+                      </span>
+                    )}
                   </label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setBannerImage(e.target.files?.[0] || null)}
+                    onChange={(e) => handleFileSelect(e, 'banner')}
                     disabled={loading}
                     className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-500/20 file:text-green-400 hover:file:bg-green-500/30"
                   />
@@ -453,6 +481,24 @@ export function PlayerProfileClient({
             </div>
           </div>
         </div>
+      )}
+      {/* Crop Modal */}
+      {cropImageSrc && cropTarget && (
+        <ImageCropperModal
+          imageSrc={cropImageSrc}
+          aspectRatio={cropTarget === 'profile' ? 1 : 3}
+          isCircular={cropTarget === 'profile'}
+          onCancel={() => {
+            setCropImageSrc(null)
+            setCropTarget(null)
+          }}
+          onCropComplete={(croppedFile) => {
+            if (cropTarget === 'profile') setProfileImage(croppedFile)
+            if (cropTarget === 'banner') setBannerImage(croppedFile)
+            setCropImageSrc(null)
+            setCropTarget(null)
+          }}
+        />
       )}
     </DashboardAnimationWrapper>
   )
