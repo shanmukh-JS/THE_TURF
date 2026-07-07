@@ -518,7 +518,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={emailForm.provider}
                   onChange={(e) => setEmailForm({ ...emailForm, provider: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-green-500"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-green-500 [&>option]:bg-[#060d06] [&>option]:text-white"
                 >
                   <option value="smtp">SMTP (Gmail, Outlook, custom)</option>
                   <option value="resend">Resend (Simulated)</option>
@@ -597,7 +597,7 @@ export default function AdminSettingsPage() {
                       onChange={(e) =>
                         setEmailForm({ ...emailForm, encryption_type: e.target.value })
                       }
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-green-500"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-green-500 [&>option]:bg-[#060d06] [&>option]:text-white"
                     >
                       <option value="TLS">TLS</option>
                       <option value="SSL">SSL</option>
@@ -710,7 +710,7 @@ export default function AdminSettingsPage() {
                   setLogsStatus(e.target.value)
                   setLogsPage(1)
                 }}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500"
+                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500 [&>option]:bg-[#060d06] [&>option]:text-white"
               >
                 <option value="">All Statuses</option>
                 <option value="Sent">Sent</option>
@@ -783,7 +783,7 @@ export default function AdminSettingsPage() {
                           })}
                         </td>
                         <td className="p-3 text-right">
-                          {log.status === 'Failed' && (
+                          {log.status === 'Failed' ? (
                             <button
                               type="button"
                               onClick={() => handleRetryEmail(log.id)}
@@ -797,6 +797,11 @@ export default function AdminSettingsPage() {
                               )}
                               Retry
                             </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/5 border border-white/5 text-gray-500 text-[10px] font-bold rounded-lg ml-auto">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Delivered
+                            </span>
                           )}
                         </td>
                       </tr>

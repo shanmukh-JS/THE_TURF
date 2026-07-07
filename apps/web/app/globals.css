@@ -105,3 +105,9 @@ html {
   animation: boomerang 10s ease-in-out infinite;
   will-change: transform;
 }
+
+/* Fix Native Dropdowns (select > option) in Dark Mode */
+.dark option {
+  background-color: #060d06;
+  color: white;
+}
