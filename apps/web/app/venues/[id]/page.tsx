@@ -47,6 +47,23 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
+  const handleSelectSlot = (slot: any) => {
+    setSelectedSlot(slot)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'tg_draft_booking',
+        JSON.stringify({
+          venueId: id,
+          venueName: venue?.name || 'Olympia Turf',
+          slotDate: slot.date,
+          slotTime: `${formatSlotTime(slot.start_time)} – ${formatSlotTime(slot.end_time)}`,
+          price: slot.price,
+          timestamp: Date.now(),
+        })
+      )
+    }
+  }
+
   // Filter slots by sport
   const [sportFilter, setSportFilter] = useState('ALL')
 
@@ -63,9 +80,11 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
     // Get current user session
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    setCurrentUser(user)
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (session) {
+      setCurrentUser(session.user)
+    }
 
     // Fetch venue details
     const { data: venueData } = await supabase
@@ -231,6 +250,11 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       setToast({ message: slotError.message, type: 'error' })
       setBookingLoading(false)
       return
+    }
+
+    // Clear draft booking from LocalStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('tg_draft_booking')
     }
 
     setToast({ message: 'Booking confirmed! Redirecting...', type: 'success' })
@@ -436,7 +460,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                       </div>
 
                       <button
-                        onClick={() => setSelectedSlot(slot)}
+                        onClick={() => handleSelectSlot(slot)}
                         className="w-full py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-xs transition-colors flex items-center justify-center"
                       >
                         Book Now
