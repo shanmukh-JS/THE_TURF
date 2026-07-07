@@ -71,6 +71,15 @@ export default async function PlayerDashboard() {
     })
     .sort((a: any, b: any) => new Date(a.slots.date).getTime() - new Date(b.slots.date).getTime())
 
+  const pastList = bookings
+    .filter((b: any) => {
+      if (!b.slots) return false
+      const slotDate = new Date(b.slots.date)
+      slotDate.setHours(23, 59, 59, 999)
+      return slotDate < now
+    })
+    .sort((a: any, b: any) => new Date(b.slots.date).getTime() - new Date(a.slots.date).getTime())
+
   const upcomingBookingsCount = upcomingList.length
 
   const totalSpent = bookings
@@ -94,6 +103,14 @@ export default async function PlayerDashboard() {
     .limit(3)
 
   const venues = venuesData || []
+
+  // Fetch favorites count
+  const { count: favoritesCount } = await supabase
+    .from('favorites')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+
+  const totalFavorites = favoritesCount || 0
 
   // Next upcoming booking highlight
   const nextBooking: any = upcomingList[0] || null
@@ -134,7 +151,7 @@ export default async function PlayerDashboard() {
         />
         <StatCard
           label="Favorite Turfs"
-          value="0"
+          value={totalFavorites.toString()}
           accent="amber"
           icon={<Heart className="w-5 h-5" />}
         />
@@ -218,13 +235,13 @@ export default async function PlayerDashboard() {
               </Link>
             </div>
 
-            {bookings.length === 0 ? (
+            {pastList.length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-500">
                 You haven&apos;t played any matches yet.
               </div>
             ) : (
               <div className="divide-y divide-white/5">
-                {bookings.slice(0, 3).map((b: any, index) => (
+                {pastList.slice(0, 3).map((b: any, index) => (
                   <div
                     key={b.id || index}
                     className="px-6 py-4 flex items-center justify-between hover:bg-white/[0.01] transition-colors"

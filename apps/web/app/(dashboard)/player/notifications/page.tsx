@@ -10,18 +10,6 @@ export const metadata = {
   title: 'Notifications | TURF GAMING',
 }
 
-const mockNotifications = [
-  {
-    id: 1,
-    title: 'Welcome to TURF GAMING!',
-    description: 'Explore the best cricket boxes in your city and book your slots instantly.',
-    time: 'Just now',
-    type: 'welcome',
-    icon: Info,
-    color: 'text-green-400 bg-green-500/10',
-  },
-]
-
 export default async function CustomerNotificationsPage() {
   const supabase = await createClient()
   const {
@@ -30,6 +18,42 @@ export default async function CustomerNotificationsPage() {
 
   if (!user) {
     redirect('/auth/login')
+  }
+
+  const { data: notificationsData } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const notifications = notificationsData || []
+
+  // Function to format time elapsed
+  const timeAgo = (dateStr: string) => {
+    const seconds = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 1000)
+    if (seconds < 60) return 'Just now'
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    const days = Math.floor(hours / 24)
+    return `${days}d ago`
+  }
+
+  const getIconAndColor = (type: string) => {
+    switch (type) {
+      case 'SUCCESS':
+        return { icon: CalendarCheck, color: 'text-green-400 bg-green-500/10' }
+      case 'WARNING':
+        return { icon: ShieldAlert, color: 'text-amber-400 bg-amber-500/10' }
+      case 'ERROR':
+        return { icon: ShieldAlert, color: 'text-red-400 bg-red-500/10' }
+      case 'BOOKING':
+        return { icon: CreditCard, color: 'text-blue-400 bg-blue-500/10' }
+      case 'INFO':
+      default:
+        return { icon: Info, color: 'text-blue-400 bg-blue-500/10' }
+    }
   }
 
   return (
@@ -42,7 +66,7 @@ export default async function CustomerNotificationsPage() {
       </DashboardAnimationItem>
 
       <DashboardAnimationItem className="max-w-2xl">
-        {mockNotifications.length === 0 ? (
+        {notifications.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-white/10 rounded-2xl bg-white/[0.02] space-y-3">
             <Bell className="w-8 h-8 text-gray-600 mx-auto" />
             <p className="text-sm text-gray-500">
@@ -51,24 +75,30 @@ export default async function CustomerNotificationsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {mockNotifications.map((n) => {
-              const Icon = n.icon
+            {notifications.map((n) => {
+              const { icon: Icon, color } = getIconAndColor(n.type)
               return (
                 <div
                   key={n.id}
-                  className="rounded-2xl border border-white/8 bg-white/[0.03] p-5 flex gap-4 hover:border-white/15 transition-all"
+                  className={`rounded-2xl border border-white/8 ${n.is_read ? 'bg-white/[0.01]' : 'bg-white/[0.04] border-white/15'} p-5 flex gap-4 hover:border-white/15 transition-all`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${n.color}`}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}
                   >
                     <Icon className="w-5 h-5" />
                   </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex justify-between items-start gap-4">
-                      <h3 className="font-bold text-white text-sm">{n.title}</h3>
-                      <span className="text-[10px] text-gray-500 whitespace-nowrap">{n.time}</span>
+                      <h3
+                        className={`text-sm ${n.is_read ? 'text-gray-300 font-medium' : 'text-white font-bold'}`}
+                      >
+                        {n.title}
+                      </h3>
+                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                        {timeAgo(n.created_at)}
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-400 leading-relaxed">{n.description}</p>
+                    <p className="text-xs text-gray-400 leading-relaxed">{n.message}</p>
                   </div>
                 </div>
               )
