@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   Clock,
+  Bell,
 } from 'lucide-react'
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/owner/bookings', icon: CalendarDays, label: 'Bookings' },
   { href: '/owner/revenue', icon: TrendingUp, label: 'Revenue' },
   { href: '/owner/reviews', icon: Star, label: 'Reviews' },
+  { href: '/owner/notifications', icon: Bell, label: 'Notifications' },
   { href: '/owner/settings', icon: Settings, label: 'Settings' },
 ]
 

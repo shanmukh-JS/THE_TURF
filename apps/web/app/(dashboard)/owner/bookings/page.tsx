@@ -278,6 +278,32 @@ export default function OwnerBookingsPage() {
       setToast({ message: error.message, type: 'error' })
     } else {
       setToast({ message: 'Booking accepted!', type: 'success' })
+
+      // Payment notification simulation
+      if (ownerProfileId) {
+        const { data: settings } = await supabase
+          .from('owner_settings')
+          .select('notify_payments')
+          .eq('owner_id', ownerProfileId)
+          .maybeSingle()
+
+        if (settings?.notify_payments) {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser()
+          const booking = bookings.find((b) => b.id === bookingId)
+
+          if (user && booking) {
+            await supabase.from('notifications').insert({
+              user_id: user.id,
+              title: 'Payment Received!',
+              message: `Payment confirmed for booking #${bookingId.substring(0, 8).toUpperCase()}. Amount: ₹${booking.amount}`,
+              type: 'SUCCESS',
+            })
+          }
+        }
+      }
+
       setSelectedBooking(null)
       fetchBookings()
     }

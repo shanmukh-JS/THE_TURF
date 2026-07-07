@@ -107,6 +107,12 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       return
     }
 
+    const { data: ownerProfileData } = await supabase
+      .from('owner_profiles')
+      .select('user_id')
+      .eq('id', venueData.owner_id)
+      .maybeSingle()
+
     // Format venue object
     const formattedVenue = {
       id: venueData.id,
@@ -127,6 +133,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
           : [
               'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop',
             ],
+      ownerUserId: ownerProfileData?.user_id || null,
     }
 
     setVenue(formattedVenue)
@@ -156,7 +163,9 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     // Fetch owner settings for buffer time and auto-accept
     const { data: ownerSettingsData } = await supabase
       .from('owner_settings')
-      .select('auto_accept_bookings, booking_buffer_time, cancellation_policy')
+      .select(
+        'auto_accept_bookings, booking_buffer_time, cancellation_policy, notify_bookings, notify_email'
+      )
       .eq('owner_id', venueData.owner_id)
       .maybeSingle()
 
@@ -281,6 +290,25 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       setToast({ message: slotError.message, type: 'error' })
       setBookingLoading(false)
       return
+    }
+
+    // 4. Notifications & Emails
+    if (ownerSettings?.notify_bookings && venue?.ownerUserId) {
+      await supabase.from('notifications').insert({
+        user_id: venue.ownerUserId,
+        title: 'New Booking!',
+        message: `${currentUser.email} booked a slot at ${venue.name} for ₹${selectedSlot.price}.`,
+        type: 'BOOKING',
+      })
+    }
+
+    if (ownerSettings?.notify_email) {
+      await supabase.from('email_logs').insert({
+        recipient_email: 'owner@turfgaming.com',
+        subject: `New Booking at ${venue.name}`,
+        body: `You have received a new booking from ${currentUser.email}.`,
+        status: 'SENT',
+      })
     }
 
     // Clear draft booking from LocalStorage
