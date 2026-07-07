@@ -111,15 +111,13 @@ export function PlayerSidebar() {
         {/* Footer */}
         <div className="p-4 border-t border-white/8">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group">
-            {user?.logoUrl ? (
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 flex-shrink-0">
-                <img src={user.logoUrl} alt="Profile" className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                {initials}
-              </div>
-            )}
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 overflow-hidden relative">
+              {user?.logoUrl ? (
+                <img src={user.logoUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{displayName}</p>
               <p className="text-xs text-gray-500 truncate">{email}</p>
