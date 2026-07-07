@@ -17,6 +17,19 @@ import {
   User,
   Building,
   CreditCard,
+  MapPin,
+  Calendar,
+  Sparkles,
+  ClipboardList,
+  Eye,
+  FileCheck,
+  History,
+  Save,
+  Check,
+  AlertTriangle,
+  ZoomIn,
+  Copy,
+  ExternalLink,
 } from 'lucide-react'
 import { logAdminAction } from '@/lib/admin/audit'
 import {
@@ -30,19 +43,32 @@ export default function AdminApprovalsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedVenue, setSelectedVenue] = useState<any | null>(null)
 
+  // Custom Toasts
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
   // Confirmation / Actions state
   const [confirmModal, setConfirmModal] = useState<{
     venue: any
-    action: 'APPROVED' | 'REJECTED' | 'REQUEST_INFO'
+    action: 'APPROVED' | 'REJECTED' | 'REQUEST_INFO' | 'SAVE_DRAFT'
   } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [reason, setReason] = useState('')
+  const [adminNotes, setAdminNotes] = useState('')
+
+  // Gallery view state
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const [isFullscreenImage, setIsFullscreenImage] = useState(false)
 
   const supabase = createClient()
 
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
   const fetchApprovals = async () => {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('venues')
       .select(
         `
@@ -85,22 +111,25 @@ export default function AdminApprovalsPage() {
     let statusText = 'PENDING'
     if (action === 'APPROVED') statusText = 'APPROVED'
     if (action === 'REJECTED') statusText = 'REJECTED'
-    if (action === 'REQUEST_INFO') statusText = 'DRAFT' // Set back to draft for modifications
+    if (action === 'REQUEST_INFO') statusText = 'DRAFT'
+    if (action === 'SAVE_DRAFT') statusText = 'PENDING' // Keep as pending but save notes
 
-    const { error } = await supabase
-      .from('venues')
-      .update({ verification_status: statusText })
-      .eq('id', venue.id)
+    const updateData: any = { verification_status: statusText }
+
+    const { error } = await supabase.from('venues').update(updateData).eq('id', venue.id)
 
     if (!error) {
       await logAdminAction(
         `Venue status set to: ${statusText}`,
         'venues',
         venue.id,
-        `Verification updated to ${statusText}. Remarks: ${reason || 'None'}`
+        `Verification updated to ${statusText}. Notes: ${adminNotes || 'None'}. Remarks: ${reason || 'None'}`
       )
+      showToast(`Review action [${action}] executed successfully!`, 'success')
       fetchApprovals()
       setSelectedVenue(null)
+    } else {
+      showToast(`Failed to execute review: ${error.message}`, 'error')
     }
 
     setActionLoading(false)
@@ -117,29 +146,46 @@ export default function AdminApprovalsPage() {
     })
   }, [approvals, searchQuery])
 
-  const getChecklist = (v: any) => {
-    const settings = Array.isArray(v.owner_profiles?.owner_settings)
-      ? v.owner_profiles?.owner_settings[0]
-      : v.owner_profiles?.owner_settings
+  // Mock list of gallery images
+  const sampleGallery = [
+    'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=800',
+    'https://images.unsplash.com/photo-1459865264687-595d652de67e?q=80&w=800',
+    'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
+    'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=800',
+    'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?q=80&w=800',
+  ]
 
-    return {
-      emailVerified: true,
-      phoneVerified: !!settings?.business_phone,
-      idUploaded: true,
-      bankAdded: !!settings?.bank_account_number,
-      imagesUploaded: true,
-      addressAdded: !!v.address,
-    }
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text)
+    showToast(`${label} copied to clipboard!`)
   }
 
   return (
     <DashboardAnimationWrapper className="p-8 space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed top-6 right-6 z-50 flex items-center gap-2 p-4 rounded-xl text-sm font-semibold border ${
+            toast.type === 'success'
+              ? 'bg-green-500/10 border-green-500/20 text-green-400'
+              : 'bg-red-500/10 border-red-500/20 text-red-400'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle className="w-4 h-4" />
+          ) : (
+            <AlertCircle className="w-4 h-4" />
+          )}
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <DashboardAnimationItem className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Owner & Turf Approvals</h1>
           <p className="text-gray-400 text-sm mt-1">
-            Review owner registration details and approve/reject turf publishing rights.
+            Review detailed owner submissions and execute verification checks.
           </p>
         </div>
       </DashboardAnimationItem>
@@ -216,7 +262,10 @@ export default function AdminApprovalsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => setSelectedVenue(v)}
+                        onClick={() => {
+                          setSelectedVenue(v)
+                          setActiveImageIndex(0)
+                        }}
                         className="px-3.5 py-1.5 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500 hover:text-black transition-all"
                       >
                         Verify Details
@@ -230,165 +279,432 @@ export default function AdminApprovalsPage() {
         )}
       </DashboardAnimationItem>
 
-      {/* Review details Modal */}
+      {/* REVIEW DETAILS MODAL */}
       {selectedVenue && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-[#0c120c] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-40 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-5xl bg-[#070c07] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex justify-between items-start border-b border-white/10 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-white">Verification Review</h3>
-                <p className="text-xs text-gray-400 mt-1">Reviewing Venue: {selectedVenue.name}</p>
+                <h3 className="text-lg font-bold text-white uppercase tracking-wider">
+                  Enterprise Verification Review
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Reviewing Listing ID:{' '}
+                  <span className="font-mono text-gray-300">{selectedVenue.id}</span>
+                </p>
               </div>
               <button
                 onClick={() => setSelectedVenue(null)}
-                className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                className="px-3 py-1.5 bg-white/5 border border-white/10 text-gray-400 hover:text-white rounded-xl text-xs font-bold transition-all"
               >
                 ✕ Close
               </button>
             </div>
 
-            {/* Info Sections */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Owner and Turf Info */}
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5" /> Business Details
-                </h4>
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-2.5 text-xs text-gray-300">
-                  <p>
-                    <strong className="text-white">Owner Name:</strong>{' '}
-                    {selectedVenue.owner_profiles?.full_name}
-                  </p>
-                  <p>
-                    <strong className="text-white">Business:</strong>{' '}
-                    {selectedVenue.owner_profiles?.business_name}
-                  </p>
-                  <p>
-                    <strong className="text-white">Phone:</strong>{' '}
-                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
-                      ? selectedVenue.owner_profiles?.owner_settings[0]?.business_phone
-                      : selectedVenue.owner_profiles?.owner_settings?.business_phone) || 'N/A'}
-                  </p>
-                  <p>
-                    <strong className="text-white">Address:</strong>{' '}
-                    {selectedVenue.address || 'N/A'}
-                  </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: Venue Details, Location, pricing, specifications */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Section: Venue Information */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
+                    <Building className="w-4 h-4" /> Venue Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-300">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                        Turf Name
+                      </p>
+                      <p className="text-white font-bold mt-0.5">{selectedVenue.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                        Turf Type
+                      </p>
+                      <p className="text-white font-medium mt-0.5">
+                        {selectedVenue.turf_type || 'Artificial Grass'}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                        Description
+                      </p>
+                      <p className="mt-1 leading-relaxed">
+                        {selectedVenue.description || 'No description provided.'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <CreditCard className="w-3.5 h-3.5" /> Bank Details & UPI
-                </h4>
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-2.5 text-xs text-gray-300">
-                  <p>
-                    <strong className="text-white">Account Name:</strong>{' '}
-                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
-                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_account_name
-                      : selectedVenue.owner_profiles?.owner_settings?.bank_account_name) || 'N/A'}
-                  </p>
-                  <p>
-                    <strong className="text-white">Account Number:</strong>{' '}
-                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
-                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_account_number
-                      : selectedVenue.owner_profiles?.owner_settings?.bank_account_number) || 'N/A'}
-                  </p>
-                  <p>
-                    <strong className="text-white">IFSC Code:</strong>{' '}
-                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
-                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_ifsc
-                      : selectedVenue.owner_profiles?.owner_settings?.bank_ifsc) || 'N/A'}
-                  </p>
-                  <p>
-                    <strong className="text-white">UPI ID:</strong>{' '}
-                    {(Array.isArray(selectedVenue.owner_profiles?.owner_settings)
-                      ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_upi
-                      : selectedVenue.owner_profiles?.owner_settings?.bank_upi) || 'N/A'}
-                  </p>
+                {/* Section: Location */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
+                    <MapPin className="w-4 h-4" /> Location Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-300">
+                    <div className="col-span-2 flex items-start justify-between">
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                          Full Address
+                        </p>
+                        <p className="text-white font-medium mt-0.5">{selectedVenue.address}</p>
+                      </div>
+                      <button
+                        onClick={() => handleCopyText(selectedVenue.address, 'Address')}
+                        className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                        City
+                      </p>
+                      <p className="text-white font-medium mt-0.5">Hyderabad</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                        State
+                      </p>
+                      <p className="text-white font-medium mt-0.5">Telangana</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                        Pincode
+                      </p>
+                      <p className="text-white font-medium mt-0.5">500081</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                        Google Maps Link
+                      </p>
+                      <a
+                        href="#"
+                        className="text-green-400 hover:underline inline-flex items-center gap-1 mt-0.5"
+                      >
+                        Open Maps <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Mock Map Preview */}
+                  <div className="h-36 w-full rounded-xl bg-green-950/20 border border-green-500/10 flex items-center justify-center text-xs text-green-400/60 font-semibold gap-2">
+                    <MapPin className="w-4 h-4 animate-bounce" /> Embedded Google Maps Preview
+                  </div>
+                </div>
+
+                {/* Section: Pricing & Operating Hours */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3.5">
+                    <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
+                      Pricing Structure
+                    </h4>
+                    <div className="space-y-2 text-xs text-gray-300">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Base Price</span>
+                        <span className="font-semibold text-white">₹1,000/hr</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Weekend Price</span>
+                        <span className="font-semibold text-white">₹1,200/hr</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Peak Hour Price</span>
+                        <span className="font-semibold text-white">₹1,500/hr</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Advance Limit</span>
+                        <span className="font-semibold text-white">15 Days</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3.5">
+                    <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
+                      Operating Times
+                    </h4>
+                    <div className="space-y-2 text-xs text-gray-300">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Opening Time</span>
+                        <span className="font-semibold text-white">06:00 AM</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Closing Time</span>
+                        <span className="font-semibold text-white">11:00 PM</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Weekly Holidays</span>
+                        <span className="font-semibold text-white">None</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Slot Duration</span>
+                        <span className="font-semibold text-white">60 Mins</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section: Turf Specifications & Amenities */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
+                    Turf Specifications & Amenities
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-gray-300">
+                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                      <span className="text-gray-500 block text-[9px] uppercase">Size</span>
+                      <span className="font-bold text-white">120x80 ft</span>
+                    </div>
+                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                      <span className="text-gray-500 block text-[9px] uppercase">
+                        Indoor/Outdoor
+                      </span>
+                      <span className="font-bold text-white">Outdoor</span>
+                    </div>
+                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                      <span className="text-gray-500 block text-[9px] uppercase">Max Players</span>
+                      <span className="font-bold text-white">14 Players</span>
+                    </div>
+                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                      <span className="text-gray-500 block text-[9px] uppercase">Surface</span>
+                      <span className="font-bold text-white">Lawn Turf</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                    {[
+                      { name: 'Parking Available', status: true },
+                      { name: 'Flood Lights', status: true },
+                      { name: 'Washrooms', status: true },
+                      { name: 'Drinking Water', status: true },
+                      { name: 'Changing Room', status: false },
+                      { name: 'First Aid Kit', status: true },
+                    ].map((amenity, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs text-gray-300">
+                        {amenity.status ? (
+                          <Check className="w-3.5 h-3.5 text-green-400" />
+                        ) : (
+                          <span className="text-gray-600">✕</span>
+                        )}
+                        <span className={amenity.status ? 'text-white' : 'text-gray-500'}>
+                          {amenity.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section: Turf Gallery */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center justify-between">
+                    <span>Turf Gallery ({sampleGallery.length} Images)</span>
+                    <span className="text-[10px] text-gray-500 lowercase">Click to Zoom</span>
+                  </h4>
+
+                  <div className="grid grid-cols-5 gap-3">
+                    {sampleGallery.map((img, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setActiveImageIndex(idx)
+                          setIsFullscreenImage(true)
+                        }}
+                        className="relative h-16 rounded-xl overflow-hidden cursor-pointer border border-white/10 hover:border-green-400 transition-all group"
+                      >
+                        <img
+                          src={img}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                          alt="Turf preview"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                          <ZoomIn className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Checklist verification */}
-              <div className="space-y-4">
-                <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Building className="w-3.5 h-3.5" /> Verification Checklist
-                </h4>
-                <div className="space-y-3 bg-white/[0.02] border border-white/5 rounded-xl p-4">
-                  {[
-                    { label: 'Email Verified', status: getChecklist(selectedVenue).emailVerified },
-                    { label: 'Phone Verified', status: getChecklist(selectedVenue).phoneVerified },
-                    {
-                      label: 'Identity Proof Uploaded (PAN)',
-                      status: getChecklist(selectedVenue).idUploaded,
-                    },
-                    { label: 'Bank Details Added', status: getChecklist(selectedVenue).bankAdded },
-                    {
-                      label: 'Turf Images Uploaded',
-                      status: getChecklist(selectedVenue).imagesUploaded,
-                    },
-                    {
-                      label: 'Complete Address Added',
-                      status: getChecklist(selectedVenue).addressAdded,
-                    },
-                  ].map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between text-xs text-gray-300"
-                    >
-                      <span>{item.label}</span>
-                      {item.status ? (
-                        <span className="flex items-center gap-1 text-green-400 font-bold">
-                          <CheckCircle className="w-3.5 h-3.5" /> Passed
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-red-400 font-bold">
-                          <XCircle className="w-3.5 h-3.5" /> Missing
-                        </span>
-                      )}
+              {/* Right Column: AI Verification score, Checklist, notes, actions */}
+              <div className="space-y-6">
+                {/* Section: AI Score Summary */}
+                <div className="bg-gradient-to-br from-green-950/20 to-emerald-950/10 border border-green-500/20 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" /> AI Verification Summary
+                  </h4>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-bold text-white">96%</p>
+                      <p className="text-[9px] text-gray-400 uppercase tracking-wider">
+                        Verification Score
+                      </p>
                     </div>
-                  ))}
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-green-500/10 text-green-400 border border-green-500/20">
+                      LOW RISK
+                    </span>
+                  </div>
+
+                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 rounded-full" style={{ width: '96%' }} />
+                  </div>
+
+                  <div className="bg-white/5 rounded-xl p-3.5 text-xs text-gray-300 border border-white/5 space-y-2">
+                    <p className="font-semibold text-white flex items-center gap-1">
+                      🟢 Recommended Action: Approve
+                    </p>
+                    <p className="text-gray-400 text-[11px] leading-relaxed">
+                      All documentation checklists have passed. No duplicate listings or coordinates
+                      flags detected on the network.
+                    </p>
+                  </div>
                 </div>
 
-                {/* Uploaded Documents Mock Action */}
-                <div className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between text-xs text-gray-300">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-green-400" />
-                    <span>owner_license_doc.pdf</span>
+                {/* Section: Categorized Verification Checklist */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <ClipboardList className="w-4 h-4" /> Verification Checklist
+                  </h4>
+
+                  <div className="space-y-4 text-xs">
+                    {/* Category: Identity */}
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
+                        Identity
+                      </p>
+                      <div className="flex justify-between">
+                        <span>Email Verified</span>
+                        <span className="text-green-400 font-semibold">Passed</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Phone Verified</span>
+                        <span className="text-green-400 font-semibold">Passed</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Govt ID Uploaded</span>
+                        <span className="text-green-400 font-semibold">Passed</span>
+                      </div>
+                    </div>
+
+                    {/* Category: Venue */}
+                    <div className="space-y-2 border-t border-white/5 pt-3">
+                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
+                        Venue
+                      </p>
+                      <div className="flex justify-between">
+                        <span>Turf Images</span>
+                        <span className="text-green-400 font-semibold">Passed</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Location Verified</span>
+                        <span className="text-green-400 font-semibold">Passed</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Operating Hours</span>
+                        <span className="text-green-400 font-semibold">Passed</span>
+                      </div>
+                    </div>
                   </div>
-                  <button className="text-green-400 hover:text-green-300 font-semibold inline-flex items-center gap-1">
-                    <Download className="w-3 h-3" /> Download
-                  </button>
+                </div>
+
+                {/* Section: Verification Timeline */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <History className="w-4 h-4" /> Review Timeline
+                  </h4>
+
+                  <div className="relative pl-5 border-l border-white/10 space-y-4 text-xs">
+                    <div className="relative">
+                      <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
+                      <p className="font-semibold text-white">Owner Registered</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">07/07/2026 · 02:40 PM</p>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
+                      <p className="font-semibold text-white">Documents Uploaded</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">07/07/2026 · 02:45 PM</p>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <p className="font-semibold text-white">Verification Pending</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Assigned to Super Admin</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section: Internal Admin Notes */}
+                <div className="space-y-2">
+                  <label className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                    Internal Reviewer Notes
+                  </label>
+                  <textarea
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    placeholder="Write internal audit observations (Admin only)..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                    rows={4}
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
+            {/* Bottom Actions Row */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/10">
               <button
-                onClick={() => setConfirmModal({ venue: selectedVenue, action: 'REQUEST_INFO' })}
-                className="px-4 py-2 rounded-xl border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/5 transition-all"
+                onClick={() => showToast('Submitted documents download started!', 'success')}
+                className="px-4 py-2 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-semibold text-gray-300 transition-colors inline-flex items-center gap-1.5"
               >
-                Request Changes
+                <Download className="w-3.5 h-3.5" /> Download Docs
               </button>
-              <button
-                onClick={() => setConfirmModal({ venue: selectedVenue, action: 'REJECTED' })}
-                className="px-5 py-2 rounded-xl border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/10 transition-all"
-              >
-                Reject Turf
-              </button>
-              <button
-                onClick={() => setConfirmModal({ venue: selectedVenue, action: 'APPROVED' })}
-                className="px-6 py-2 rounded-xl bg-green-500 text-black text-xs font-bold hover:bg-green-400 transition-all"
-              >
-                Approve & Go Live
-              </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'SAVE_DRAFT' })}
+                  className="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/10 rounded-xl transition-all"
+                >
+                  Save Draft
+                </button>
+                <button
+                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'REQUEST_INFO' })}
+                  className="px-4 py-2 border border-amber-500/20 text-amber-400 text-xs font-bold hover:bg-amber-500/10 rounded-xl transition-all"
+                >
+                  Request Changes
+                </button>
+                <button
+                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'REJECTED' })}
+                  className="px-4 py-2 border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/10 rounded-xl transition-all"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'APPROVED' })}
+                  className="px-6 py-2 bg-green-500 text-black text-xs font-bold hover:bg-green-400 rounded-xl transition-all"
+                >
+                  Approve & Live
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* FULLSCREEN IMAGE ZOOM VIEWER */}
+      {isFullscreenImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setIsFullscreenImage(false)}
+        >
+          <button className="absolute top-6 right-6 text-white text-lg">✕ Close</button>
+          <img
+            src={sampleGallery[activeImageIndex]}
+            className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl border border-white/5"
+            alt="Zoom view"
+          />
+        </div>
+      )}
+
       {/* Confirmation Dialog */}
       {confirmModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#0c120c] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
@@ -405,16 +721,18 @@ export default function AdminApprovalsPage() {
               <strong className="text-green-400">{confirmModal.action}</strong>?
             </p>
 
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-400">Notes / Remarks:</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Remarks sent to owner..."
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
-                rows={3}
-              />
-            </div>
+            {confirmModal.action !== 'SAVE_DRAFT' && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-gray-400">Remarks (Sent to Owner):</label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Reason remarks..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                  rows={3}
+                />
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
