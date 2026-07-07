@@ -144,9 +144,10 @@ export function PlayerDashboardClient({
   }, [])
 
   // Dynamic gamification mock parameters (based on actual user bookings to make it live)
-  const level = Math.max(1, Math.floor(totalBookings * 1.2) + 2)
+  const totalXp = totalBookings * 250
+  const level = 1 + Math.floor(totalXp / 1000)
   const league = level >= 10 ? 'Veteran League' : level >= 5 ? 'Pro League' : 'Amateur League'
-  const xp = (totalBookings * 120 + 340) % 1000
+  const xp = totalXp % 1000
   const xpTarget = 1000
 
   // Calculate upcoming countdown

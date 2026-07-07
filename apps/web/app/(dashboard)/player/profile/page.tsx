@@ -58,8 +58,9 @@ export default async function CustomerProfilePage() {
 
   const favoriteTurf = firstFavName || firstBookedName || 'None yet'
 
-  const level = Math.max(1, Math.floor(bookings.length * 1.2) + 2)
-  const xp = (bookings.length * 120 + 340) % 1000
+  const totalXp = bookings.length * 250
+  const level = 1 + Math.floor(totalXp / 1000)
+  const xp = totalXp % 1000
   const xpTarget = 1000
 
   const fullName = user.user_metadata?.full_name || 'Valued Gamer'
