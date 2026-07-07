@@ -108,12 +108,20 @@ export default function OwnerSettingsPage() {
           .eq('user_id', user.id)
           .maybeSingle()
 
+        // Fetch registration details from public.users to use as defaults
+        const { data: publicUser } = await supabase
+          .from('users')
+          .select('full_name, phone')
+          .eq('id', user.id)
+          .maybeSingle()
+
         if (!existingProfile) {
           const { data: newProfile } = await supabase
             .from('owner_profiles')
             .insert({
               user_id: user.id,
-              full_name: user.email?.split('@')[0] || 'Owner',
+              full_name:
+                publicUser?.full_name || user.fullName || user.email?.split('@')[0] || 'Owner',
               business_name: 'My Turf Business',
             })
             .select('id, full_name, business_name')
@@ -134,9 +142,9 @@ export default function OwnerSettingsPage() {
         const mappedData = {
           business: {
             turfName: profile.business_name || '',
-            ownerName: profile.full_name || '',
+            ownerName: profile.full_name || publicUser?.full_name || user.fullName || '',
             email: settings?.business_email || user.email || '',
-            phone: settings?.business_phone || '',
+            phone: settings?.business_phone || publicUser?.phone || '',
             address: settings?.business_address || '',
             logoUrl: settings?.business_logo_url || '',
           },
