@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useState } from 'react'
-import { MapPin, Calendar, Clock, Search, Loader2, Navigation } from 'lucide-react'
+import { MapPin, Calendar, Clock, Search, Loader2, Navigation, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
@@ -154,7 +154,7 @@ export default function HomePage() {
                 min={minDate}
                 className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400 cursor-pointer"
               />
-              <Calendar className="text-primary w-5 h-5 ml-3 flex-shrink-0" />
+              <CalendarDays className="text-primary w-5 h-5 ml-3 flex-shrink-0" />
             </div>
 
             {/* Time */}
