@@ -46,7 +46,7 @@ export default async function PlayerDashboard() {
       )
       .eq('verification_status', 'APPROVED')
       .eq('is_disabled', false)
-      .limit(3),
+      .limit(6),
     supabase.from('favorites').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
   ])
 

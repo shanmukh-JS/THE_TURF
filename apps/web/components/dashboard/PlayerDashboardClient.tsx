@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import {
   CalendarCheck,
   Clock,
@@ -93,6 +95,26 @@ export function PlayerDashboardClient({
   const [draftBooking, setDraftBooking] = useState<any | null>(null)
   const [dismissedDraft, setDismissedDraft] = useState(false)
 
+  const router = useRouter()
+  const supabase = createClient()
+
+  // Real-time Supabase database listener for updates on bookings & favorites
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime-dashboard-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        router.refresh()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites' }, () => {
+        router.refresh()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, router])
+
   // Compute Greeting based on local time
   useEffect(() => {
     const hour = new Date().getHours()
@@ -162,7 +184,7 @@ export function PlayerDashboardClient({
   }, [nextBooking])
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="p-8 space-y-8 w-full max-w-[1600px] mx-auto">
       {/* 1. HERO SECTION */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
