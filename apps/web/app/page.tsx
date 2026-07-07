@@ -17,6 +17,7 @@ export default function HomePage() {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
+  const [selectedDate, setSelectedDate] = useState(minDate)
 
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
@@ -152,6 +153,8 @@ export default function HomePage() {
               <input
                 type="date"
                 min={minDate}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
                 className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400 cursor-pointer"
               />
               <CalendarDays className="text-primary w-5 h-5 ml-3 flex-shrink-0" />
