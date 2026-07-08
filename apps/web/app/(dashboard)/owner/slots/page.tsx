@@ -686,36 +686,42 @@ export default function ManageSlotsPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => {
-                                setEditingSlot(slot)
-                                setEditFormData({
-                                  price: slot.price.toString(),
-                                  maxPlayers: slot.max_players ? slot.max_players.toString() : '',
-                                  status: slot.status,
-                                })
-                              }}
-                              className="p-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
-                              title="Edit Details"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleToggleBlockSlot(slot)}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                slot.status === 'Blocked'
-                                  ? 'bg-green-500/10 hover:bg-green-500/20 text-green-400'
-                                  : 'bg-gray-500/10 hover:bg-gray-500/20 text-gray-400'
-                              }`}
-                              title={slot.status === 'Blocked' ? 'Unblock Slot' : 'Block Slot'}
-                              disabled={slot.status === 'Booked'}
-                            >
-                              {slot.status === 'Blocked' ? (
-                                <Unlock className="w-4 h-4" />
-                              ) : (
-                                <Lock className="w-4 h-4" />
-                              )}
-                            </button>
+                            {slot.status !== 'Expired' && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setEditingSlot(slot)
+                                    setEditFormData({
+                                      price: slot.price.toString(),
+                                      maxPlayers: slot.max_players
+                                        ? slot.max_players.toString()
+                                        : '',
+                                      status: slot.status,
+                                    })
+                                  }}
+                                  className="p-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors"
+                                  title="Edit Details"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleToggleBlockSlot(slot)}
+                                  className={`p-1.5 rounded-lg transition-colors ${
+                                    slot.status === 'Blocked'
+                                      ? 'bg-green-500/10 hover:bg-green-500/20 text-green-400'
+                                      : 'bg-gray-500/10 hover:bg-gray-500/20 text-gray-400'
+                                  }`}
+                                  title={slot.status === 'Blocked' ? 'Unblock Slot' : 'Block Slot'}
+                                  disabled={slot.status === 'Booked'}
+                                >
+                                  {slot.status === 'Blocked' ? (
+                                    <Unlock className="w-4 h-4" />
+                                  ) : (
+                                    <Lock className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </>
+                            )}
                             <button
                               onClick={() => handleDeleteSlot(slot.id)}
                               className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
@@ -787,6 +793,7 @@ export default function ManageSlotsPage() {
                           <div
                             key={slot.id}
                             onClick={() => {
+                              if (slot.status === 'Expired') return
                               setEditingSlot(slot)
                               setEditFormData({
                                 price: slot.price.toString(),
@@ -794,7 +801,11 @@ export default function ManageSlotsPage() {
                                 status: slot.status,
                               })
                             }}
-                            className={`p-2 rounded-lg cursor-pointer transition-all border text-left flex flex-col gap-1 ${
+                            className={`p-2 rounded-lg transition-all border text-left flex flex-col gap-1 ${
+                              slot.status === 'Expired'
+                                ? 'cursor-not-allowed opacity-50'
+                                : 'cursor-pointer'
+                            } ${
                               slot.status === 'Available'
                                 ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:border-green-500/40'
                                 : slot.status === 'Booked'
