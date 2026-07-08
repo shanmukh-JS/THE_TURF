@@ -1,9 +1,13 @@
 import { NextRequest } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { apiSuccess, apiError } from '@/lib/email/validation'
+import { rateLimitGuard } from '@/lib/utils/rateLimiter'
 
 export async function POST(req: NextRequest) {
   try {
+    const limitResponse = rateLimitGuard(req, 'login')
+    if (limitResponse) return limitResponse
+
     const { email, password } = await req.json()
 
     if (!email || !password) {

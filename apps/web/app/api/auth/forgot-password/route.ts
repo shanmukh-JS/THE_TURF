@@ -4,9 +4,13 @@ import { generateOtp, checkRateLimit, storeOtp } from '@/lib/email/otp'
 import { sendEmail } from '@/lib/email/mailer'
 import { templates } from '@/lib/email/templates'
 import { apiSuccess, apiError } from '@/lib/email/validation'
+import { rateLimitGuard } from '@/lib/utils/rateLimiter'
 
 export async function POST(req: NextRequest) {
   try {
+    const limitResponse = rateLimitGuard(req, 'forgotPassword')
+    if (limitResponse) return limitResponse
+
     const { email } = await req.json()
     const ip = req.headers.get('x-forwarded-for') || '127.0.0.1'
     const userAgent = req.headers.get('user-agent') || 'Unknown'

@@ -22,6 +22,10 @@ const nextConfig = {
             value: 'DENY',
           },
           {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://checkout.razorpay.com https://api.bigdatacloud.net https://nominatim.openstreetmap.org; img-src 'self' data: https://*.supabase.co https://images.unsplash.com; style-src 'self' 'unsafe-inline'; frame-src https://checkout.razorpay.com;",
+          },
+          {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
