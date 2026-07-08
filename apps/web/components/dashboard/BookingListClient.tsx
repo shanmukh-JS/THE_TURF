@@ -13,6 +13,7 @@ import {
   Trash2,
   RefreshCw,
   X,
+  Star,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -56,6 +57,13 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Review modal state
+  const [reviewBooking, setReviewBooking] = useState<Booking | null>(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set())
 
   // Auto-hide toast
   useEffect(() => {
@@ -152,6 +160,35 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
     setToast({ message: 'Booking cancelled successfully.', type: 'success' })
     setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b)))
     setLoadingId(null)
+  }
+
+  const handleSubmitReview = async () => {
+    if (!reviewBooking) return
+    setReviewLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setToast({ message: 'You must be logged in to leave a review.', type: 'error' })
+      setReviewLoading(false)
+      return
+    }
+    const { error } = await supabase.from('reviews').insert({
+      venue_id: reviewBooking.venueId,
+      customer_id: user.id,
+      rating: reviewRating,
+      comment: reviewComment.trim() || null,
+    })
+    if (error) {
+      setToast({ message: error.message, type: 'error' })
+    } else {
+      setReviewedIds((prev) => new Set([...prev, reviewBooking.id]))
+      setToast({ message: 'Review submitted! Thank you.', type: 'success' })
+      setReviewBooking(null)
+      setReviewComment('')
+      setReviewRating(5)
+    }
+    setReviewLoading(false)
   }
 
   const filteredBookings = bookings.filter((b) => {
@@ -328,14 +365,33 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                           </button>
                         )}
 
-                      {/* Rebook Button for completed/cancelled */}
+                      {/* Rebook & Review for completed/cancelled */}
                       {(b.status === 'COMPLETED' || b.status === 'CANCELLED') && (
-                        <Link
-                          href={`/venues/${b.venueId}`}
-                          className="px-3.5 py-2 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500 hover:text-black hover:border-green-500 text-green-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> Rebook
-                        </Link>
+                        <>
+                          <Link
+                            href={`/venues/${b.venueId}`}
+                            className="px-3.5 py-2 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500 hover:text-black hover:border-green-500 text-green-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" /> Rebook
+                          </Link>
+                          {b.status === 'COMPLETED' && !reviewedIds.has(b.id) && (
+                            <button
+                              onClick={() => {
+                                setReviewBooking(b)
+                                setReviewRating(5)
+                                setReviewComment('')
+                              }}
+                              className="px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500 hover:text-black hover:border-amber-500 text-amber-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
+                            >
+                              <Star className="w-3.5 h-3.5" /> Review
+                            </button>
+                          )}
+                          {reviewedIds.has(b.id) && (
+                            <span className="px-3.5 py-2 text-[10px] text-green-400 font-bold flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-green-400" /> Reviewed!
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -459,6 +515,98 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                       </button>
                     )}
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* REVIEW MODAL */}
+      <AnimatePresence>
+        {reviewBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setReviewBooking(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md rounded-3xl border border-white/8 bg-gradient-to-br from-[#0a0f0a] to-[#040804] p-6 shadow-2xl"
+            >
+              <button
+                onClick={() => setReviewBooking(null)}
+                className="absolute top-4 right-4 p-2 text-gray-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Leave a Review</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">{reviewBooking.venue}</p>
+                </div>
+
+                {/* Star Rating Picker */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Your Rating
+                  </p>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setReviewRating(star)}
+                        className="transition-transform hover:scale-110"
+                      >
+                        <Star
+                          className={`w-8 h-8 transition-colors ${
+                            star <= reviewRating
+                              ? 'text-amber-400 fill-amber-400'
+                              : 'text-gray-700 fill-gray-700'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-amber-400 mt-1 font-medium">
+                    {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent!'][reviewRating]}
+                  </p>
+                </div>
+
+                {/* Comment */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Comment <span className="text-gray-600 normal-case">(optional)</span>
+                  </p>
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Share your experience..."
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500/50 text-sm resize-none"
+                  />
+                </div>
+
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={reviewLoading}
+                  className="w-full py-3 rounded-xl bg-amber-500 text-black font-bold text-sm hover:bg-amber-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {reviewLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Star className="w-4 h-4 fill-black" /> Submit Review
+                    </>
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>

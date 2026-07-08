@@ -217,7 +217,7 @@ export function NotificationListClient({
       </div>
 
       {/* Notifications Grouped List */}
-      <div className="space-y-8 max-w-2xl">
+      <div className="space-y-8 w-full">
         {filteredNotifications.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-white/10 rounded-2xl bg-white/[0.02] space-y-3">
             <Bell className="w-8 h-8 text-gray-600 mx-auto" />
