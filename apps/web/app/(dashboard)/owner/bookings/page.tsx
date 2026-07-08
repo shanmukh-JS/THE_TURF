@@ -261,8 +261,11 @@ export default function OwnerBookingsPage() {
       setToast({ message: error.message, type: 'error' })
     } else {
       setToast({ message: 'Booking marked as completed!', type: 'success' })
+      // Optimistic update
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'COMPLETED' } : b))
+      )
       setSelectedBooking(null)
-      fetchBookings()
     }
     setActionLoading(false)
   }
@@ -278,6 +281,11 @@ export default function OwnerBookingsPage() {
       setToast({ message: error.message, type: 'error' })
     } else {
       setToast({ message: 'Booking accepted!', type: 'success' })
+      // Optimistic update
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'CONFIRMED' } : b))
+      )
+      setSelectedBooking(null)
 
       // Payment notification simulation
       if (ownerProfileId) {
@@ -303,9 +311,6 @@ export default function OwnerBookingsPage() {
           }
         }
       }
-
-      setSelectedBooking(null)
-      fetchBookings()
     }
     setActionLoading(false)
   }
@@ -324,8 +329,11 @@ export default function OwnerBookingsPage() {
       setToast({ message: error.message, type: 'error' })
     } else {
       setToast({ message: 'Booking cancelled.', type: 'success' })
+      // Optimistic update
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b))
+      )
       setSelectedBooking(null)
-      fetchBookings()
     }
     setActionLoading(false)
   }
