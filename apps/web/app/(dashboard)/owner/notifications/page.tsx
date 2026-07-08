@@ -31,7 +31,7 @@ export default async function OwnerNotificationsPage() {
   return (
     <DashboardAnimationWrapper className="p-8 space-y-8">
       <DashboardAnimationItem>
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">Owner Notifications</h1>
+        <h1 className="text-3xl font-extrabold text-white tracking-tight">Notifications</h1>
         <p className="text-gray-400 mt-1">
           Stay updated with your latest bookings, payments, and platform updates.
         </p>

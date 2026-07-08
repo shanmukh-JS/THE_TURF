@@ -82,6 +82,30 @@ export function NotificationListClient({
     setLoading(false)
   }
 
+  // Real-time subscription for new notifications
+  useEffect(() => {
+    const channel = supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as Notification
+          setNotifications((prev) => [newNotif, ...prev])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [userId])
+
   // Group notifications chronologically
   const groupNotifications = (list: Notification[]) => {
     const today: Notification[] = []
