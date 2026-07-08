@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["NODE_ENV"],
+  "globalEnv": ["NODE_ENV", "SUPABASE_SERVICE_ROLE_KEY", "EMAIL_ENCRYPTION_KEY"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
