@@ -423,9 +423,15 @@ export default function ManageSlotsPage() {
   const handleDeleteSlot = async (slotId: string) => {
     if (!confirm('Are you sure you want to delete this slot? This action cannot be undone.')) return
 
+    // Optimistic UI: remove from state immediately
+    const prevSlots = slots
+    setSlots((prev) => prev.filter((s) => s.id !== slotId))
+
     const { error } = await supabase.from('slots').delete().eq('id', slotId)
 
     if (error) {
+      // Restore on failure
+      setSlots(prevSlots)
       setToast({ message: error.message, type: 'error' })
     } else {
       setToast({ message: 'Slot deleted successfully.', type: 'success' })
@@ -435,14 +441,20 @@ export default function ManageSlotsPage() {
   // Block/Unblock actions
   const handleToggleBlockSlot = async (slot: any) => {
     const newStatus = slot.status === 'Blocked' ? 'Available' : 'Blocked'
-    const isBooked = false
+
+    // Optimistic UI: update state immediately
+    const prevSlots = slots
+    setSlots((prev) =>
+      prev.map((s) => (s.id === slot.id ? { ...s, status: newStatus, is_booked: false } : s))
+    )
 
     const { error } = await supabase
       .from('slots')
-      .update({ status: newStatus, is_booked: isBooked })
+      .update({ status: newStatus, is_booked: false })
       .eq('id', slot.id)
 
     if (error) {
+      setSlots(prevSlots)
       setToast({ message: error.message, type: 'error' })
     } else {
       setToast({ message: `Slot is now ${newStatus.toLowerCase()}.`, type: 'success' })
@@ -454,21 +466,25 @@ export default function ManageSlotsPage() {
     e.preventDefault()
     if (!editingSlot) return
 
-    const { error } = await supabase
-      .from('slots')
-      .update({
-        price: parseFloat(editFormData.price),
-        max_players: editFormData.maxPlayers ? parseInt(editFormData.maxPlayers) : null,
-        status: editFormData.status,
-        is_booked: editFormData.status === 'Booked',
-      })
-      .eq('id', editingSlot.id)
+    const updatedFields = {
+      price: parseFloat(editFormData.price),
+      max_players: editFormData.maxPlayers ? parseInt(editFormData.maxPlayers) : null,
+      status: editFormData.status,
+      is_booked: editFormData.status === 'Booked',
+    }
+
+    // Optimistic UI: update state immediately
+    const prevSlots = slots
+    setSlots((prev) => prev.map((s) => (s.id === editingSlot.id ? { ...s, ...updatedFields } : s)))
+    setEditingSlot(null)
+
+    const { error } = await supabase.from('slots').update(updatedFields).eq('id', editingSlot.id)
 
     if (error) {
+      setSlots(prevSlots)
       setToast({ message: error.message, type: 'error' })
     } else {
       setToast({ message: 'Slot updated successfully.', type: 'success' })
-      setEditingSlot(null)
     }
   }
 
