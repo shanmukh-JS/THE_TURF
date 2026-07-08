@@ -5,7 +5,7 @@
 // ============================================================================
 
 import { Queue, Worker, Job } from 'bullmq'
-import { getEnv } from '@/config/env'
+import { logger } from '@/lib/utils/logger'
 
 // Fallback to local Redis if env is missing
 const connection = {
@@ -18,9 +18,9 @@ const connection = {
 export const platformQueue = new Queue('PlatformQueue', { connection })
 
 export type JobPayloads = {
-  'send_email': { to: string; template: string; data: any }
-  'process_settlement': { ownerId: string; amount: number }
-  'generate_report': { adminId: string; dateRange: string }
+  send_email: { to: string; template: string; data: Record<string, unknown> }
+  process_settlement: { ownerId: string; amount: number }
+  generate_report: { adminId: string; dateRange: string }
 }
 
 /**
@@ -48,8 +48,8 @@ export const createWorker = () => {
   return new Worker(
     'PlatformQueue',
     async (job: Job) => {
-      console.log(`[Worker] Processing job ${job.name} (${job.id})`)
-      
+      logger.info(`[Worker] Processing job ${job.name} (${job.id})`)
+
       switch (job.name) {
         case 'send_email':
           // Await email dispatch
@@ -61,7 +61,7 @@ export const createWorker = () => {
           // Await report generation
           break
         default:
-          console.warn(`[Worker] Unknown job type: ${job.name}`)
+          logger.warn(`[Worker] Unknown job type: ${job.name}`)
       }
     },
     { connection }

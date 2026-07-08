@@ -30,6 +30,7 @@ export async function register() {
     })
 
     sdk.start()
-    console.log('[Telemetry] OpenTelemetry initialized')
+    const { logger } = await import('@/lib/utils/logger')
+    logger.info('[Telemetry] OpenTelemetry initialized')
   }
 }

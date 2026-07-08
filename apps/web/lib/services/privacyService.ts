@@ -47,7 +47,7 @@ export class PrivacyService {
   /**
    * Generates a comprehensive JSON export of all user data for GDPR Right to Access.
    */
-  async exportUserData(userId: string): Promise<Record<string, any>> {
+  async exportUserData(userId: string): Promise<Record<string, unknown>> {
     const supabase = createAdminClient()
 
     const [userReq, bookingsReq, reviewsReq] = await Promise.all([

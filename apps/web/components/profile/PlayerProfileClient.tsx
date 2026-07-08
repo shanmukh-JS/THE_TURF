@@ -23,8 +23,11 @@ import {
 import { ImageCropperModal } from '@/components/ui/ImageCropperModal'
 
 interface PlayerProfileClientProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   customerProfile?: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   bookings: any[]
   favoriteTurf: string
   memberSince: string
@@ -87,6 +90,7 @@ export function PlayerProfileClient({
             ? 'Semi-Pro League'
             : 'Amateur League'
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const matchesPlayed = bookings.filter((b: any) => b.status === 'COMPLETED').length
 
   const handleSave = async (e: React.FormEvent) => {
@@ -155,6 +159,7 @@ export function PlayerProfileClient({
 
       // Auto-dismiss toast
       setTimeout(() => setToast(null), 3000)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Error updating profile:', err)
       setToast({ message: err.message || 'Failed to update profile', type: 'error' })

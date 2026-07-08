@@ -1,5 +1,6 @@
 import { createAdminClient } from '../supabase/admin'
 import { getActiveEmailSettings, sendEmailViaProvider, EmailSettings } from './provider'
+import { logger, extractErrorMsg } from '../utils/logger'
 
 interface SendEmailParams {
   to: string
@@ -55,13 +56,13 @@ function queueRetry(
 ) {
   const retryDelays = [30000, 120000, 600000] // 30s, 2m, 10m
   if (currentRetry >= retryDelays.length) {
-    console.error(`Email to ${params.to} failed after maximum retry attempts.`)
+    logger.error(`Email to ${params.to} failed after maximum retry attempts.`)
     updateEmailLog(logId, { status: 'Failed', retry_count: currentRetry })
     return
   }
 
   const delay = retryDelays[currentRetry]
-  console.log(`Scheduling retry #${currentRetry + 1} in ${delay}ms for email to ${params.to}`)
+  logger.info(`Scheduling retry #${currentRetry + 1} in ${delay}ms for email to ${params.to}`)
 
   setTimeout(async () => {
     const startTime = Date.now()
@@ -74,10 +75,11 @@ function queueRetry(
         delivery_time_ms: deliveryTime,
         retry_count: currentRetry + 1,
       })
-    } catch (err: any) {
-      console.error(`Retry #${currentRetry + 1} failed:`, err.message)
+    } catch (err) {
+      const errMsg = extractErrorMsg(err)
+      logger.error(`Retry #${currentRetry + 1} failed: ${errMsg}`)
       await updateEmailLog(logId, {
-        error_message: err.message,
+        error_message: errMsg,
         retry_count: currentRetry + 1,
       })
       queueRetry(params, settings, logId, currentRetry + 1)
@@ -92,7 +94,7 @@ export async function sendEmail(
   const settings = await getActiveEmailSettings()
 
   if (!settings) {
-    console.error('No active email settings found in database. Email aborted.')
+    logger.error('No active email settings found in database. Email aborted.')
     const logId = await logEmail({
       recipient: params.to,
       subject: params.subject,
@@ -117,15 +119,16 @@ export async function sendEmail(
       delivery_time_ms: deliveryTime,
     })
     return { success: true, logId, messageId: result.messageId }
-  } catch (err: any) {
-    console.error(`Initial email sending failed to ${params.to}:`, err.message)
+  } catch (err) {
+    const errMsg = extractErrorMsg(err)
+    logger.error(`Initial email sending failed to ${params.to}: ${errMsg}`)
     const logId = await logEmail({
       recipient: params.to,
       subject: params.subject,
       template: params.templateName,
       status: 'Failed',
       provider: settings.provider,
-      error_message: err.message,
+      error_message: errMsg,
     })
 
     queueRetry(params, settings, logId, 0)
@@ -159,10 +162,11 @@ export async function retryFailedEmail(logId: string): Promise<boolean> {
       error_message: '',
     })
     return true
-  } catch (err: any) {
+  } catch (err) {
+    const errMsg = extractErrorMsg(err)
     await updateEmailLog(logId, {
       retry_count: log.retry_count + 1,
-      error_message: err.message,
+      error_message: errMsg,
     })
     return false
   }

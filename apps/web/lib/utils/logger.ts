@@ -53,3 +53,41 @@ export function extractRequestMeta(req: Request): { ip: string; userAgent: strin
 export function generateRequestId(): string {
   return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
+
+/**
+ * Error extraction utility
+ */
+export function extractErrorMsg(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return JSON.stringify(error)
+}
+
+/**
+ * Standardized system logger for non-audit events, completely replacing console.log.
+ * In a real environment, this might connect to Datadog/Winston.
+ */
+export const logger = {
+  info: (message: string, meta?: unknown) => {
+    // We stringify JSON meta to avoid multi-line object spread in raw console output
+    const timestamp = new Date().toISOString()
+    const metaStr = meta ? ` ${JSON.stringify(meta)}` : ''
+    process.stdout.write(
+      `{"time":"${timestamp}","level":"INFO","message":"${message}"${metaStr}}\n`
+    )
+  },
+  warn: (message: string, meta?: unknown) => {
+    const timestamp = new Date().toISOString()
+    const metaStr = meta ? ` ${JSON.stringify(meta)}` : ''
+    process.stdout.write(
+      `{"time":"${timestamp}","level":"WARN","message":"${message}"${metaStr}}\n`
+    )
+  },
+  error: (message: string, meta?: unknown) => {
+    const timestamp = new Date().toISOString()
+    const metaStr = meta ? ` ${JSON.stringify(meta)}` : ''
+    process.stderr.write(
+      `{"time":"${timestamp}","level":"ERROR","message":"${message}"${metaStr}}\n`
+    )
+  },
+}

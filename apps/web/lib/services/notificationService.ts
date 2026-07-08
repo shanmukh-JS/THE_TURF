@@ -4,9 +4,8 @@
 // Follows the Strategy Pattern.
 // ============================================================================
 
-import { writeAuditLog } from '@/lib/utils/logger'
+import { writeAuditLog, logger } from '@/lib/utils/logger'
 import { sendEmail } from '@/lib/email/mailer'
-import { templates } from '@/lib/email/templates'
 
 export interface NotificationPayload {
   userId: string
@@ -14,7 +13,7 @@ export interface NotificationPayload {
   message: string
   type: 'BOOKING_CONFIRMED' | 'BOOKING_CANCELLED' | 'PAYMENT_RECEIVED' | 'VENUE_APPROVED'
   channels: ('EMAIL' | 'SMS' | 'PUSH')[]
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 class NotificationService {
@@ -28,7 +27,7 @@ class NotificationService {
         // Send email based on type
         // This integrates with our existing email provider dynamically
         await sendEmail({
-          to: payload.metadata.email,
+          to: payload.metadata.email as string,
           subject: payload.title,
           html: `<p>${payload.message}</p>`, // In full implementation, use templates[payload.type]
           templateName: payload.type,
@@ -37,12 +36,12 @@ class NotificationService {
 
       // 2. Dispatch SMS (Placeholder for future Twilio/MessageBird integration)
       if (payload.channels.includes('SMS') && payload.metadata?.phone) {
-        console.log(`[SMS] Sending to ${payload.metadata.phone}: ${payload.message}`)
+        logger.info(`[SMS] Sending to ${payload.metadata.phone}: ${payload.message}`)
       }
 
       // 3. Dispatch Push (Placeholder for Firebase Cloud Messaging / OneSignal)
       if (payload.channels.includes('PUSH')) {
-        console.log(`[PUSH] Sending to user ${payload.userId}: ${payload.title}`)
+        logger.info(`[PUSH] Sending to user ${payload.userId}: ${payload.title}`)
       }
 
       // 4. Write to audit log
@@ -54,7 +53,7 @@ class NotificationService {
         new_value: { type: payload.type, channels: payload.channels },
       })
     } catch (error) {
-      console.error('Failed to dispatch notification:', error)
+      logger.error('Failed to dispatch notification:', error)
       await writeAuditLog({
         actor_id: 'SYSTEM',
         module: 'SYSTEM',

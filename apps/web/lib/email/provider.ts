@@ -75,10 +75,11 @@ async function sendSmtpEmail(
 async function sendMockProviderEmail(
   settings: EmailSettings,
   to: string,
-  subject: string,
-  html: string
+  _subject: string,
+  _html: string
 ): Promise<{ messageId: string }> {
-  console.log(`Sending email using simulated provider [${settings.provider}] to ${to}`)
+  const { logger } = await import('../utils/logger')
+  logger.info(`Sending email using simulated provider [${settings.provider}] to ${to}`)
   return { messageId: `mock_${settings.provider}_${Date.now()}` }
 }
 
