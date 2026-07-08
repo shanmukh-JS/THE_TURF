@@ -21,6 +21,13 @@ export async function POST(req: NextRequest) {
       return apiError('INVALID_EMAIL', 'Please enter a valid email address.')
     }
 
+    if (!email.toLowerCase().endsWith('@gmail.com')) {
+      return apiError(
+        'INVALID_DOMAIN',
+        'Currently, only @gmail.com email addresses are allowed to register.'
+      )
+    }
+
     // Validate password strength
     const strengthResult = checkPasswordStrength(password, name, email)
     if (!strengthResult.valid) {

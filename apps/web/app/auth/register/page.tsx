@@ -44,6 +44,12 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
+    if (!form.email.toLowerCase().endsWith('@gmail.com')) {
+      setError('Only @gmail.com email addresses are allowed.')
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
