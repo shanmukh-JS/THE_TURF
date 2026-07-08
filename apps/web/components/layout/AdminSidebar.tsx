@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/useAuthStore'
 import {
   LayoutDashboard,
   Building2,
@@ -33,11 +34,16 @@ const navItems = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  const { user } = useAuthStore()
 
   // Close sidebar on navigation
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
+
+  const displayName = user?.fullName || user?.email?.split('@')[0] || 'Super Admin'
+  const email = user?.email || 'admin@turfgaming.com'
+  const initial = displayName.slice(0, 2).toUpperCase()
 
   return (
     <>
@@ -105,12 +111,18 @@ export function AdminSidebar() {
         {/* Footer */}
         <div className="p-4 border-t border-white/8">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-              SA
-            </div>
+            {user?.logoUrl ? (
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20">
+                <img src={user.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                {initial}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Super Admin</p>
-              <p className="text-xs text-gray-500 truncate">admin@turfgaming.com</p>
+              <p className="text-sm font-medium text-white truncate">{displayName}</p>
+              <p className="text-xs text-gray-500 truncate">{email}</p>
             </div>
           </div>
         </div>
