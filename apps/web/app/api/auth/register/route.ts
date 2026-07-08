@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import bcrypt from 'bcryptjs'
+import { encrypt } from '@/lib/email/crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateOtp, checkRateLimit, storeOtp } from '@/lib/email/otp'
 import { sendEmail } from '@/lib/email/mailer'
@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
       return apiError('RATE_LIMIT_EXCEEDED', rateLimit.reason || 'Too many requests.')
     }
 
-    // Hash the password for temporary storage
-    const passwordHash = await bcrypt.hash(password, 10)
+    // Encrypt the password for temporary storage (must be reversible for Supabase Auth)
+    const passwordHash = encrypt(password)
 
     // Upsert temporary registration details
     const { error: tempError } = await supabase.from('temp_registrations').upsert(
