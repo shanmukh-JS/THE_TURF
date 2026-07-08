@@ -184,29 +184,89 @@ export default function AdminBookingsPage() {
     }
   }
 
-  // Export to CSV
-  const handleExportCSV = () => {
-    const headers = ['Booking ID', 'Customer', 'Turf Name', 'Amount', 'Date', 'Status']
-    const rows = processedBookings.map((b) => [
-      b.id,
-      b.users?.email || 'N/A',
-      b.venues?.name || 'N/A',
-      b.total_amount,
-      b.slots?.date || '—',
-      b.status,
-    ])
+  // Export to PDF
+  const handleExportPDF = () => {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.map((val) => `"${val}"`).join(','))].join('\n')
+    const rowsHtml = processedBookings
+      .map((b) => {
+        const gross = Number(b.total_amount)
+        const date = b.slots?.date || '—'
+        const status = b.status
+        return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; font-family: monospace; font-size: 11px;">${b.id}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${b.users?.email || 'N/A'}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${b.venues?.name || 'N/A'}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">₹${gross.toLocaleString('en-IN')}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${date}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">
+            <span style="padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${
+              status === 'CONFIRMED' || status === 'COMPLETED'
+                ? '#dcfce7; color: #15803d;'
+                : status === 'CANCELLED'
+                  ? '#fee2e2; color: #ef4444;'
+                  : '#fef3c7; color: #d97706;'
+            }">
+              ${status}
+            </span>
+          </td>
+        </tr>
+      `
+      })
+      .join('')
 
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `truf_bookings.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Booking Management Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; background: #fff; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #10b981; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #10b981; text-transform: uppercase; }
+            .title { font-size: 18px; font-weight: bold; color: #111; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+            th { background: #f4f4f5; text-align: left; padding: 12px 10px; font-weight: 600; border-bottom: 2px solid #ddd; }
+            .footer { margin-top: 40px; font-size: 11px; color: #71717a; text-align: center; border-top: 1px solid #e4e4e7; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">TURF GAMING</div>
+            <div class="title">Booking Management Report</div>
+          </div>
+          <p style="font-size: 12px; color: #666; margin-bottom: 20px;">
+            Generated on: ${new Date().toLocaleString()} | Total Bookings: ${processedBookings.length}
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Booking ID</th>
+                <th>Customer</th>
+                <th>Turf Name</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <div class="footer">
+            © ${new Date().getFullYear()} TURF GAMING Super Admin Portal. Confidential Document.
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   return (
@@ -220,10 +280,10 @@ export default function AdminBookingsPage() {
           </p>
         </div>
         <button
-          onClick={handleExportCSV}
+          onClick={handleExportPDF}
           className="flex items-center gap-2 px-4 py-2 border border-white/10 hover:bg-white/5 rounded-xl text-sm font-semibold text-gray-300 transition-colors"
         >
-          <Download className="w-4 h-4" /> Export CSV
+          <Download className="w-4 h-4" /> Export PDF
         </button>
       </DashboardAnimationItem>
 

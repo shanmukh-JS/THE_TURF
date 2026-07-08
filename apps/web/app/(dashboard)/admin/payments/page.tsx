@@ -206,43 +206,92 @@ export default function AdminPaymentsPage() {
     return netRevenue - releasedPayments
   }, [netRevenue, releasedPayments])
 
-  // Export to CSV
-  const handleExportCSV = () => {
-    const headers = [
-      'Transaction ID',
-      'Customer',
-      'Owner',
-      'Gross Amount',
-      'Commission',
-      'Net Payout',
-      'Status',
-    ]
-    const rows = processedPayments.map((p) => {
-      const gross = Number(p.total_amount)
-      const commission = (gross * commissionPct) / 100
-      const net = gross - commission
-      return [
-        p.id,
-        p.users?.email || 'N/A',
-        p.venues?.owner_profiles?.full_name || 'N/A',
-        gross,
-        commission,
-        net,
-        p.payout_status || 'PENDING',
-      ]
-    })
+  // Export to PDF
+  const handleExportPDF = () => {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.map((val) => `"${val}"`).join(','))].join('\n')
+    const rowsHtml = processedPayments
+      .map((p) => {
+        const gross = Number(p.total_amount)
+        const commission = (gross * commissionPct) / 100
+        const net = gross - commission
+        const status = p.payout_status || 'PENDING'
+        return `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; font-family: monospace; font-size: 11px;">${p.id}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${p.users?.email || 'N/A'}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${p.venues?.owner_profiles?.full_name || 'N/A'}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">₹${gross.toLocaleString('en-IN')}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">₹${commission.toLocaleString('en-IN')} (${commissionPct}%)</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">₹${net.toLocaleString('en-IN')}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">
+            <span style="padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${
+              status === 'RELEASED'
+                ? '#dcfce7; color: #15803d;'
+                : status === 'HELD'
+                  ? '#fee2e2; color: #ef4444;'
+                  : '#fef3c7; color: #d97706;'
+            }">
+              ${status}
+            </span>
+          </td>
+        </tr>
+      `
+      })
+      .join('')
 
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `truf_payments.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Payments & Revenue Ledger Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; background: #fff; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #10b981; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #10b981; text-transform: uppercase; }
+            .title { font-size: 18px; font-weight: bold; color: #111; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+            th { background: #f4f4f5; text-align: left; padding: 12px 10px; font-weight: 600; border-bottom: 2px solid #ddd; }
+            .footer { margin-top: 40px; font-size: 11px; color: #71717a; text-align: center; border-top: 1px solid #e4e4e7; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">TURF GAMING</div>
+            <div class="title">Payments & Revenue Ledger Report</div>
+          </div>
+          <p style="font-size: 12px; color: #666; margin-bottom: 20px;">
+            Generated on: ${new Date().toLocaleString()} | Total Transactions: ${processedPayments.length}
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Transaction ID</th>
+                <th>Customer</th>
+                <th>Owner</th>
+                <th>Gross Amount</th>
+                <th>Commission</th>
+                <th>Net Payout</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <div class="footer">
+            © ${new Date().getFullYear()} TURF GAMING Super Admin Portal. Confidential Document.
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
   }
 
   return (
@@ -256,10 +305,10 @@ export default function AdminPaymentsPage() {
           </p>
         </div>
         <button
-          onClick={handleExportCSV}
+          onClick={handleExportPDF}
           className="flex items-center gap-2 px-4 py-2 border border-white/10 hover:bg-white/5 rounded-xl text-sm font-semibold text-gray-300 transition-colors"
         >
-          <Download className="w-4 h-4" /> Export CSV
+          <Download className="w-4 h-4" /> Export PDF
         </button>
       </DashboardAnimationItem>
 
