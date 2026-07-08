@@ -35,4 +35,4 @@ ADD COLUMN IF NOT EXISTS operating_hours_verified boolean DEFAULT false,
 ADD COLUMN IF NOT EXISTS documents_url text[] DEFAULT '{}'::text[];
 
 -- NOTE: This also implicitly reloads the schema cache for the PostgREST API so the 'amenities' column error should disappear.
-NOTIFY pgrst, reload_schema;
+NOTIFY pgrst, 'reload schema';

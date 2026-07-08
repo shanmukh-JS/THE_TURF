@@ -104,6 +104,11 @@ export default function AdminSettingsPage() {
         commission_percentage: Number(data.commission_percentage || 10),
         support_email: data.support_email || 'support@turfgaming.com',
         maintenance_mode: data.maintenance_mode || false,
+        max_payout_limit: data.max_payout_limit ?? 100000,
+        mfa_required: data.mfa_required ?? false,
+        session_timeout_mins: data.session_timeout_mins ?? 60,
+        notify_on_new_turf: data.notify_on_new_turf ?? true,
+        notify_on_new_booking: data.notify_on_new_booking ?? true,
       }))
     }
     setLoading(false)
@@ -227,6 +232,11 @@ export default function AdminSettingsPage() {
         commission_percentage: form.commission_percentage,
         support_email: form.support_email,
         maintenance_mode: form.maintenance_mode,
+        max_payout_limit: form.max_payout_limit,
+        mfa_required: form.mfa_required,
+        session_timeout_mins: form.session_timeout_mins,
+        notify_on_new_turf: form.notify_on_new_turf,
+        notify_on_new_booking: form.notify_on_new_booking,
         updated_at: new Date().toISOString(),
       })
       .eq('id', form.id)
