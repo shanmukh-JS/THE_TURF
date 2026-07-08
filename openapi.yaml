@@ -1,0 +1,156 @@
+openapi: 3.0.0
+info:
+  title: TRUF GAMING Platform API
+  description: API specifications for the TRUF GAMING premium cricket turf booking platform.
+  version: 1.0.0
+servers:
+  - url: https://api.trufgaming.com/v1
+    description: Production server
+  - url: http://localhost:3000/api
+    description: Development server
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Successful login
+        '401':
+          description: Invalid credentials
+        '429':
+          description: Rate limit exceeded
+  
+  /auth/register:
+    post:
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+                - password
+                - role
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [CUSTOMER, OWNER]
+      responses:
+        '200':
+          description: Registration successful (OTP sent)
+        '400':
+          description: Validation error
+
+  /venues:
+    get:
+      summary: List venues
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A list of venues
+
+  /slots/available:
+    get:
+      summary: Get available slots
+      parameters:
+        - in: query
+          name: venueId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: A list of available slots
+
+  /bookings:
+    post:
+      summary: Create a booking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - slotId
+                - venueId
+                - totalAmount
+                - advancePaid
+              properties:
+                slotId:
+                  type: string
+                  format: uuid
+                venueId:
+                  type: string
+                  format: uuid
+                totalAmount:
+                  type: number
+                advancePaid:
+                  type: number
+                paymentId:
+                  type: string
+      responses:
+        '200':
+          description: Booking created successfully
+        '400':
+          description: Validation error
+        '403':
+          description: Unauthorized
+        '409':
+          description: Slot locked or booked
+        
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
