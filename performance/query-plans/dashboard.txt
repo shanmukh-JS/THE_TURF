@@ -1,0 +1,7 @@
+EXPLAIN ANALYZE SELECT * FROM public.bookings WHERE venue_id = 'uuid' ORDER BY created_at DESC LIMIT 50;
+
+-- Example Output --
+Index Scan Backward using idx_bookings_owner on bookings  (cost=0.28..15.42 rows=50 width=128) (actual time=0.012..0.018 rows=50 loops=1)
+  Index Cond: (venue_id = 'uuid'::uuid)
+Planning Time: 0.130 ms
+Execution Time: 0.030 ms

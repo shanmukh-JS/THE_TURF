@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer'
 import { decrypt } from './crypto'
 import { createAdminClient } from '../supabase/admin'
+import { notificationBreaker } from '../utils/circuitBreaker'
 
 export interface EmailSettings {
   id: string
@@ -89,10 +90,12 @@ export async function sendEmailViaProvider(
   subject: string,
   html: string
 ): Promise<{ messageId: string }> {
-  const provider = settings.provider.toLowerCase()
-  if (provider === 'smtp') {
-    return sendSmtpEmail(settings, to, subject, html)
-  } else {
-    return sendMockProviderEmail(settings, to, subject, html)
-  }
+  return await notificationBreaker.fire(async () => {
+    const provider = settings.provider.toLowerCase()
+    if (provider === 'smtp') {
+      return sendSmtpEmail(settings, to, subject, html)
+    } else {
+      return sendMockProviderEmail(settings, to, subject, html)
+    }
+  })
 }

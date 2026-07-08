@@ -79,8 +79,8 @@ describe('BookingService', () => {
     })
   })
 
-  describe('createBooking', () => {
-    it('should create a booking successfully if slot is locked', async () => {
+  describe('startCheckout', () => {
+    it('should throw if Razorpay environment is not configured', async () => {
       // Mock validation success
       vi.mocked(slotRepository.findById).mockResolvedValueOnce({
         is_booked: false,
@@ -89,48 +89,16 @@ describe('BookingService', () => {
 
       // Mock lock success
       vi.mocked(slotRepository.lockSlot).mockResolvedValueOnce(true)
-
-      // Mock booking creation
-      vi.mocked(bookingRepository.create).mockResolvedValueOnce({ id: 'booking-1' } as any)
-
-      await bookingService.createBooking({
-        slotId: 'slot-1',
-        venueId: 'venue-1',
-        customerId: 'customer-1',
-        totalAmount: 1000,
-        advancePaid: 500,
-      })
-
-      expect(slotRepository.lockSlot).toHaveBeenCalled()
-      expect(bookingRepository.create).toHaveBeenCalled()
-      expect(slotRepository.updateStatus).toHaveBeenCalledWith('slot-1', 'Booked', true)
-    })
-
-    it('should throw and unlock if booking creation fails', async () => {
-      // Mock validation success
-      vi.mocked(slotRepository.findById).mockResolvedValueOnce({
-        is_booked: false,
-        status: 'Available',
-      } as any)
-
-      // Mock lock success
-      vi.mocked(slotRepository.lockSlot).mockResolvedValueOnce(true)
-
-      // Mock booking creation failure
-      vi.mocked(bookingRepository.create).mockRejectedValueOnce(new Error('DB Error'))
 
       await expect(
-        bookingService.createBooking({
+        bookingService.startCheckout({
           slotId: 'slot-1',
           venueId: 'venue-1',
           customerId: 'customer-1',
           totalAmount: 1000,
           advancePaid: 500,
         })
-      ).rejects.toThrow('DB Error')
-
-      // Verify rollback
-      expect(slotRepository.updateStatus).toHaveBeenCalledWith('slot-1', 'Available', false)
+      ).rejects.toThrow('Payment gateway not configured properly.')
     })
   })
 })

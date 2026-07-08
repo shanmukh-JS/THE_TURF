@@ -1,0 +1,7 @@
+EXPLAIN ANALYZE SELECT * FROM public.venues WHERE city_id = 'uuid' AND verification_status = 'VERIFIED';
+
+-- Example Output --
+Index Scan using idx_venues_city_active on venues  (cost=0.28..12.35 rows=20 width=256) (actual time=0.018..0.025 rows=20 loops=1)
+  Index Cond: ((city_id = 'uuid'::uuid) AND (verification_status = 'VERIFIED'::text))
+Planning Time: 0.150 ms
+Execution Time: 0.040 ms

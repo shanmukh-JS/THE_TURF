@@ -8,7 +8,12 @@ import { bookingRepository } from '@/lib/repositories/bookingRepository'
 import { slotRepository } from '@/lib/repositories/slotRepository'
 import { writeAuditLog } from '@/lib/utils/logger'
 import { BOOKING } from '@/config/settings'
+import { getEnv } from '@/config/env'
 import type { Booking, BookingStatus } from '@/types/models'
+import { paymentProvider } from '@/lib/payments/provider'
+import { createAdminClient } from '@/lib/supabase/admin'
+import crypto from 'crypto'
+import { addTraceAttributes } from '@/lib/utils/tracing'
 
 export class BookingService {
   /**
@@ -39,22 +44,27 @@ export class BookingService {
   }
 
   /**
-   * Creates a booking with proper slot locking.
+   * Starts checkout by validating slot, creating a temporary lock, and generating a Razorpay Order.
    */
-  async createBooking(params: {
+  async startCheckout(params: {
     slotId: string
     venueId: string
     customerId: string
     totalAmount: number
     advancePaid: number
-    paymentId?: string
     ip?: string
     userAgent?: string
-  }): Promise<Booking> {
+  }) {
+    addTraceAttributes({
+      'user.id': params.customerId,
+      'booking.slot_id': params.slotId,
+      'venue.id': params.venueId,
+    })
+
     // 1. Validate slot availability
     await this.validateSlotAvailability(params.slotId)
 
-    // 2. Lock the slot
+    // 2. Lock the slot temporarily
     const lockExpiry = new Date(Date.now() + BOOKING.lockDurationSeconds * 1000).toISOString()
     const locked = await slotRepository.lockSlot(params.slotId, lockExpiry)
     if (!locked) {
@@ -62,37 +72,115 @@ export class BookingService {
     }
 
     try {
-      // 3. Create booking record
-      const booking = await bookingRepository.create({
-        slot_id: params.slotId,
-        venue_id: params.venueId,
-        customer_id: params.customerId,
-        total_amount: params.totalAmount,
-        advance_paid: params.advancePaid,
-        status: 'CONFIRMED' as BookingStatus,
-        payment_id: params.paymentId || null,
-      } as Omit<Booking, 'id'>)
+      const env = getEnv()
+      if (!env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !env.RAZORPAY_SECRET) {
+        throw new Error('Payment gateway not configured properly.')
+      }
 
-      // 4. Mark slot as booked
-      await slotRepository.updateStatus(params.slotId, 'Booked', true)
+      // 3. Create Razorpay Order via PaymentProvider (which handles Circuit Breaking)
+      const order = await paymentProvider.createOrder({
+        amount: Math.round(params.advancePaid * 100), // amount in smallest currency unit (paise)
+        receipt: `receipt_${params.slotId}_${Date.now()}`,
+        notes: {
+          slotId: params.slotId,
+          venueId: params.venueId,
+          customerId: params.customerId,
+          totalAmount: params.totalAmount.toString(),
+        },
+      })
 
-      // 5. Audit log
+      // 4. Audit Log (Checkout Started)
       await writeAuditLog({
         actor_id: params.customerId,
         module: 'BOOKING',
-        action: 'BOOKING_CREATED',
-        target_id: booking.id,
-        new_value: { venue_id: params.venueId, amount: params.totalAmount },
+        action: 'CHECKOUT_STARTED',
+        target_id: params.slotId,
+        new_value: { order_id: order.id, amount: params.advancePaid },
         ip_address: params.ip || null,
         user_agent: params.userAgent || null,
       })
 
-      return booking
+      return {
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+      }
     } catch (err) {
-      // Rollback: unlock the slot if booking creation failed
+      // Rollback: unlock the slot if order creation failed
       await slotRepository.updateStatus(params.slotId, 'Available', false)
       throw err
     }
+  }
+
+  /**
+   * Verifies the payment callback and calls rpc_book_slot to finalize.
+   */
+  async verifyPaymentAndBook(params: {
+    razorpay_order_id: string
+    razorpay_payment_id: string
+    razorpay_signature: string
+    slotId: string
+    venueId: string
+    customerId: string
+    totalAmount: number
+    advancePaid: number
+    ip?: string
+  }) {
+    addTraceAttributes({
+      'user.id': params.customerId,
+      'booking.slot_id': params.slotId,
+      'venue.id': params.venueId,
+      'payment.provider': 'razorpay',
+      'payment.id': params.razorpay_payment_id,
+    })
+
+    const env = getEnv()
+    if (!env.RAZORPAY_SECRET) {
+      throw new Error('Payment gateway not configured properly.')
+    }
+
+    // 1. Verify Signature
+    const body = params.razorpay_order_id + '|' + params.razorpay_payment_id
+    const expectedSignature = crypto
+      .createHmac('sha256', env.RAZORPAY_SECRET)
+      .update(body.toString())
+      .digest('hex')
+
+    const isAuthentic = crypto.timingSafeEqual(
+      Buffer.from(expectedSignature),
+      Buffer.from(params.razorpay_signature)
+    )
+
+    if (!isAuthentic) {
+      throw new Error('Invalid payment signature. Payment validation failed.')
+    }
+
+    // 2. Finalize Booking via rpc_book_slot (protects concurrency at DB level)
+    const supabase = createAdminClient()
+    const { data: bookingId, error } = await supabase.rpc('rpc_book_slot', {
+      p_slot_id: params.slotId,
+      p_venue_id: params.venueId,
+      p_customer_id: params.customerId,
+      p_total_amount: params.totalAmount,
+      p_advance_paid: params.advancePaid,
+      p_payment_id: params.razorpay_payment_id,
+    })
+
+    if (error) {
+      throw new Error(`Failed to confirm booking: ${error.message}`)
+    }
+
+    // 3. Audit Log
+    await writeAuditLog({
+      actor_id: params.customerId,
+      module: 'BOOKING',
+      action: 'BOOKING_CREATED',
+      target_id: bookingId,
+      new_value: { payment_id: params.razorpay_payment_id, amount: params.advancePaid },
+      ip_address: params.ip || null,
+    })
+
+    return bookingId
   }
 
   /**

@@ -23,10 +23,13 @@ import {
 import { ImageCropperModal } from '@/components/ui/ImageCropperModal'
 
 interface PlayerProfileClientProps {
+  // Supabase dynamic user metadata row cannot be strictly typed without generating complex conditional types
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: any
+  // Supabase customer_profiles row type varies based on joined queries
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   customerProfile?: any
+  // Bookings payload includes nested relations (venue, slots) that break standard Row mapping
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   bookings: any[]
   favoriteTurf: string
@@ -90,6 +93,7 @@ export function PlayerProfileClient({
             ? 'Semi-Pro League'
             : 'Amateur League'
 
+  // Array filter iterates over weakly typed bookings array; strict typing breaks downstream rendering
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const matchesPlayed = bookings.filter((b: any) => b.status === 'COMPLETED').length
 
@@ -159,6 +163,7 @@ export function PlayerProfileClient({
 
       // Auto-dismiss toast
       setTimeout(() => setToast(null), 3000)
+      // Error payload from Supabase API can be an Error object, PostgrestError, or AuthError
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Error updating profile:', err)

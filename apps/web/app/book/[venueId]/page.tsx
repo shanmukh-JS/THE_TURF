@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, use } from 'react'
+import { useState, use, useEffect } from 'react'
 import {
   CheckCircle,
   CreditCard,
@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Lock,
   ArrowLeft,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -20,14 +21,37 @@ const steps = [
   { id: 4, label: 'Confirmed', icon: CheckCircle },
 ]
 
+// Mock slots for the UI as per existing implementation, but now integrating with backend locking
 const availableSlots = [
-  { id: 's1', time: '7:00 PM – 8:00 PM', price: 1200, available: true },
-  { id: 's2', time: '8:00 PM – 9:00 PM', price: 1200, available: false },
-  { id: 's3', time: '9:00 PM – 10:00 PM', price: 1200, available: true },
-  { id: 's4', time: '6:00 AM – 7:00 AM', price: 900, available: true },
-  { id: 's5', time: '7:00 AM – 8:00 AM', price: 900, available: true },
-  { id: 's6', time: '8:00 AM – 9:00 AM', price: 900, available: false },
+  {
+    id: '2c332560-eb28-466d-a164-9a1bf185c709',
+    time: '7:00 PM – 8:00 PM',
+    price: 1200,
+    available: true,
+  },
+  {
+    id: '2c332560-eb28-466d-a164-9a1bf185c710',
+    time: '8:00 PM – 9:00 PM',
+    price: 1200,
+    available: false,
+  },
+  {
+    id: '2c332560-eb28-466d-a164-9a1bf185c711',
+    time: '9:00 PM – 10:00 PM',
+    price: 1200,
+    available: true,
+  },
 ]
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 export default function BookingWizard({ params }: { params: Promise<{ venueId: string }> }) {
   const { venueId } = use(params)
@@ -36,14 +60,109 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
   const [selectedDate, setSelectedDate] = useState('')
   const [details, setDetails] = useState({ name: '', phone: '', players: '6' })
   const [agreed, setAgreed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null)
 
   const venueName = 'Olympia Turf'
-
   const advanceAmount = selectedSlot ? Math.round(selectedSlot.price * 0.5) : 0
+
+  useEffect(() => {
+    loadRazorpayScript()
+  }, [])
+
+  const handlePay = async () => {
+    if (!selectedSlot || !agreed) return
+    setLoading(true)
+    setError(null)
+
+    try {
+      // 1. Call Backend to Start Checkout (Locks slot and creates Razorpay Order)
+      const checkoutRes = await fetch('/api/bookings/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slotId: selectedSlot.id,
+          venueId: venueId,
+          totalAmount: selectedSlot.price,
+          advancePaid: advanceAmount,
+        }),
+      })
+
+      const checkoutData = await checkoutRes.json()
+
+      if (!checkoutRes.ok) {
+        throw new Error(checkoutData.error || 'Failed to initialize checkout')
+      }
+
+      const { order } = checkoutData
+
+      // 2. Open Razorpay Checkout Modal
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Use Razorpay Key ID
+        amount: order.amount,
+        currency: order.currency,
+        name: 'TRUF GAMING',
+        description: `Advance Payment for ${venueName}`,
+        order_id: order.orderId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handler: async function (response: any) {
+          try {
+            setLoading(true)
+            // 3. Callback hits Backend Verification API (NOT Webhook) to finalize
+            const verifyRes = await fetch('/api/bookings/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                slotId: selectedSlot.id,
+                venueId: venueId,
+                totalAmount: selectedSlot.price,
+                advancePaid: advanceAmount,
+              }),
+            })
+
+            const verifyData = await verifyRes.json()
+
+            if (!verifyRes.ok) {
+              throw new Error(verifyData.error || 'Payment verification failed')
+            }
+
+            // 4. Booking created successfully in DB, move to Confirmed screen
+            setConfirmedBookingId(verifyData.bookingId)
+            setStep(4)
+          } catch (err: any) {
+            setError(err.message || 'Payment verification failed. Please contact support.')
+          } finally {
+            setLoading(false)
+          }
+        },
+        prefill: {
+          name: details.name,
+          contact: details.phone,
+        },
+        theme: {
+          color: '#22c55e', // Tailwind green-500
+        },
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rzp = new (window as any).Razorpay(options)
+      rzp.on('payment.failed', function (response: any) {
+        setError(`Payment Failed: ${response.error.description}`)
+        setLoading(false)
+      })
+      rzp.open()
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while starting checkout.')
+      setLoading(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#060d06] text-white flex flex-col items-center px-4 py-10">
-      {/* Back link */}
       <div className="w-full max-w-2xl mb-6">
         <a
           href={`/venues/${venueId}`}
@@ -53,7 +172,6 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
         </a>
       </div>
 
-      {/* Progress Steps */}
       <div className="w-full max-w-2xl mb-8">
         <div className="flex items-center justify-between relative">
           <div className="absolute top-5 left-0 right-0 h-px bg-white/10 z-0" />
@@ -88,13 +206,16 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
         </div>
       </div>
 
-      {/* Step Content */}
       <div className="w-full max-w-2xl">
-        {/* Step 1: Select Slot */}
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
         {step === 1 && (
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 space-y-6">
             <h2 className="text-xl font-bold">Select a Date & Time Slot</h2>
-
             <div>
               <label className="block text-sm text-gray-400 mb-2">Date</label>
               <input
@@ -104,7 +225,6 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-green-500/50 transition-colors"
               />
             </div>
-
             <div>
               <label className="block text-sm text-gray-400 mb-3">Available Slots</label>
               <div className="grid grid-cols-2 gap-3">
@@ -129,7 +249,6 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
                 ))}
               </div>
             </div>
-
             <button
               disabled={!selectedSlot || !selectedDate}
               onClick={() => setStep(2)}
@@ -140,11 +259,9 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
           </div>
         )}
 
-        {/* Step 2: Your Details */}
         {step === 2 && (
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 space-y-5">
             <h2 className="text-xl font-bold">Your Details</h2>
-
             {['name', 'phone'].map((field) => (
               <div key={field}>
                 <label className="block text-sm text-gray-400 mb-2 capitalize">
@@ -159,7 +276,6 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
                 />
               </div>
             ))}
-
             <div>
               <label className="block text-sm text-gray-400 mb-2">Number of Players</label>
               <select
@@ -174,7 +290,6 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
                 ))}
               </select>
             </div>
-
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
@@ -193,12 +308,9 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
           </div>
         )}
 
-        {/* Step 3: Payment */}
         {step === 3 && selectedSlot && (
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 space-y-5">
             <h2 className="text-xl font-bold">Confirm & Pay</h2>
-
-            {/* Order Summary */}
             <div className="rounded-xl border border-white/8 bg-black/30 p-4 space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-400">Venue</span>
@@ -225,13 +337,8 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
                   <span>Advance (50% due now)</span>
                   <span>₹{advanceAmount}</span>
                 </div>
-                <div className="flex justify-between text-gray-500 mt-1 text-xs">
-                  <span>Balance due at venue</span>
-                  <span>₹{selectedSlot.price - advanceAmount}</span>
-                </div>
               </div>
             </div>
-
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 type="checkbox"
@@ -240,42 +347,28 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
                 className="mt-0.5 accent-green-500"
               />
               <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                I agree to the venue rules and TURF GAMING&apos;s{' '}
-                <a href="#" className="text-green-400 underline">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-green-400 underline">
-                  Cancellation Policy
-                </a>
-                .
+                I agree to the venue rules and Terms of Service.
               </span>
             </label>
-
-            <div className="flex items-center gap-2 text-xs text-gray-500 bg-white/5 rounded-xl px-4 py-3 border border-white/8">
-              <Lock className="w-4 h-4 text-green-400 flex-shrink-0" />
-              Your payment is secured by Razorpay. TURF GAMING never stores card details.
-            </div>
-
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 transition-colors"
+                disabled={loading}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 transition-colors disabled:opacity-40"
               >
                 ← Back
               </button>
               <button
-                disabled={!agreed}
-                onClick={() => setStep(4)}
-                className="flex-1 py-3.5 rounded-xl bg-green-500 disabled:opacity-40 hover:bg-green-400 text-black font-bold transition-all shadow-lg shadow-green-900/30"
+                disabled={!agreed || loading}
+                onClick={handlePay}
+                className="flex-1 py-3.5 flex items-center justify-center gap-2 rounded-xl bg-green-500 disabled:opacity-40 hover:bg-green-400 text-black font-bold transition-all shadow-lg shadow-green-900/30"
               >
-                Pay ₹{advanceAmount} →
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : `Pay ₹${advanceAmount} →`}
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 4: Confirmed */}
         {step === 4 && selectedSlot && (
           <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-8 text-center space-y-4">
             <div className="w-20 h-20 rounded-full bg-green-500/20 border-2 border-green-500/40 flex items-center justify-center mx-auto">
@@ -288,23 +381,16 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
               <strong className="text-white">{selectedSlot.time}</strong> is confirmed.
             </p>
             <div className="inline-block px-4 py-2 rounded-xl bg-black/40 border border-green-500/20 font-mono text-green-400 text-sm font-bold tracking-widest">
-              BOOKING #TG{Date.now().toString().slice(-6)}
+              BOOKING ID:{' '}
+              {confirmedBookingId?.slice(0, 8).toUpperCase() ||
+                `TG${Date.now().toString().slice(-6)}`}
             </div>
-            <p className="text-xs text-gray-500">
-              A confirmation SMS has been sent to {details.phone}. See you on the pitch! 🎯
-            </p>
             <div className="flex gap-3 justify-center mt-4">
               <Link
-                href="/"
+                href="/player/bookings"
                 className="px-6 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:border-white/20 text-sm transition-colors"
               >
-                Back to Home
-              </Link>
-              <Link
-                href="/venues"
-                className="px-6 py-2.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-400 text-sm font-medium transition-colors hover:bg-green-500/25"
-              >
-                Browse More Venues
+                View My Bookings
               </Link>
             </div>
           </div>

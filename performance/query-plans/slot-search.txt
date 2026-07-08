@@ -1,0 +1,7 @@
+EXPLAIN ANALYZE SELECT * FROM public.slots WHERE venue_id = 'uuid' AND date = '2026-10-15';
+
+-- Example Output --
+Index Scan using idx_slots_search on slots  (cost=0.42..8.44 rows=10 width=144) (actual time=0.015..0.020 rows=10 loops=1)
+  Index Cond: ((venue_id = 'uuid'::uuid) AND (date = '2026-10-15'::date))
+Planning Time: 0.120 ms
+Execution Time: 0.035 ms
