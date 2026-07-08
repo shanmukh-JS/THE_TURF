@@ -69,25 +69,18 @@ export function extractErrorMsg(error: unknown): string {
  */
 export const logger = {
   info: (message: string, meta?: unknown) => {
-    // We stringify JSON meta to avoid multi-line object spread in raw console output
     const timestamp = new Date().toISOString()
     const metaStr = meta ? ` ${JSON.stringify(meta)}` : ''
-    process.stdout.write(
-      `{"time":"${timestamp}","level":"INFO","message":"${message}"${metaStr}}\n`
-    )
+    console.info(`{"time":"${timestamp}","level":"INFO","message":"${message}"${metaStr}}`)
   },
   warn: (message: string, meta?: unknown) => {
     const timestamp = new Date().toISOString()
     const metaStr = meta ? ` ${JSON.stringify(meta)}` : ''
-    process.stdout.write(
-      `{"time":"${timestamp}","level":"WARN","message":"${message}"${metaStr}}\n`
-    )
+    console.warn(`{"time":"${timestamp}","level":"WARN","message":"${message}"${metaStr}}`)
   },
   error: (message: string, meta?: unknown) => {
     const timestamp = new Date().toISOString()
     const metaStr = meta ? ` ${JSON.stringify(meta)}` : ''
-    process.stderr.write(
-      `{"time":"${timestamp}","level":"ERROR","message":"${message}"${metaStr}}\n`
-    )
+    console.error(`{"time":"${timestamp}","level":"ERROR","message":"${message}"${metaStr}}`)
   },
 }
