@@ -76,7 +76,8 @@ export default function AdminApprovalsPage() {
         owner_profiles(
           id, full_name, business_name, user_id,
           owner_settings(business_phone, bank_account_name, bank_account_number, bank_ifsc, bank_upi)
-        )
+        ),
+        venue_images(url, is_cover)
       `
       )
       .order('id', { ascending: false })
@@ -521,22 +522,24 @@ export default function AdminApprovalsPage() {
                 {/* Section: Turf Gallery */}
                 <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
                   <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center justify-between">
-                    <span>Turf Gallery ({sampleGallery.length} Images)</span>
+                    <span>
+                      Turf Gallery ({Math.min((selectedVenue.venue_images || []).length, 2)} Images)
+                    </span>
                     <span className="text-[10px] text-gray-500 lowercase">Click to Zoom</span>
                   </h4>
 
-                  <div className="grid grid-cols-5 gap-3">
-                    {sampleGallery.map((img, idx) => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {(selectedVenue.venue_images || []).slice(0, 2).map((img: any, idx: number) => (
                       <div
                         key={idx}
                         onClick={() => {
                           setActiveImageIndex(idx)
                           setIsFullscreenImage(true)
                         }}
-                        className="relative h-16 rounded-xl overflow-hidden cursor-pointer border border-white/10 hover:border-green-400 transition-all group"
+                        className="relative h-24 rounded-xl overflow-hidden cursor-pointer border border-white/10 hover:border-green-400 transition-all group"
                       >
                         <img
-                          src={img}
+                          src={img.url}
                           className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
                           alt="Turf preview"
                         />
@@ -545,6 +548,11 @@ export default function AdminApprovalsPage() {
                         </div>
                       </div>
                     ))}
+                    {(selectedVenue.venue_images || []).length === 0 && (
+                      <div className="col-span-2 py-8 text-center text-xs text-gray-500 border border-white/5 border-dashed rounded-xl bg-white/[0.01]">
+                        No images uploaded
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -641,17 +649,58 @@ export default function AdminApprovalsPage() {
                     <div className="relative">
                       <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
                       <p className="font-semibold text-white">Owner Registered</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">07/07/2026 · 02:40 PM</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {selectedVenue.owner_profiles?.created_at
+                          ? new Date(selectedVenue.owner_profiles.created_at).toLocaleDateString()
+                          : 'N/A'}
+                      </p>
                     </div>
                     <div className="relative">
                       <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
                       <p className="font-semibold text-white">Documents Uploaded</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">07/07/2026 · 02:45 PM</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {selectedVenue.created_at
+                          ? new Date(selectedVenue.created_at).toLocaleDateString()
+                          : 'N/A'}
+                      </p>
                     </div>
                     <div className="relative">
-                      <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                      <p className="font-semibold text-white">Verification Pending</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Assigned to Super Admin</p>
+                      <div
+                        className={`absolute -left-[25px] top-0.5 w-2 h-2 rounded-full ${
+                          selectedVenue.verification_status === 'APPROVED'
+                            ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]'
+                            : selectedVenue.verification_status === 'REJECTED'
+                              ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                              : selectedVenue.verification_status === 'REQUEST_CHANGES'
+                                ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse'
+                        }`}
+                      />
+                      <p
+                        className={`font-semibold ${
+                          selectedVenue.verification_status === 'APPROVED'
+                            ? 'text-green-400'
+                            : selectedVenue.verification_status === 'REJECTED'
+                              ? 'text-red-400'
+                              : 'text-amber-500'
+                        }`}
+                      >
+                        {selectedVenue.verification_status === 'APPROVED'
+                          ? 'Approved & Live'
+                          : selectedVenue.verification_status === 'REJECTED'
+                            ? 'Verification Rejected'
+                            : selectedVenue.verification_status === 'REQUEST_CHANGES'
+                              ? 'Changes Requested'
+                              : 'Verification Pending'}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {selectedVenue.verification_status === 'PENDING' ||
+                        selectedVenue.verification_status === 'UNDER_REVIEW'
+                          ? 'Assigned to Super Admin'
+                          : selectedVenue.updated_at
+                            ? new Date(selectedVenue.updated_at).toLocaleDateString()
+                            : 'Recently updated'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -682,30 +731,42 @@ export default function AdminApprovalsPage() {
               </button>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'SAVE_DRAFT' })}
-                  className="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/10 rounded-xl transition-all"
-                >
-                  Save Draft
-                </button>
-                <button
-                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'REQUEST_INFO' })}
-                  className="px-4 py-2 border border-amber-500/20 text-amber-400 text-xs font-bold hover:bg-amber-500/10 rounded-xl transition-all"
-                >
-                  Request Changes
-                </button>
-                <button
-                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'REJECTED' })}
-                  className="px-4 py-2 border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/10 rounded-xl transition-all"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => setConfirmModal({ venue: selectedVenue, action: 'APPROVED' })}
-                  className="px-6 py-2 bg-green-500 text-black text-xs font-bold hover:bg-green-400 rounded-xl transition-all"
-                >
-                  Approve & Live
-                </button>
+                {selectedVenue.verification_status !== 'APPROVED' ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        setConfirmModal({ venue: selectedVenue, action: 'SAVE_DRAFT' })
+                      }
+                      className="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 text-xs font-bold hover:bg-white/10 rounded-xl transition-all"
+                    >
+                      Save Draft
+                    </button>
+                    <button
+                      onClick={() =>
+                        setConfirmModal({ venue: selectedVenue, action: 'REQUEST_INFO' })
+                      }
+                      className="px-4 py-2 border border-amber-500/20 text-amber-400 text-xs font-bold hover:bg-amber-500/10 rounded-xl transition-all"
+                    >
+                      Request Changes
+                    </button>
+                    <button
+                      onClick={() => setConfirmModal({ venue: selectedVenue, action: 'REJECTED' })}
+                      className="px-4 py-2 border border-red-500/20 text-red-400 text-xs font-bold hover:bg-red-500/10 rounded-xl transition-all"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => setConfirmModal({ venue: selectedVenue, action: 'APPROVED' })}
+                      className="px-6 py-2 bg-green-500 text-black text-xs font-bold hover:bg-green-400 rounded-xl transition-all"
+                    >
+                      Approve & Live
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-6 py-2 bg-green-500/20 text-green-500 border border-green-500/30 rounded-xl text-xs font-black flex items-center gap-2 cursor-default">
+                    <CheckSquare className="w-4 h-4" /> Approved & Live on Platform
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -720,7 +781,7 @@ export default function AdminApprovalsPage() {
         >
           <button className="absolute top-6 right-6 text-white text-lg">✕ Close</button>
           <img
-            src={sampleGallery[activeImageIndex]}
+            src={selectedVenue.venue_images?.[activeImageIndex]?.url || ''}
             className="max-h-[85vh] max-w-[90vw] object-contain rounded-lg shadow-2xl border border-white/5"
             alt="Zoom view"
           />

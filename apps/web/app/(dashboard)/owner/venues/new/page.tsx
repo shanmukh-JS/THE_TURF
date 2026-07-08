@@ -32,9 +32,10 @@ export default function NewVenuePage() {
 
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploading] = useState<false | 'cover' | 'additional'>(false)
   const [docUploading, setDocUploading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null)
+  const activeInputRef = useRef<'cover' | 'additional'>('cover')
 
   // Form State
   const [formData, setFormData] = useState({
@@ -48,7 +49,7 @@ export default function NewVenuePage() {
     address: '',
     pricePerHour: '',
     coverImage: '',
-    additionalImages: [] as string[],
+    additionalImage: '',
     surface: 'Lawn Turf',
     size: '',
     maxPlayers: '',
@@ -84,6 +85,8 @@ export default function NewVenuePage() {
     if (currentStep === 3) {
       if (!formData.pricePerHour || isNaN(Number(formData.pricePerHour)))
         return 'Valid price is required.'
+      if (!formData.coverImage) return 'Cover photo (Photo 1) is required.'
+      if (!formData.additionalImage) return 'Additional photo (Photo 2) is required.'
       return true
     }
     if (currentStep === 4) {
@@ -111,7 +114,8 @@ export default function NewVenuePage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setUploading(true)
+    const inputType = activeInputRef.current
+    setUploading(inputType)
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${Math.random()}.${fileExt}`
@@ -130,8 +134,15 @@ export default function NewVenuePage() {
         data: { publicUrl },
       } = supabase.storage.from('venue_images').getPublicUrl(filePath)
 
-      updateField('coverImage', publicUrl)
-      setToast({ message: 'Cover image uploaded successfully!', type: 'success' })
+      if (inputType === 'cover') {
+        updateField('coverImage', publicUrl)
+      } else {
+        updateField('additionalImage', publicUrl)
+      }
+      setToast({
+        message: `${inputType === 'cover' ? 'Cover' : 'Additional'} image uploaded successfully!`,
+        type: 'success',
+      })
     } catch (err: any) {
       setToast({ message: err.message || 'Error uploading image.', type: 'error' })
     } finally {
@@ -356,6 +367,13 @@ export default function NewVenuePage() {
           venue_id: venue.id,
           url: formData.coverImage,
           is_cover: true,
+        })
+      }
+      if (formData.additionalImage) {
+        await supabase.from('venue_images').insert({
+          venue_id: venue.id,
+          url: formData.additionalImage,
+          is_cover: false,
         })
       }
 
@@ -817,41 +835,81 @@ export default function NewVenuePage() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-white/10">
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                Venue Photos
+            <div className="pt-4 border-t border-white/10 space-y-6">
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Venue Photos (Please upload exactly 2 images)
               </label>
 
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-48 rounded-2xl bg-white/5 border-2 border-white/10 border-dashed flex flex-col items-center justify-center text-gray-500 hover:bg-white/10 hover:text-white hover:border-green-500/50 transition-all cursor-pointer group overflow-hidden relative"
-              >
-                {uploading ? (
-                  <div className="flex flex-col items-center justify-center space-y-2">
-                    <Loader2 className="w-8 h-8 text-green-400 animate-spin" />
-                    <p className="text-xs text-gray-400">Uploading cover image...</p>
-                  </div>
-                ) : formData.coverImage ? (
-                  <div className="w-full h-full relative group">
-                    <img
-                      src={formData.coverImage}
-                      alt="Venue Cover"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white text-black font-semibold text-xs">
-                        <Upload className="w-4 h-4" /> Change Photo
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Photo 1: Cover */}
+                <div className="space-y-2">
+                  <span className="text-xs text-gray-500 font-semibold block">
+                    Photo 1 (Cover Photo - Required)
+                  </span>
+                  <div
+                    onClick={() => {
+                      activeInputRef.current = 'cover'
+                      fileInputRef.current?.click()
+                    }}
+                    className="w-full h-40 rounded-xl bg-white/5 border-2 border-white/10 border-dashed flex flex-col items-center justify-center text-gray-500 hover:bg-white/10 hover:text-white hover:border-green-500/50 transition-all cursor-pointer group overflow-hidden relative"
+                  >
+                    {uploading === 'cover' ? (
+                      <Loader2 className="w-6 h-6 text-green-400 animate-spin" />
+                    ) : formData.coverImage ? (
+                      <img src={formData.coverImage} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center p-4">
+                        <Upload className="w-6 h-6 mx-auto mb-2 text-green-500/80" />
+                        <span className="text-xs font-semibold text-white block">
+                          Upload Cover Photo
+                        </span>
                       </div>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <>
-                    <Upload className="w-8 h-8 mb-3 group-hover:-translate-y-1 transition-transform text-green-500/80" />
-                    <p className="text-sm font-semibold text-white">Click to upload photos</p>
-                    <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
-                  </>
-                )}
+                  <input
+                    type="text"
+                    value={formData.coverImage}
+                    onChange={(e) => updateField('coverImage', e.target.value)}
+                    placeholder="Or enter Cover Image URL"
+                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white"
+                  />
+                </div>
+
+                {/* Photo 2: Additional */}
+                <div className="space-y-2">
+                  <span className="text-xs text-gray-500 font-semibold block">
+                    Photo 2 (Additional Photo - Required)
+                  </span>
+                  <div
+                    onClick={() => {
+                      activeInputRef.current = 'additional'
+                      fileInputRef.current?.click()
+                    }}
+                    className="w-full h-40 rounded-xl bg-white/5 border-2 border-white/10 border-dashed flex flex-col items-center justify-center text-gray-500 hover:bg-white/10 hover:text-white hover:border-green-500/50 transition-all cursor-pointer group overflow-hidden relative"
+                  >
+                    {uploading === 'additional' ? (
+                      <Loader2 className="w-6 h-6 text-green-400 animate-spin" />
+                    ) : formData.additionalImage ? (
+                      <img src={formData.additionalImage} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center p-4">
+                        <Upload className="w-6 h-6 mx-auto mb-2 text-green-500/80" />
+                        <span className="text-xs font-semibold text-white block">
+                          Upload Additional Photo
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.additionalImage}
+                    onChange={(e) => updateField('additionalImage', e.target.value)}
+                    placeholder="Or enter Additional Image URL"
+                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white"
+                  />
+                </div>
               </div>
+
               <input
                 type="file"
                 ref={fileInputRef}
@@ -859,20 +917,6 @@ export default function NewVenuePage() {
                 accept="image/*"
                 className="hidden"
               />
-
-              {/* Placeholder for URL input if Cloudinary isn't ready */}
-              <div className="mt-4">
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                  Or enter image URL directly
-                </label>
-                <input
-                  type="text"
-                  value={formData.coverImage}
-                  onChange={(e) => updateField('coverImage', e.target.value)}
-                  placeholder="https://example.com/photo.jpg"
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
-                />
-              </div>
             </div>
           </div>
         )}

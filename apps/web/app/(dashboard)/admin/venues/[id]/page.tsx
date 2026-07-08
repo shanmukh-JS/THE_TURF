@@ -425,13 +425,13 @@ export default function EnterpriseVerificationReviewPage() {
             <div className="absolute top-0 left-0 w-1 h-full bg-green-500/50 group-hover:bg-green-500 transition-colors" />
             <div className="flex justify-between items-center mb-5">
               <h3 className="text-xs font-bold text-green-500 tracking-wider flex items-center gap-2 uppercase">
-                <ImageIcon className="w-4 h-4" /> Turf Gallery ({images.length} Images)
+                <ImageIcon className="w-4 h-4" /> Turf Gallery ({Math.min(images.length, 2)} Images)
               </h3>
               <span className="text-xs text-gray-500 italic">click to zoom</span>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {images.map((img, i) => (
+            <div className="grid grid-cols-2 gap-3">
+              {images.slice(0, 2).map((img, i) => (
                 <div
                   key={i}
                   className="aspect-video rounded-lg overflow-hidden border border-white/10 relative group/img cursor-pointer"
@@ -449,7 +449,7 @@ export default function EnterpriseVerificationReviewPage() {
                 </div>
               ))}
               {images.length === 0 && (
-                <div className="col-span-5 h-24 flex items-center justify-center bg-white/5 rounded-lg border border-white/10 border-dashed">
+                <div className="col-span-2 h-24 flex items-center justify-center bg-white/5 rounded-lg border border-white/10 border-dashed">
                   <span className="text-sm text-gray-500">No images uploaded</span>
                 </div>
               )}
@@ -699,39 +699,40 @@ export default function EnterpriseVerificationReviewPage() {
           </button>
 
           <div className="flex items-center gap-3">
-            <button
-              disabled={isProcessing}
-              onClick={() => handleUpdateStatus('DRAFT', true)}
-              className="px-5 py-2.5 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-sm font-bold disabled:opacity-50"
-            >
-              Save Draft
-            </button>
-            <button
-              disabled={isProcessing}
-              onClick={() => handleUpdateStatus('REQUEST_CHANGES')}
-              className="px-5 py-2.5 rounded-lg border border-amber-500/30 text-amber-500 hover:bg-amber-500/10 transition-colors text-sm font-bold disabled:opacity-50"
-            >
-              Request Changes
-            </button>
-            <button
-              disabled={isProcessing}
-              onClick={() => handleUpdateStatus('REJECTED')}
-              className="px-5 py-2.5 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors text-sm font-bold disabled:opacity-50"
-            >
-              Reject
-            </button>
-            {venue.verification_status !== 'APPROVED' && (
-              <button
-                disabled={isProcessing}
-                onClick={() => handleUpdateStatus('APPROVED')}
-                className="px-6 py-2.5 rounded-lg bg-green-500 text-black hover:bg-green-400 transition-colors text-sm font-black shadow-[0_0_20px_rgba(34,197,94,0.3)] disabled:opacity-50"
-              >
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Live'}
-              </button>
-            )}
-            {venue.verification_status === 'APPROVED' && (
+            {venue.verification_status !== 'APPROVED' ? (
+              <>
+                <button
+                  disabled={isProcessing}
+                  onClick={() => handleUpdateStatus('DRAFT', true)}
+                  className="px-5 py-2.5 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:bg-white/5 transition-colors text-sm font-bold disabled:opacity-50"
+                >
+                  Save Draft
+                </button>
+                <button
+                  disabled={isProcessing}
+                  onClick={() => handleUpdateStatus('REQUEST_CHANGES')}
+                  className="px-5 py-2.5 rounded-lg border border-amber-500/30 text-amber-500 hover:bg-amber-500/10 transition-colors text-sm font-bold disabled:opacity-50"
+                >
+                  Request Changes
+                </button>
+                <button
+                  disabled={isProcessing}
+                  onClick={() => handleUpdateStatus('REJECTED')}
+                  className="px-5 py-2.5 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors text-sm font-bold disabled:opacity-50"
+                >
+                  Reject
+                </button>
+                <button
+                  disabled={isProcessing}
+                  onClick={() => handleUpdateStatus('APPROVED')}
+                  className="px-6 py-2.5 rounded-lg bg-green-500 text-black hover:bg-green-400 transition-colors text-sm font-black shadow-[0_0_20px_rgba(34,197,94,0.3)] disabled:opacity-50"
+                >
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Live'}
+                </button>
+              </>
+            ) : (
               <div className="px-6 py-2.5 rounded-lg bg-green-500/20 text-green-500 border border-green-500/30 flex items-center gap-2 text-sm font-black cursor-default">
-                <CheckCircle2 className="w-4 h-4" /> Live on Platform
+                <CheckCircle2 className="w-4 h-4" /> Approved & Live on Platform
               </div>
             )}
           </div>
