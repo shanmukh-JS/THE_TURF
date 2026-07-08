@@ -31,6 +31,7 @@ class NotificationService {
           to: payload.metadata.email,
           subject: payload.title,
           html: `<p>${payload.message}</p>`, // In full implementation, use templates[payload.type]
+          templateName: payload.type,
         })
       }
 

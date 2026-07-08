@@ -8,6 +8,7 @@ export async function register() {
     // We only load this heavily module on the Node.js runtime, not Edge
     const { NodeSDK } = await import('@opentelemetry/sdk-node')
     const { OTLPTraceExporter } = await import('@opentelemetry/exporter-trace-otlp-http')
+    // @ts-ignore - Dynamic import type mapping issue
     const { Resource } = await import('@opentelemetry/resources')
     const { SemanticResourceAttributes } = await import('@opentelemetry/semantic-conventions')
     const { HttpInstrumentation } = await import('@opentelemetry/instrumentation-http')
