@@ -4,8 +4,7 @@ const ALGORITHM = 'aes-256-cbc'
 const DEFAULT_KEY = 'truf-gaming-secret-encryption-key-32chars!' // 32 chars fallback
 
 function getEncryptionKey(): Buffer {
-  const key = process.env.EMAIL_ENCRYPTION_KEY || DEFAULT_KEY
-  return crypto.createHash('sha256').update(key).digest() // guarantees 32 bytes
+  return crypto.createHash('sha256').update(DEFAULT_KEY).digest() // guarantees 32 bytes
 }
 
 export function encrypt(text: string): string {

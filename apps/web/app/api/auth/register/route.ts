@@ -8,10 +8,6 @@ import { checkPasswordStrength, apiSuccess, apiError } from '@/lib/email/validat
 
 export async function POST(req: NextRequest) {
   try {
-    const crypto = require('crypto')
-    const k = process.env.EMAIL_ENCRYPTION_KEY || 'not_set'
-    const hash = crypto.createHash('sha256').update(k).digest('hex')
-    return apiError('DEBUG_KEY', `Key length: ${k.length}, Hash: ${hash}`)
     const { name, email, phone, password, role } = await req.json()
     const ip = req.headers.get('x-forwarded-for') || '127.0.0.1'
     const userAgent = req.headers.get('user-agent') || 'Unknown'
