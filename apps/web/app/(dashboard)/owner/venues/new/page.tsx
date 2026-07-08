@@ -22,6 +22,7 @@ const STEPS = [
   { id: 1, title: 'Basic Details', icon: Info },
   { id: 2, title: 'Location', icon: MapPin },
   { id: 3, title: 'Pricing & Media', icon: IndianRupee },
+  { id: 4, title: 'Verification', icon: Upload },
 ]
 
 export default function NewVenuePage() {
@@ -32,12 +33,8 @@ export default function NewVenuePage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [docUploading, setDocUploading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null)
-
-  // Data fetching state
-  const [cities, setCities] = useState<any[]>([])
-  const [areas, setAreas] = useState<any[]>([])
-  const [isLoadingLocations, setIsLoadingLocations] = useState(true)
 
   // Form State
   const [formData, setFormData] = useState({
@@ -46,8 +43,8 @@ export default function NewVenuePage() {
     pitches: '1',
     isIndoor: false,
     turfType: 'Artificial Grass',
-    cityId: '',
-    areaId: '',
+    cityName: '',
+    areaName: '',
     address: '',
     pricePerHour: '',
     coverImage: '',
@@ -65,29 +62,8 @@ export default function NewVenuePage() {
     closingTime: '23:00',
     weeklyHolidays: [] as string[],
     slotDuration: '60',
+    documents: [] as string[],
   })
-
-  useEffect(() => {
-    async function loadCities() {
-      setIsLoadingLocations(true)
-      const { data } = await supabase.from('cities').select('*')
-      if (data) setCities(data)
-      setIsLoadingLocations(false)
-    }
-    loadCities()
-  }, [])
-
-  useEffect(() => {
-    async function loadAreas() {
-      if (!formData.cityId) {
-        setAreas([])
-        return
-      }
-      const { data } = await supabase.from('areas').select('*').eq('city_id', formData.cityId)
-      if (data) setAreas(data)
-    }
-    loadAreas()
-  }, [formData.cityId])
 
   const updateField = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -100,14 +76,19 @@ export default function NewVenuePage() {
       return true
     }
     if (currentStep === 2) {
-      if (!formData.cityId) return 'Please select a city.'
-      if (!formData.areaId) return 'Please select an area.'
+      if (!formData.cityName.trim()) return 'City name is required.'
+      if (!formData.areaName.trim()) return 'Area/Neighborhood name is required.'
       if (!formData.address.trim()) return 'Complete address is required.'
       return true
     }
     if (currentStep === 3) {
       if (!formData.pricePerHour || isNaN(Number(formData.pricePerHour)))
         return 'Valid price is required.'
+      return true
+    }
+    if (currentStep === 4) {
+      if (formData.documents.length === 0)
+        return 'Please upload at least one verification document (Govt ID or Business Registration).'
       return true
     }
     return true
@@ -119,7 +100,7 @@ export default function NewVenuePage() {
       setToast({ message: isValid as string, type: 'error' })
       return
     }
-    if (currentStep < 3) setCurrentStep((prev) => prev + 1)
+    if (currentStep < 4) setCurrentStep((prev) => prev + 1)
   }
 
   const handleBack = () => {
@@ -158,6 +139,43 @@ export default function NewVenuePage() {
     }
   }
 
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      setToast({ message: 'Document must be less than 5MB.', type: 'error' })
+      return
+    }
+
+    setDocUploading(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+      const filePath = `docs/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('venue_documents')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('venue_documents').getPublicUrl(filePath)
+
+      updateField('documents', [...formData.documents, publicUrl])
+      setToast({ message: 'Document uploaded successfully!', type: 'success' })
+    } catch (err: any) {
+      setToast({ message: err.message || 'Error uploading document.', type: 'error' })
+    } finally {
+      setDocUploading(false)
+    }
+  }
+
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
       setToast({ message: 'Geolocation is not supported by your browser.', type: 'error' })
@@ -189,62 +207,9 @@ export default function NewVenuePage() {
               addressObj.residential ||
               addressObj.city_district
 
-            if (detectedCity) {
-              // Check if city exists in DB
-              let { data: existingCity } = await supabase
-                .from('cities')
-                .select('id, name')
-                .ilike('name', detectedCity)
-                .single()
-
-              let cityIdToUse = existingCity?.id
-
-              if (!existingCity) {
-                // Insert new city
-                const { data: newCity } = await supabase
-                  .from('cities')
-                  .insert({ name: detectedCity, state: addressObj.state || 'Unknown State' })
-                  .select('id')
-                  .single()
-                if (newCity) cityIdToUse = newCity.id
-
-                // Refresh cities list
-                const { data: allCities } = await supabase.from('cities').select('*')
-                if (allCities) setCities(allCities)
-              }
-
-              if (cityIdToUse) {
-                updateField('cityId', cityIdToUse)
-
-                if (detectedArea) {
-                  // Check if area exists under this city
-                  let { data: existingArea } = await supabase
-                    .from('areas')
-                    .select('id, name')
-                    .eq('city_id', cityIdToUse)
-                    .ilike('name', detectedArea)
-                    .single()
-
-                  let areaIdToUse = existingArea?.id
-                  if (!existingArea) {
-                    const { data: newArea } = await supabase
-                      .from('areas')
-                      .insert({
-                        name: detectedArea,
-                        city_id: cityIdToUse,
-                        pincode: addressObj.postcode || null,
-                      })
-                      .select('id')
-                      .single()
-                    if (newArea) areaIdToUse = newArea.id
-                  }
-
-                  if (areaIdToUse) {
-                    updateField('areaId', areaIdToUse)
-                  }
-                }
-              }
-            }
+            if (detectedCity) updateField('cityName', detectedCity)
+            if (detectedArea) updateField('areaName', detectedArea)
+            if (addressObj.postcode) updateField('pincode', addressObj.postcode)
 
             setToast({ message: 'Location auto-filled successfully!', type: 'success' })
           } else {
@@ -299,6 +264,50 @@ export default function NewVenuePage() {
         ownerProfileId = newProfile.id
       }
 
+      // 1.5 Handle City & Area (Find or Create)
+      let cityIdToUse = null
+      let { data: existingCity } = await supabase
+        .from('cities')
+        .select('id')
+        .ilike('name', formData.cityName.trim())
+        .maybeSingle()
+
+      if (existingCity) {
+        cityIdToUse = existingCity.id
+      } else {
+        const { data: newCity } = await supabase
+          .from('cities')
+          .insert({ name: formData.cityName.trim(), state: 'Unknown State' })
+          .select('id')
+          .single()
+        if (newCity) cityIdToUse = newCity.id
+      }
+
+      let areaIdToUse = null
+      if (cityIdToUse) {
+        let { data: existingArea } = await supabase
+          .from('areas')
+          .select('id')
+          .eq('city_id', cityIdToUse)
+          .ilike('name', formData.areaName.trim())
+          .maybeSingle()
+
+        if (existingArea) {
+          areaIdToUse = existingArea.id
+        } else {
+          const { data: newArea } = await supabase
+            .from('areas')
+            .insert({
+              name: formData.areaName.trim(),
+              city_id: cityIdToUse,
+              pincode: formData.pincode || null,
+            })
+            .select('id')
+            .single()
+          if (newArea) areaIdToUse = newArea.id
+        }
+      }
+
       // 2. Insert Venue
       const { data: venue, error: venueError } = await supabase
         .from('venues')
@@ -313,8 +322,8 @@ export default function NewVenuePage() {
           size: formData.size,
           max_players: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
           amenities: formData.amenities,
-          city_id: formData.cityId,
-          area_id: formData.areaId,
+          city_id: cityIdToUse,
+          area_id: areaIdToUse,
           address: formData.address,
           pincode: formData.pincode,
           google_maps_link: formData.googleMapsLink,
@@ -323,6 +332,7 @@ export default function NewVenuePage() {
           weekly_holidays: formData.weeklyHolidays,
           slot_duration: parseInt(formData.slotDuration),
           verification_status: 'UNDER_REVIEW',
+          documents_url: formData.documents,
         })
         .select()
         .single()
@@ -589,98 +599,77 @@ export default function NewVenuePage() {
 
         {currentStep === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            {isLoadingLocations ? (
-              <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={formData.cityName}
+                  onChange={(e) => updateField('cityName', e.target.value)}
+                  placeholder="e.g. Hyderabad"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    City
-                  </label>
-                  <select
-                    value={formData.cityId}
-                    onChange={(e) => updateField('cityId', e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
-                  >
-                    <option value="" className="text-black bg-white">
-                      Select a city...
-                    </option>
-                    {cities.map((city) => (
-                      <option key={city.id} value={city.id} className="text-black bg-white">
-                        {city.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    Area / Neighborhood
-                  </label>
-                  <select
-                    value={formData.areaId}
-                    onChange={(e) => updateField('areaId', e.target.value)}
-                    disabled={!formData.cityId || areas.length === 0}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50 disabled:opacity-50"
-                  >
-                    <option value="" className="text-black bg-white">
-                      Select an area...
-                    </option>
-                    {areas.map((area) => (
-                      <option key={area.id} value={area.id} className="text-black bg-white">
-                        {area.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Complete Address
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleDetectLocation}
-                      className="text-xs font-semibold text-green-500 hover:text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-md transition-colors"
-                    >
-                      <MapPin className="w-3 h-3" /> Detect My Location
-                    </button>
-                  </div>
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => updateField('address', e.target.value)}
-                    placeholder="Enter the full street address..."
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50 resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    Pincode
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.pincode}
-                    onChange={(e) => updateField('pincode', e.target.value)}
-                    placeholder="e.g. 500081"
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    Google Maps Link
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.googleMapsLink}
-                    onChange={(e) => updateField('googleMapsLink', e.target.value)}
-                    placeholder="e.g. https://maps.app.goo.gl/..."
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Area / Neighborhood
+                </label>
+                <input
+                  type="text"
+                  value={formData.areaName}
+                  onChange={(e) => updateField('areaName', e.target.value)}
+                  placeholder="e.g. Madhapur"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                />
               </div>
-            )}
+              <div className="md:col-span-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Complete Address
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleDetectLocation}
+                    className="text-xs font-semibold text-green-500 hover:text-green-400 flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-md transition-colors"
+                  >
+                    <MapPin className="w-3 h-3" /> Detect My Location
+                  </button>
+                </div>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => updateField('address', e.target.value)}
+                  placeholder="Enter the full street address..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Pincode
+                </label>
+                <input
+                  type="text"
+                  value={formData.pincode}
+                  onChange={(e) => updateField('pincode', e.target.value)}
+                  placeholder="e.g. 500081"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Google Maps Link
+                </label>
+                <input
+                  type="url"
+                  value={formData.googleMapsLink}
+                  onChange={(e) => updateField('googleMapsLink', e.target.value)}
+                  placeholder="e.g. https://maps.app.goo.gl/..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -888,6 +877,65 @@ export default function NewVenuePage() {
           </div>
         )}
 
+        {currentStep === 4 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Verification Documents
+              </label>
+              <p className="text-sm text-gray-500 mb-4">
+                To verify your listing, please upload at least one official document (e.g., Govt ID,
+                Business Registration, or Property Deed).
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {formData.documents.map((doc, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-xl"
+                  >
+                    <span className="text-sm text-white truncate mr-4">Document {idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateField(
+                          'documents',
+                          formData.documents.filter((_, i) => i !== idx)
+                        )
+                      }}
+                      className="text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <label className="flex items-center justify-center w-full h-32 px-4 transition bg-white/5 border-2 border-white/10 border-dashed rounded-xl appearance-none cursor-pointer hover:border-green-500/50 hover:bg-white/10 focus:outline-none">
+                  <span className="flex items-center space-x-2">
+                    {docUploading ? (
+                      <Loader2 className="w-6 h-6 text-green-500 animate-spin" />
+                    ) : (
+                      <Upload className="w-6 h-6 text-gray-400" />
+                    )}
+                    <span className="font-medium text-gray-400">
+                      {docUploading ? 'Uploading...' : 'Click to upload a document (PDF, JPG, PNG)'}
+                    </span>
+                  </span>
+                  <input
+                    type="file"
+                    name="file_upload"
+                    className="hidden"
+                    accept=".pdf,image/*"
+                    onChange={handleDocUpload}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer Actions */}
         <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
           <button
@@ -901,7 +949,7 @@ export default function NewVenuePage() {
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
 
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
             <button
               onClick={handleNext}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 transition-all shadow-lg shadow-green-900/20"
