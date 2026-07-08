@@ -1,6 +1,17 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["NODE_ENV", "SUPABASE_SERVICE_ROLE_KEY", "EMAIL_ENCRYPTION_KEY"],
+  "globalEnv": [
+    "NODE_ENV", 
+    "SUPABASE_SERVICE_ROLE_KEY", 
+    "EMAIL_ENCRYPTION_KEY", 
+    "REDIS_URL", 
+    "RAZORPAY_SECRET", 
+    "CHAOS_MODE", 
+    "CHAOS_SECRET",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_RAZORPAY_KEY_ID"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
