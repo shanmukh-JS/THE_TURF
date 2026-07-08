@@ -148,13 +148,14 @@ export default function ManageSlotsPage() {
       // Fetch venues
       const { data: venuesData } = await supabase
         .from('venues')
-        .select('id, name, venue_pricing(price)')
+        .select('id, name, verification_status, venue_pricing(price)')
         .eq('owner_id', ownerProfileId)
 
       if (venuesData) {
         const mappedVenues = venuesData.map((v) => ({
           id: v.id,
           name: v.name,
+          verification_status: v.verification_status,
           price: Array.isArray(v.venue_pricing)
             ? (v.venue_pricing[0] as any)?.price
             : (v.venue_pricing as any)?.price || 1000,

@@ -113,6 +113,14 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       .eq('id', venueData.owner_id)
       .maybeSingle()
 
+    const isOwner = session?.user?.id === ownerProfileData?.user_id
+
+    // If venue is not approved and user is not the owner, don't show it
+    if (venueData.verification_status !== 'APPROVED' && !isOwner) {
+      setLoading(false)
+      return // Will render a not-found or access-denied state below
+    }
+
     // Format venue object
     const formattedVenue = {
       id: venueData.id,
@@ -134,6 +142,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
               'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop',
             ],
       ownerUserId: ownerProfileData?.user_id || null,
+      isOwner,
     }
 
     setVenue(formattedVenue)

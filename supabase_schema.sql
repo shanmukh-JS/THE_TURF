@@ -49,12 +49,22 @@ create table public.venues (
   name text not null,
   description text,
   address text not null,
+  pincode text,
+  google_maps_link text,
   city_id uuid references public.cities(id) on delete set null,
   area_id uuid references public.areas(id) on delete set null,
   verification_status text default 'DRAFT' not null,
   pitches int default 1 not null,
   is_indoor boolean default false not null,
   turf_type text,
+  surface text,
+  size text,
+  max_players int,
+  amenities jsonb default '[]'::jsonb,
+  opening_time time without time zone,
+  closing_time time without time zone,
+  weekly_holidays jsonb default '[]'::jsonb,
+  slot_duration int default 60,
   is_disabled boolean default false not null
 );
 
@@ -70,7 +80,10 @@ create table public.venue_images (
 create table public.venue_pricing (
   id uuid default uuid_generate_v4() primary key,
   venue_id uuid references public.venues(id) on delete cascade unique not null,
-  price numeric not null
+  price numeric not null,
+  weekend_price numeric,
+  peak_price numeric,
+  advance_limit int default 15
 );
 
 -- SLOTS

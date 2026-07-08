@@ -52,6 +52,19 @@ export default function NewVenuePage() {
     pricePerHour: '',
     coverImage: '',
     additionalImages: [] as string[],
+    surface: 'Lawn Turf',
+    size: '',
+    maxPlayers: '',
+    amenities: [] as string[],
+    pincode: '',
+    googleMapsLink: '',
+    weekendPrice: '',
+    peakPrice: '',
+    advanceLimit: '15',
+    openingTime: '06:00',
+    closingTime: '23:00',
+    weeklyHolidays: [] as string[],
+    slotDuration: '60',
   })
 
   useEffect(() => {
@@ -296,10 +309,20 @@ export default function NewVenuePage() {
           pitches: parseInt(formData.pitches),
           is_indoor: formData.isIndoor,
           turf_type: formData.turfType,
+          surface: formData.surface,
+          size: formData.size,
+          max_players: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+          amenities: formData.amenities,
           city_id: formData.cityId,
           area_id: formData.areaId,
           address: formData.address,
-          verification_status: 'PENDING',
+          pincode: formData.pincode,
+          google_maps_link: formData.googleMapsLink,
+          opening_time: formData.openingTime,
+          closing_time: formData.closingTime,
+          weekly_holidays: formData.weeklyHolidays,
+          slot_duration: parseInt(formData.slotDuration),
+          verification_status: 'UNDER_REVIEW',
         })
         .select()
         .single()
@@ -310,6 +333,9 @@ export default function NewVenuePage() {
       const { error: pricingError } = await supabase.from('venue_pricing').insert({
         venue_id: venue.id,
         price: Number(formData.pricePerHour),
+        weekend_price: formData.weekendPrice ? Number(formData.weekendPrice) : null,
+        peak_price: formData.peakPrice ? Number(formData.peakPrice) : null,
+        advance_limit: parseInt(formData.advanceLimit),
       })
 
       if (pricingError) throw pricingError
@@ -451,6 +477,101 @@ export default function NewVenuePage() {
                 </select>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Surface
+                </label>
+                <select
+                  value={formData.surface}
+                  onChange={(e) => updateField('surface', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
+                >
+                  <option value="Lawn Turf" className="text-black bg-white">
+                    Lawn Turf
+                  </option>
+                  <option value="Concrete" className="text-black bg-white">
+                    Concrete
+                  </option>
+                  <option value="Wooden" className="text-black bg-white">
+                    Wooden
+                  </option>
+                  <option value="Mud" className="text-black bg-white">
+                    Mud
+                  </option>
+                  <option value="Mat" className="text-black bg-white">
+                    Mat
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Size
+                </label>
+                <input
+                  type="text"
+                  value={formData.size}
+                  onChange={(e) => updateField('size', e.target.value)}
+                  placeholder="e.g. 120x80 ft"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Max Players
+                </label>
+                <input
+                  type="number"
+                  value={formData.maxPlayers}
+                  onChange={(e) => updateField('maxPlayers', e.target.value)}
+                  placeholder="e.g. 14"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Amenities
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {[
+                  'Parking Available',
+                  'Flood Lights',
+                  'Washrooms',
+                  'Drinking Water',
+                  'Changing Room',
+                  'First Aid Kit',
+                ].map((amenity) => (
+                  <div key={amenity} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id={`amenity-${amenity}`}
+                      checked={formData.amenities.includes(amenity)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          updateField('amenities', [...formData.amenities, amenity])
+                        } else {
+                          updateField(
+                            'amenities',
+                            formData.amenities.filter((a) => a !== amenity)
+                          )
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-gray-600 text-green-500 focus:ring-green-500 bg-transparent"
+                    />
+                    <label
+                      htmlFor={`amenity-${amenity}`}
+                      className="text-sm text-gray-300 cursor-pointer"
+                    >
+                      {amenity}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
               <input
                 type="checkbox"
@@ -534,6 +655,30 @@ export default function NewVenuePage() {
                     className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50 resize-none"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Pincode
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.pincode}
+                    onChange={(e) => updateField('pincode', e.target.value)}
+                    placeholder="e.g. 500081"
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Google Maps Link
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.googleMapsLink}
+                    onChange={(e) => updateField('googleMapsLink', e.target.value)}
+                    placeholder="e.g. https://maps.app.goo.gl/..."
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -541,25 +686,146 @@ export default function NewVenuePage() {
 
         {currentStep === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Base Price (Per Hour)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <IndianRupee className="h-5 w-5 text-gray-500" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Base Price (Per Hour)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <IndianRupee className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <input
+                    type="number"
+                    value={formData.pricePerHour}
+                    onChange={(e) => updateField('pricePerHour', e.target.value)}
+                    placeholder="e.g. 1500"
+                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                  />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Weekend Price
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <IndianRupee className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <input
+                    type="number"
+                    value={formData.weekendPrice}
+                    onChange={(e) => updateField('weekendPrice', e.target.value)}
+                    placeholder="e.g. 1800"
+                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Peak Price
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <IndianRupee className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <input
+                    type="number"
+                    value={formData.peakPrice}
+                    onChange={(e) => updateField('peakPrice', e.target.value)}
+                    placeholder="e.g. 2000"
+                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Opening Time
+                </label>
                 <input
-                  type="number"
-                  value={formData.pricePerHour}
-                  onChange={(e) => updateField('pricePerHour', e.target.value)}
-                  placeholder="e.g. 1500"
-                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50"
+                  type="time"
+                  value={formData.openingTime}
+                  onChange={(e) => updateField('openingTime', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                You can set dynamic pricing for specific slots later.
-              </p>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Closing Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.closingTime}
+                  onChange={(e) => updateField('closingTime', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Advance Booking Limit (Days)
+                </label>
+                <input
+                  type="number"
+                  value={formData.advanceLimit}
+                  onChange={(e) => updateField('advanceLimit', e.target.value)}
+                  placeholder="e.g. 15"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Default Slot Duration (Mins)
+                </label>
+                <input
+                  type="number"
+                  value={formData.slotDuration}
+                  onChange={(e) => updateField('slotDuration', e.target.value)}
+                  placeholder="e.g. 60"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Weekly Holidays
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(
+                  (day) => (
+                    <div key={day} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`holiday-${day}`}
+                        checked={formData.weeklyHolidays.includes(day)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            updateField('weeklyHolidays', [...formData.weeklyHolidays, day])
+                          } else {
+                            updateField(
+                              'weeklyHolidays',
+                              formData.weeklyHolidays.filter((d) => d !== day)
+                            )
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-600 text-green-500 focus:ring-green-500 bg-transparent"
+                      />
+                      <label
+                        htmlFor={`holiday-${day}`}
+                        className="text-sm text-gray-300 cursor-pointer"
+                      >
+                        {day}
+                      </label>
+                    </div>
+                  )
+                )}
+              </div>
             </div>
 
             <div className="pt-4 border-t border-white/10">

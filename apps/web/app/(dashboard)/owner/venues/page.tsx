@@ -59,6 +59,19 @@ export default function OwnerVenuesPage() {
     turfType: 'Artificial Grass',
     address: '',
     pricePerHour: '',
+    surface: 'Lawn Turf',
+    size: '',
+    maxPlayers: '',
+    amenities: [] as string[],
+    pincode: '',
+    googleMapsLink: '',
+    weekendPrice: '',
+    peakPrice: '',
+    advanceLimit: '15',
+    openingTime: '06:00',
+    closingTime: '23:00',
+    weeklyHolidays: [] as string[],
+    slotDuration: '60',
   })
 
   // Auto-hide toast
@@ -185,12 +198,31 @@ export default function OwnerVenuesPage() {
           name: v.name,
           description: v.description || '',
           address: v.address,
+          pincode: v.pincode || '',
+          googleMapsLink: v.google_maps_link || '',
           turfType: v.turf_type || 'Artificial Grass',
+          surface: v.surface || 'Lawn Turf',
+          size: v.size || '',
+          maxPlayers: v.max_players ? v.max_players.toString() : '',
+          amenities: v.amenities || [],
+          openingTime: v.opening_time ? v.opening_time.substring(0, 5) : '06:00',
+          closingTime: v.closing_time ? v.closing_time.substring(0, 5) : '23:00',
+          weeklyHolidays: v.weekly_holidays || [],
+          slotDuration: v.slot_duration ? v.slot_duration.toString() : '60',
           pitches: v.pitches || 1,
           isIndoor: v.is_indoor || false,
           pricePerHour: Array.isArray(v.venue_pricing)
             ? (v.venue_pricing[0] as any)?.price || 1000
             : (v.venue_pricing as any)?.price || 1000,
+          weekendPrice: Array.isArray(v.venue_pricing)
+            ? (v.venue_pricing[0] as any)?.weekend_price || ''
+            : (v.venue_pricing as any)?.weekend_price || '',
+          peakPrice: Array.isArray(v.venue_pricing)
+            ? (v.venue_pricing[0] as any)?.peak_price || ''
+            : (v.venue_pricing as any)?.peak_price || '',
+          advanceLimit: Array.isArray(v.venue_pricing)
+            ? (v.venue_pricing[0] as any)?.advance_limit || 15
+            : (v.venue_pricing as any)?.advance_limit || 15,
           coverImage,
           rating: avgRating,
           reviewCount: venueReviews.length,
@@ -239,6 +271,19 @@ export default function OwnerVenuesPage() {
       turfType: v.turfType,
       address: v.address,
       pricePerHour: v.pricePerHour.toString(),
+      surface: v.surface,
+      size: v.size,
+      maxPlayers: v.maxPlayers,
+      amenities: v.amenities,
+      pincode: v.pincode,
+      googleMapsLink: v.googleMapsLink,
+      weekendPrice: v.weekendPrice ? v.weekendPrice.toString() : '',
+      peakPrice: v.peakPrice ? v.peakPrice.toString() : '',
+      advanceLimit: v.advanceLimit ? v.advanceLimit.toString() : '15',
+      openingTime: v.openingTime,
+      closingTime: v.closingTime,
+      weeklyHolidays: v.weeklyHolidays,
+      slotDuration: v.slotDuration,
     })
   }
 
@@ -259,6 +304,17 @@ export default function OwnerVenuesPage() {
           is_indoor: editFormData.isIndoor,
           turf_type: editFormData.turfType,
           address: editFormData.address,
+          surface: editFormData.surface,
+          size: editFormData.size,
+          max_players: editFormData.maxPlayers ? parseInt(editFormData.maxPlayers) : null,
+          amenities: editFormData.amenities,
+          pincode: editFormData.pincode,
+          google_maps_link: editFormData.googleMapsLink,
+          opening_time: editFormData.openingTime,
+          closing_time: editFormData.closingTime,
+          weekly_holidays: editFormData.weeklyHolidays,
+          slot_duration: parseInt(editFormData.slotDuration),
+          verification_status: 'UNDER_REVIEW',
         })
         .eq('id', editingVenue.id)
 
@@ -269,6 +325,9 @@ export default function OwnerVenuesPage() {
         {
           venue_id: editingVenue.id,
           price: Number(editFormData.pricePerHour),
+          weekend_price: editFormData.weekendPrice ? Number(editFormData.weekendPrice) : null,
+          peak_price: editFormData.peakPrice ? Number(editFormData.peakPrice) : null,
+          advance_limit: parseInt(editFormData.advanceLimit),
         },
         { onConflict: 'venue_id' }
       )
@@ -566,6 +625,79 @@ export default function OwnerVenuesPage() {
                   onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50 resize-none"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 items-center">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Pincode</label>
+                  <input
+                    type="text"
+                    value={editFormData.pincode}
+                    onChange={(e) => setEditFormData({ ...editFormData, pincode: e.target.value })}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Google Maps Link</label>
+                  <input
+                    type="url"
+                    value={editFormData.googleMapsLink}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, googleMapsLink: e.target.value })
+                    }
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 items-center">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Weekend Price (₹)</label>
+                  <input
+                    type="number"
+                    value={editFormData.weekendPrice}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, weekendPrice: e.target.value })
+                    }
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Peak Price (₹)</label>
+                  <input
+                    type="number"
+                    value={editFormData.peakPrice}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, peakPrice: e.target.value })
+                    }
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 items-center">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Opening Time</label>
+                  <input
+                    type="time"
+                    value={editFormData.openingTime}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, openingTime: e.target.value })
+                    }
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Closing Time</label>
+                  <input
+                    type="time"
+                    value={editFormData.closingTime}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, closingTime: e.target.value })
+                    }
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
+                  />
+                </div>
               </div>
 
               {/* Submit Buttons */}
