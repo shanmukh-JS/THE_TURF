@@ -120,7 +120,7 @@ export default function AdminDashboardPage() {
   const [recentBookings, setRecentBookings] = useState<any[]>([])
 
   // Reports
-  const [pendingReportsCount, setPendingReportsCount] = useState(1)
+  const [pendingReportsCount, setPendingReportsCount] = useState(0)
 
   const fetchAdminStats = async () => {
     setLoading(true)
