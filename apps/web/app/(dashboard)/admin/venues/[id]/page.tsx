@@ -631,16 +631,40 @@ export default function EnterpriseVerificationReviewPage() {
               </div>
               <div className="relative">
                 <div
-                  className={`absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full ${venue.verification_status === 'APPROVED' ? 'bg-green-500' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'}`}
+                  className={`absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full ${
+                    venue.verification_status === 'APPROVED'
+                      ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]'
+                      : venue.verification_status === 'REJECTED'
+                        ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                        : venue.verification_status === 'REQUEST_CHANGES'
+                          ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                          : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                  }`}
                 />
                 <p
-                  className={`text-sm font-bold ${venue.verification_status === 'APPROVED' ? 'text-white' : 'text-amber-500'} mb-0.5`}
+                  className={`text-sm font-bold ${
+                    venue.verification_status === 'APPROVED'
+                      ? 'text-green-400'
+                      : venue.verification_status === 'REJECTED'
+                        ? 'text-red-400'
+                        : 'text-amber-500'
+                  } mb-0.5`}
                 >
                   {venue.verification_status === 'APPROVED'
-                    ? 'Verification Complete'
-                    : 'Verification Pending'}
+                    ? 'Approved & Live'
+                    : venue.verification_status === 'REJECTED'
+                      ? 'Verification Rejected'
+                      : venue.verification_status === 'REQUEST_CHANGES'
+                        ? 'Changes Requested'
+                        : 'Verification Pending'}
                 </p>
-                <p className="text-[10px] text-gray-500 font-mono">Assigned to Super Admin</p>
+                <p className="text-[10px] text-gray-500 font-mono">
+                  {venue.verification_status === 'PENDING' || venue.verification_status === 'DRAFT'
+                    ? 'Assigned to Super Admin'
+                    : venue.updated_at
+                      ? format(new Date(venue.updated_at), 'MM/dd/yyyy - hh:mm a')
+                      : 'Recently updated'}
+                </p>
               </div>
             </div>
           </div>
@@ -696,13 +720,20 @@ export default function EnterpriseVerificationReviewPage() {
             >
               Reject
             </button>
-            <button
-              disabled={isProcessing}
-              onClick={() => handleUpdateStatus('APPROVED')}
-              className="px-6 py-2.5 rounded-lg bg-green-500 text-black hover:bg-green-400 transition-colors text-sm font-black shadow-[0_0_20px_rgba(34,197,94,0.3)] disabled:opacity-50"
-            >
-              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Live'}
-            </button>
+            {venue.verification_status !== 'APPROVED' && (
+              <button
+                disabled={isProcessing}
+                onClick={() => handleUpdateStatus('APPROVED')}
+                className="px-6 py-2.5 rounded-lg bg-green-500 text-black hover:bg-green-400 transition-colors text-sm font-black shadow-[0_0_20px_rgba(34,197,94,0.3)] disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Live'}
+              </button>
+            )}
+            {venue.verification_status === 'APPROVED' && (
+              <div className="px-6 py-2.5 rounded-lg bg-green-500/20 text-green-500 border border-green-500/30 flex items-center gap-2 text-sm font-black cursor-default">
+                <CheckCircle2 className="w-4 h-4" /> Live on Platform
+              </div>
+            )}
           </div>
         </div>
       </div>
