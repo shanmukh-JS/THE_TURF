@@ -32,15 +32,28 @@ export default function HomePage() {
       async (position) => {
         try {
           const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`
           )
           const data = await res.json()
-          const locationName =
-            data.city ||
-            data.locality ||
-            `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
+
+          let locationName = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
+
+          if (data && data.address) {
+            const addr = data.address
+            locationName =
+              addr.city ||
+              addr.town ||
+              addr.county ||
+              addr.state_district ||
+              addr.village ||
+              addr.suburb ||
+              data.name ||
+              locationName
+          }
+
           setLocationInput(locationName)
         } catch (e) {
+          console.error('Geocoding error:', e)
           setLocationInput(
             `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
           )
