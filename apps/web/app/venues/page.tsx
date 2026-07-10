@@ -17,8 +17,18 @@ export default function VenuesPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [priceFilter, setPriceFilter] = useState('ALL')
+  const [displayLocation, setDisplayLocation] = useState('Hyderabad')
   const [allVenues, setAllVenues] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('user_location')
+      if (saved) {
+        setDisplayLocation(saved)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -123,7 +133,7 @@ export default function VenuesPage() {
       <div className="bg-gradient-to-r from-green-950/20 via-black to-black border-b border-white/8 px-8 py-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_120%,rgba(34,197,94,0.05),transparent_50%)] pointer-events-none" />
         <p className="text-xs text-green-400 font-semibold tracking-widest uppercase mb-1">
-          Hyderabad
+          {displayLocation}
         </p>
         <h1 className="text-3xl font-extrabold tracking-tight">Cricket Boxes Near You</h1>
         <p className="text-gray-400 mt-1 text-sm">

@@ -65,7 +65,7 @@ export async function GET() {
       address: '123 Test St',
       city_id: city?.id,
       area_id: area?.id,
-      verification_status: 'VERIFIED',
+      verification_status: 'APPROVED',
       pitches: 2,
     })
     .select('id')

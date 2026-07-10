@@ -73,66 +73,24 @@ export default function OwnerBookingsPage() {
       return
     }
 
-    // Check user role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // Remove insecure client-side admin check.
+    // Ensure we are an owner and fetch only our venues.
+    let profile = null
+    const { data: existingProfile } = await supabase
+      .from('owner_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
 
-    const isAdmin = userData?.role === 'ADMIN'
-
-    // For ADMIN: fetch ALL venues. For OWNER: fetch only their venues.
-    let venues: any[] = []
-    if (isAdmin) {
-      const { data: allVenues } = await supabase.from('venues').select('id, name')
-      venues = allVenues || []
-    } else {
-      let profile = null
-      const { data: existingProfile } = await supabase
-        .from('owner_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (!existingProfile) {
-        const { data: newProfile } = await supabase
-          .from('owner_profiles')
-          .insert({
-            user_id: user.id,
-            full_name: user.email?.split('@')[0] || 'Owner',
-            business_name: 'My Turf Business',
-          })
-          .select('id')
-          .single()
-        profile = newProfile
-      } else {
-        profile = existingProfile
-      }
-
-      if (!profile) {
-        setLoading(false)
-        return
-      }
-      setOwnerProfileId(profile.id)
-
-      const { data: ownerVenues } = await supabase
-        .from('venues')
-        .select('id, name')
-        .eq('owner_id', profile.id)
-
-      venues = ownerVenues || []
-    }
-
-    if (venues.length === 0) {
+    if (!existingProfile) {
       setLoading(false)
       return
     }
 
-    const vIds = venues.map((v) => v.id)
-    setVenueIds(vIds)
-    const venueMap = new Map(venues.map((v) => [v.id, v.name]))
+    profile = existingProfile
+    setOwnerProfileId(profile.id)
 
+    // Fetch bookings joined with customer_profiles and venues
     const { data: bookingsData, error } = await supabase
       .from('bookings')
       .select(
@@ -144,10 +102,12 @@ export default function OwnerBookingsPage() {
         venue_id,
         created_at,
         slot_id,
-        slots(date, start_time)
+        slots(date, start_time),
+        venues!inner(name, owner_id),
+        customer_profiles(full_name)
       `
       )
-      .in('venue_id', vIds)
+      .eq('venues.owner_id', profile.id)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -157,37 +117,8 @@ export default function OwnerBookingsPage() {
     }
 
     if (bookingsData && bookingsData.length > 0) {
-      const customerIds = Array.from(new Set(bookingsData.map((b) => b.customer_id)))
-
-      let customerMap = new Map<string, string>()
-      if (isAdmin) {
-        const { data: users } = await supabase
-          .from('users')
-          .select('id, email')
-          .in('id', customerIds as string[])
-
-        if (users) {
-          users.forEach((u) => customerMap.set(u.id, u.email.split('@')[0]))
-        }
-
-        const { data: cp } = await supabase
-          .from('customer_profiles')
-          .select('user_id, full_name')
-          .in('user_id', customerIds as string[])
-
-        if (cp) {
-          cp.forEach((p) => customerMap.set(p.user_id, p.full_name))
-        }
-      } else {
-        const { data: customerProfiles } = await supabase
-          .from('customer_profiles')
-          .select('user_id, full_name')
-          .in('user_id', customerIds as string[])
-
-        if (customerProfiles) {
-          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
-        }
-      }
+      const vIds = Array.from(new Set(bookingsData.map((b: any) => b.venue_id)))
+      setVenueIds(vIds)
 
       const formatted = bookingsData.map((b: any) => {
         const slot = b.slots && !Array.isArray(b.slots) ? b.slots : null
@@ -211,9 +142,9 @@ export default function OwnerBookingsPage() {
 
         return {
           id: b.id,
-          customerName: customerMap.get(b.customer_id) || 'Unknown Customer',
+          customerName: b.customer_profiles?.full_name || 'Unknown Customer',
           customerId: b.customer_id,
-          venueName: venueMap.get(b.venue_id) || 'Unknown Venue',
+          venueName: b.venues?.name || 'Unknown Venue',
           venueId: b.venue_id,
           date: dateStr,
           time: timeStr,
@@ -270,49 +201,35 @@ export default function OwnerBookingsPage() {
     setActionLoading(false)
   }
 
-  const handleAcceptBooking = async (bookingId: string) => {
+  const handleConfirmPayment = async (bookingId: string) => {
     setActionLoading(true)
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status: 'CONFIRMED' })
-      .eq('id', bookingId)
 
-    if (error) {
-      setToast({ message: error.message, type: 'error' })
-    } else {
-      setToast({ message: 'Booking accepted!', type: 'success' })
-      // Optimistic update
+    try {
+      const res = await fetch('/api/bookings/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId,
+          status: 'CONFIRMED',
+          ownerProfileId,
+          notifyUser: true,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to update booking status')
+      }
+
+      setToast({ message: 'Payment confirmed & booking updated', type: 'success' })
       setBookings((prev) =>
         prev.map((b) => (b.id === bookingId ? { ...b, status: 'CONFIRMED' } : b))
       )
-      setSelectedBooking(null)
-
-      // Payment notification simulation
-      if (ownerProfileId) {
-        const { data: settings } = await supabase
-          .from('owner_settings')
-          .select('notify_payments')
-          .eq('owner_id', ownerProfileId)
-          .maybeSingle()
-
-        if (settings?.notify_payments) {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser()
-          const booking = bookings.find((b) => b.id === bookingId)
-
-          if (user && booking) {
-            await supabase.from('notifications').insert({
-              user_id: user.id,
-              title: 'Payment Received!',
-              message: `Payment confirmed for booking #${bookingId.substring(0, 8).toUpperCase()}. Amount: ₹${booking.amount}`,
-              type: 'SUCCESS',
-            })
-          }
-        }
-      }
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' })
+    } finally {
+      setActionLoading(false)
     }
-    setActionLoading(false)
   }
 
   const handleCancelBooking = async (bookingId: string) => {
@@ -320,22 +237,32 @@ export default function OwnerBookingsPage() {
       return
 
     setActionLoading(true)
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status: 'CANCELLED' })
-      .eq('id', bookingId)
+    try {
+      const res = await fetch('/api/bookings/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId,
+          status: 'CANCELLED',
+          ownerProfileId,
+          notifyUser: true,
+        }),
+      })
 
-    if (error) {
-      setToast({ message: error.message, type: 'error' })
-    } else {
-      setToast({ message: 'Booking cancelled.', type: 'success' })
-      // Optimistic update
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to cancel booking')
+      }
+
+      setToast({ message: 'Booking cancelled successfully', type: 'success' })
       setBookings((prev) =>
         prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b))
       )
-      setSelectedBooking(null)
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' })
+    } finally {
+      setActionLoading(false)
     }
-    setActionLoading(false)
   }
 
   // Filter bookings
@@ -554,7 +481,7 @@ export default function OwnerBookingsPage() {
                           )}
                           {b.status === 'PENDING' && (
                             <button
-                              onClick={() => handleAcceptBooking(b.id)}
+                              onClick={() => handleConfirmPayment(b.id)}
                               className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors"
                               title="Accept Booking"
                             >
@@ -674,7 +601,7 @@ export default function OwnerBookingsPage() {
                 )}
                 {selectedBooking.status === 'PENDING' && (
                   <button
-                    onClick={() => handleAcceptBooking(selectedBooking.id)}
+                    onClick={() => handleConfirmPayment(selectedBooking.id)}
                     disabled={actionLoading}
                     className="flex-1 w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-400 text-black font-semibold text-sm transition-all"
                   >

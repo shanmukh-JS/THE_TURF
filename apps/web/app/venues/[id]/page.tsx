@@ -251,86 +251,35 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
     setBookingLoading(true)
 
-    const advanceAmount = Math.round(selectedSlot.price * 0.5)
-
-    // 1. Double check slot is still available in DB
-    const { data: checkSlot } = await supabase
-      .from('slots')
-      .select('status')
-      .eq('id', selectedSlot.id)
-      .single()
-
-    if (!checkSlot || checkSlot.status !== 'Available') {
-      setToast({
-        message: 'This slot was just booked by another player! Please choose another timing.',
-        type: 'error',
+    try {
+      const response = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slotId: selectedSlot.id }),
       })
-      setSelectedSlot(null)
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create booking')
+      }
+
+      // Clear draft booking from LocalStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('tg_draft_booking')
+      }
+
+      setToast({ message: 'Booking confirmed! Redirecting...', type: 'success' })
+
+      // Redirect after confirmation
+      setTimeout(() => {
+        router.push('/player/bookings')
+      }, 1500)
+    } catch (error: any) {
+      setToast({ message: error.message, type: 'error' })
       setBookingLoading(false)
-      fetchData()
-      return
+      fetchData() // Refresh slots
     }
-
-    // 2. Create the booking entry
-    const bookingStatus = ownerSettings?.auto_accept_bookings === false ? 'PENDING' : 'CONFIRMED'
-
-    const { error: bookingError } = await supabase.from('bookings').insert({
-      slot_id: selectedSlot.id,
-      venue_id: id,
-      customer_id: currentUser.id,
-      total_amount: selectedSlot.price,
-      advance_paid: advanceAmount,
-      status: bookingStatus,
-    })
-
-    if (bookingError) {
-      setToast({ message: bookingError.message, type: 'error' })
-      setBookingLoading(false)
-      return
-    }
-
-    // 3. Update the slot status
-    const { error: slotError } = await supabase
-      .from('slots')
-      .update({ status: 'Booked', is_booked: true })
-      .eq('id', selectedSlot.id)
-
-    if (slotError) {
-      setToast({ message: slotError.message, type: 'error' })
-      setBookingLoading(false)
-      return
-    }
-
-    // 4. Notifications & Emails
-    if (ownerSettings?.notify_bookings && venue?.ownerUserId) {
-      await supabase.from('notifications').insert({
-        user_id: venue.ownerUserId,
-        title: 'New Booking!',
-        message: `${currentUser.email} booked a slot at ${venue.name} for ₹${selectedSlot.price}.`,
-        type: 'BOOKING',
-      })
-    }
-
-    if (ownerSettings?.notify_email) {
-      await supabase.from('email_logs').insert({
-        recipient_email: 'owner@turfgaming.com',
-        subject: `New Booking at ${venue.name}`,
-        body: `You have received a new booking from ${currentUser.email}.`,
-        status: 'SENT',
-      })
-    }
-
-    // Clear draft booking from LocalStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('tg_draft_booking')
-    }
-
-    setToast({ message: 'Booking confirmed! Redirecting...', type: 'success' })
-
-    // Redirect after confirmation
-    setTimeout(() => {
-      router.push('/player/bookings')
-    }, 1500)
   }
 
   // Format date helper

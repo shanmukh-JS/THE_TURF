@@ -114,201 +114,209 @@ export default function OwnerDashboardPage() {
   const fetchDashboardData = async () => {
     if (!user) return
 
-    // 1. Get owner profile
-    const { data: profile } = await supabase
-      .from('owner_profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    try {
+      // 1. Get owner profile
+      const { data: profile } = await supabase
+        .from('owner_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
 
-    if (!profile) {
-      setLoading(false)
-      return
-    }
-    setOwnerProfileId(profile.id)
+      if (!profile) {
+        setLoading(false)
+        return
+      }
+      setOwnerProfileId(profile.id)
 
-    // 2. Get venues
-    const { data: venuesData } = await supabase
-      .from('venues')
-      .select('id, name, verification_status')
-      .eq('owner_id', profile.id)
+      // 2. Get venues
+      const { data: venuesData } = await supabase
+        .from('venues')
+        .select('id, name, verification_status')
+        .eq('owner_id', profile.id)
 
-    if (!venuesData || venuesData.length === 0) {
-      setLoading(false)
-      return
-    }
+      if (!venuesData || venuesData.length === 0) {
+        setLoading(false)
+        return
+      }
 
-    setVenues(venuesData)
-    const vIds = venuesData.map((v) => v.id)
-    setVenueIds(vIds)
-    setActiveVenuesCount(
-      venuesData.filter((v) => v.verification_status === 'APPROVED').length || venuesData.length
-    )
-
-    // 3. Get all bookings
-    const { data: bookings } = await supabase
-      .from('bookings')
-      .select(
-        `
-        id, total_amount, status, customer_id, venue_id, created_at,
-        slot:slots(date, start_time, end_time),
-        venue:venues(name)
-      `
+      setVenues(venuesData)
+      const vIds = venuesData.map((v) => v.id)
+      setVenueIds(vIds)
+      setActiveVenuesCount(
+        venuesData.filter((v) => v.verification_status === 'APPROVED').length || venuesData.length
       )
-      .in('venue_id', vIds)
-      .order('created_at', { ascending: false })
 
-    if (!bookings) {
+      // 3. Get all bookings
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select(
+          `
+          id, total_amount, status, customer_id, venue_id, created_at,
+          slot:slots(date, start_time, end_time),
+          venue:venues(name)
+        `
+        )
+        .in('venue_id', vIds)
+        .order('created_at', { ascending: false })
+
+      if (!bookings) {
+        setLoading(false)
+        return
+      }
+
+      // Customer names
+      const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id))).filter(Boolean)
+      const customerMap = new Map<string, string>()
+
+      if (customerIds.length > 0) {
+        const { data: customerProfiles } = await supabase
+          .from('customer_profiles')
+          .select('user_id, full_name')
+          .in('user_id', customerIds as string[])
+
+        if (customerProfiles) {
+          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        }
+      }
+
+      // Compute stats
+      const now = new Date()
+      const todayStr = now.toISOString().split('T')[0]
+      const yesterday = new Date(now)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+      let revSum = 0
+      let yRevSum = 0
+      let tRevSum = 0
+      let tBookCount = 0
+      let yBookCount = 0
+      const customers = new Set<string>()
+      let nearestBookingMins: number | null = null
+
+      const recentList: any[] = []
+
+      for (const b of bookings as any[]) {
+        customers.add(b.customer_id)
+
+        if (b.status === 'CONFIRMED' || b.status === 'COMPLETED') {
+          revSum += Number(b.total_amount)
+        }
+
+        const slot = b.slot && !Array.isArray(b.slot) ? b.slot : null
+        const slotDate = slot?.date || ''
+
+        // Today's stats
+        if (slotDate === todayStr && (b.status === 'CONFIRMED' || b.status === 'COMPLETED')) {
+          tBookCount++
+          tRevSum += Number(b.total_amount)
+
+          // Next booking
+          if (slot?.start_time) {
+            const startTime = new Date(slot.start_time)
+            const diffMins = Math.round((startTime.getTime() - now.getTime()) / 60000)
+            if (diffMins > 0 && (nearestBookingMins === null || diffMins < nearestBookingMins)) {
+              nearestBookingMins = diffMins
+            }
+          }
+        }
+
+        // Yesterday's stats
+        if (slotDate === yesterdayStr && (b.status === 'CONFIRMED' || b.status === 'COMPLETED')) {
+          yBookCount++
+          yRevSum += Number(b.total_amount)
+        }
+
+        // Recent bookings (top 5)
+        if (recentList.length < 5) {
+          let timeStr = 'N/A'
+          let dateStr = 'N/A'
+          if (slot) {
+            const d = new Date(slot.date)
+            dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            if (slot.start_time) {
+              timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+              })
+            }
+          }
+          recentList.push({
+            id: b.id,
+            customer: customerMap.get(b.customer_id) || 'Customer',
+            venue: b.venue && !Array.isArray(b.venue) ? b.venue.name : 'Unknown Venue',
+            date: dateStr,
+            time: timeStr,
+            amount: Number(b.total_amount),
+            status: b.status || 'PENDING',
+          })
+        }
+      }
+
+      setRevenue(revSum)
+      setYesterdayRevenue(yRevSum)
+      setTotalBookings(bookings.length)
+      setYesterdayBookings(yBookCount)
+      setUniqueCustomers(customers.size)
+      setTodayBookingsCount(tBookCount)
+      setTodayRevenue(tRevSum)
+      setNextBookingMins(nearestBookingMins)
+      setRecentBookings(recentList)
+
+      // 4. Ratings
+      const { data: reviews } = await supabase.from('reviews').select('rating').in('venue_id', vIds)
+
+      if (reviews && reviews.length > 0) {
+        const sum = reviews.reduce((acc, r) => acc + Number(r.rating), 0)
+        setAvgRating(Number((sum / reviews.length).toFixed(1)))
+        setTotalReviews(reviews.length)
+      }
+
+      // 5. Today's Slots (all, not just 4)
+      const { data: tSlots } = await supabase
+        .from('slots')
+        .select('id, start_time, end_time, is_booked, status, venue_id')
+        .in('venue_id', vIds)
+        .eq('date', todayStr)
+        .order('start_time', { ascending: true })
+
+      if (tSlots) {
+        const formatted = tSlots.map((s) => {
+          const time = new Date(s.start_time).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+
+          let customerName = ''
+          if (s.is_booked) {
+            const booking = (bookings as any[]).find(
+              (b: any) => b.status === 'CONFIRMED' && b.slot?.start_time === s.start_time
+            )
+            if (booking) {
+              customerName = customerMap.get(booking.customer_id) || 'Booked'
+            } else {
+              customerName = 'Booked'
+            }
+          }
+
+          const venueName = venuesData.find((v) => v.id === s.venue_id)?.name || ''
+
+          return {
+            id: s.id,
+            time,
+            customer: s.is_booked ? customerName : '',
+            status: s.status === 'Blocked' ? 'blocked' : s.is_booked ? 'booked' : 'available',
+            venueName,
+          }
+        })
+        setTodaySlots(formatted)
+      }
+
       setLoading(false)
-      return
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+      setLoading(false)
     }
-
-    // Customer names
-    const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id)))
-    const { data: customerProfiles } = await supabase
-      .from('customer_profiles')
-      .select('user_id, full_name')
-      .in('user_id', customerIds as string[])
-
-    const customerMap = new Map<string, string>()
-    if (customerProfiles) {
-      customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
-    }
-
-    // Compute stats
-    const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    const yesterdayStr = yesterday.toISOString().split('T')[0]
-
-    let revSum = 0
-    let yRevSum = 0
-    let tRevSum = 0
-    let tBookCount = 0
-    let yBookCount = 0
-    const customers = new Set<string>()
-    let nearestBookingMins: number | null = null
-
-    const recentList: any[] = []
-
-    for (const b of bookings as any[]) {
-      customers.add(b.customer_id)
-
-      if (b.status === 'CONFIRMED' || b.status === 'COMPLETED') {
-        revSum += Number(b.total_amount)
-      }
-
-      const slot = b.slot && !Array.isArray(b.slot) ? b.slot : null
-      const slotDate = slot?.date || ''
-
-      // Today's stats
-      if (slotDate === todayStr && (b.status === 'CONFIRMED' || b.status === 'COMPLETED')) {
-        tBookCount++
-        tRevSum += Number(b.total_amount)
-
-        // Next booking
-        if (slot?.start_time) {
-          const startTime = new Date(slot.start_time)
-          const diffMins = Math.round((startTime.getTime() - now.getTime()) / 60000)
-          if (diffMins > 0 && (nearestBookingMins === null || diffMins < nearestBookingMins)) {
-            nearestBookingMins = diffMins
-          }
-        }
-      }
-
-      // Yesterday's stats
-      if (slotDate === yesterdayStr && (b.status === 'CONFIRMED' || b.status === 'COMPLETED')) {
-        yBookCount++
-        yRevSum += Number(b.total_amount)
-      }
-
-      // Recent bookings (top 5)
-      if (recentList.length < 5) {
-        let timeStr = 'N/A'
-        let dateStr = 'N/A'
-        if (slot) {
-          const d = new Date(slot.date)
-          dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          if (slot.start_time) {
-            timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-            })
-          }
-        }
-        recentList.push({
-          id: b.id,
-          customer: customerMap.get(b.customer_id) || 'Customer',
-          venue: b.venue && !Array.isArray(b.venue) ? b.venue.name : 'Unknown Venue',
-          date: dateStr,
-          time: timeStr,
-          amount: Number(b.total_amount),
-          status: b.status || 'PENDING',
-        })
-      }
-    }
-
-    setRevenue(revSum)
-    setYesterdayRevenue(yRevSum)
-    setTotalBookings(bookings.length)
-    setYesterdayBookings(yBookCount)
-    setUniqueCustomers(customers.size)
-    setTodayBookingsCount(tBookCount)
-    setTodayRevenue(tRevSum)
-    setNextBookingMins(nearestBookingMins)
-    setRecentBookings(recentList)
-
-    // 4. Ratings
-    const { data: reviews } = await supabase.from('reviews').select('rating').in('venue_id', vIds)
-
-    if (reviews && reviews.length > 0) {
-      const sum = reviews.reduce((acc, r) => acc + Number(r.rating), 0)
-      setAvgRating(Number((sum / reviews.length).toFixed(1)))
-      setTotalReviews(reviews.length)
-    }
-
-    // 5. Today's Slots (all, not just 4)
-    const { data: tSlots } = await supabase
-      .from('slots')
-      .select('id, start_time, end_time, is_booked, status, venue_id')
-      .in('venue_id', vIds)
-      .eq('date', todayStr)
-      .order('start_time', { ascending: true })
-
-    if (tSlots) {
-      const formatted = tSlots.map((s) => {
-        const time = new Date(s.start_time).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-
-        let customerName = ''
-        if (s.is_booked) {
-          const booking = (bookings as any[]).find(
-            (b: any) => b.status === 'CONFIRMED' && b.slot?.start_time === s.start_time
-          )
-          if (booking) {
-            customerName = customerMap.get(booking.customer_id) || 'Booked'
-          } else {
-            customerName = 'Booked'
-          }
-        }
-
-        const venueName = venuesData.find((v) => v.id === s.venue_id)?.name || ''
-
-        return {
-          id: s.id,
-          time,
-          customer: s.is_booked ? customerName : '',
-          status: s.status === 'Blocked' ? 'blocked' : s.is_booked ? 'booked' : 'available',
-          venueName,
-        }
-      })
-      setTodaySlots(formatted)
-    }
-
-    setLoading(false)
   }
 
   useEffect(() => {

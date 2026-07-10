@@ -118,7 +118,7 @@ export default function NewVenuePage() {
     setUploading(inputType)
     try {
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const filePath = `${fileName}`
 
       const { error: uploadError } = await supabase.storage
@@ -163,7 +163,7 @@ export default function NewVenuePage() {
     setDocUploading(true)
     try {
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const filePath = `docs/${fileName}`
 
       const { error: uploadError } = await supabase.storage
@@ -258,21 +258,7 @@ export default function NewVenuePage() {
       let ownerProfileId = profile?.id
 
       if (!profile) {
-        // Automatically create an owner profile for the user (e.g., admin testing)
-        const { data: newProfile, error: createError } = await supabase
-          .from('owner_profiles')
-          .insert({
-            user_id: userData.user.id,
-            full_name: userData.user.email?.split('@')[0] || 'Admin',
-            business_name: 'Turf Gaming Testing',
-          })
-          .select('id')
-          .single()
-
-        if (createError || !newProfile) {
-          throw new Error(`Creation failed: ${createError?.message || 'Unknown error'}`)
-        }
-        ownerProfileId = newProfile.id
+        throw new Error('Owner profile not found. Please complete your profile setup first.')
       }
 
       // 1.5 Handle City & Area (Find or Create)
@@ -386,7 +372,7 @@ export default function NewVenuePage() {
       let msg = e.message || 'Error submitting venue'
       if (msg.toLowerCase().includes('row-level security') || msg.toLowerCase().includes('rls')) {
         msg =
-          "Database Error: RLS policy violation on 'venue_pricing'. Please run the migration SQL scripts inside your Supabase dashboard SQL Editor!"
+          "We couldn't save your venue due to a permissions error. Please contact support or try again later."
       }
       setToast({ message: msg, type: 'error' })
       setIsSubmitting(false)

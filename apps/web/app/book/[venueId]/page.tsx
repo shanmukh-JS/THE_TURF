@@ -109,32 +109,15 @@ export default function BookingWizard({ params }: { params: Promise<{ venueId: s
         handler: async function (response: any) {
           try {
             setLoading(true)
-            // 3. Callback hits Backend Verification API (NOT Webhook) to finalize
-            const verifyRes = await fetch('/api/bookings/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                slotId: selectedSlot.id,
-                venueId: venueId,
-                totalAmount: selectedSlot.price,
-                advancePaid: advanceAmount,
-              }),
-            })
+            // Payment successful on client side.
+            // We NO LONGER call /api/bookings/verify from the client.
+            // The Razorpay webhook (order.paid / payment.authorized) will handle backend verification and booking confirmation securely.
 
-            const verifyData = await verifyRes.json()
-
-            if (!verifyRes.ok) {
-              throw new Error(verifyData.error || 'Payment verification failed')
-            }
-
-            // 4. Booking created successfully in DB, move to Confirmed screen
-            setConfirmedBookingId(verifyData.bookingId)
+            // Move to Confirmed screen
+            setConfirmedBookingId('Processing via Webhook')
             setStep(4)
           } catch (err: any) {
-            setError(err.message || 'Payment verification failed. Please contact support.')
+            setError(err.message || 'An error occurred. Please contact support.')
           } finally {
             setLoading(false)
           }

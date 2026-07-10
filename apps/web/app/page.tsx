@@ -70,6 +70,14 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('user_location')
+      if (saved) {
+        setLocationInput(saved)
+        setSearchedLocation(saved)
+      }
+    }
+
     const fetchVenues = async () => {
       const { data } = await supabase
         .from('venues')
