@@ -124,6 +124,26 @@ export async function POST(req: Request) {
       throw new Error(signInError?.message || 'Failed to generate session')
     }
 
+    // Emit login notification event asynchronously
+    try {
+      const { data: profile } = await supabase
+        .from('customer_profiles')
+        .select('full_name')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      const { emitLoginEvent } = await import('@/lib/events/handlers')
+      await emitLoginEvent({
+        userId,
+        phone,
+        fullName: profile?.full_name || 'Player',
+        city: 'Hyderabad', // Default fallback city
+        device: req.headers.get('user-agent') || 'Browser Client',
+      })
+    } catch (e) {
+      console.error('Failed to trigger login event dispatch:', e)
+    }
+
     // Return the session tokens so the frontend can set them
     return NextResponse.json({
       success: true,

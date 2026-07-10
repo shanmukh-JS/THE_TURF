@@ -16,6 +16,7 @@ import {
   Star,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const statusMap = {
@@ -44,6 +45,8 @@ interface Booking {
   rawStartTime: string
   rawDate?: string
   cancellationPolicy?: string
+  qrCode?: string
+  checkInStatus?: string
 }
 
 interface BookingListClientProps {
@@ -52,6 +55,7 @@ interface BookingListClientProps {
 
 export function BookingListClient({ initialBookings }: BookingListClientProps) {
   const supabase = createClient()
+  const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>(initialBookings)
   const [activeTab, setActiveTab] = useState('All')
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -376,10 +380,16 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                           </Link>
                           {b.status === 'COMPLETED' && !reviewedIds.has(b.id) && (
                             <button
-                              onClick={() => {
-                                setReviewBooking(b)
-                                setReviewRating(5)
-                                setReviewComment('')
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/rating/token?bookingId=${b.id}`)
+                                  const data = await res.json()
+                                  if (!res.ok)
+                                    throw new Error(data.error || 'Failed to fetch rating token')
+                                  router.push(`/rating/${b.id}?token=${data.token}`)
+                                } catch (err: any) {
+                                  alert(err.message)
+                                }
                               }}
                               className="px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500 hover:text-black hover:border-amber-500 text-amber-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
                             >
@@ -472,6 +482,28 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                     <span className="uppercase font-sans">Balance Due</span>
                     <span>₹{selectedBooking.amount - selectedBooking.advance}</span>
                   </div>
+                  {selectedBooking.qrCode && (
+                    <div className="border-t border-white/5 pt-3 space-y-2 text-center">
+                      <span className="text-[9px] text-gray-500 uppercase tracking-widest block font-bold">
+                        QR Ticket Code
+                      </span>
+                      <span className="inline-block px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs font-mono font-bold select-all">
+                        {selectedBooking.qrCode}
+                      </span>
+                      <div className="flex justify-center items-center gap-1.5 mt-1">
+                        <span className="text-[9px] text-gray-500 uppercase font-sans">
+                          Check-in:
+                        </span>
+                        <span
+                          className={`text-[9px] font-bold ${selectedBooking.checkInStatus === 'CHECKED_IN' ? 'text-green-400' : 'text-gray-500'}`}
+                        >
+                          {selectedBooking.checkInStatus === 'CHECKED_IN'
+                            ? 'CHECKED IN'
+                            : 'NOT CHECKED IN'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-2">

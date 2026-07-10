@@ -29,6 +29,8 @@ export default async function CustomerBookingsPage() {
       total_amount,
       advance_paid,
       status,
+      qr_code,
+      check_in_status,
       slots!inner(date, start_time, end_time),
       venues!inner(id, name, owner_id, areas(name), venue_images(url, is_cover))
     `
@@ -97,6 +99,8 @@ export default async function CustomerBookingsPage() {
       rawStartTime: b.slots.start_time,
       rawDate: b.slots.date,
       cancellationPolicy: ownerSettingsMap.get(b.venues?.owner_id) || 'flexible',
+      qrCode: b.qr_code,
+      checkInStatus: b.check_in_status,
     }
   })
 

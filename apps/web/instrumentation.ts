@@ -32,5 +32,13 @@ export async function register() {
     sdk.start()
     const { logger } = await import('@/lib/utils/logger')
     logger.info('[Telemetry] OpenTelemetry initialized')
+
+    // Bootstrap Outbox Processor and Queue Workers
+    const { outboxProcessor } = await import('@/lib/services/notifications/OutboxProcessor')
+    const { startWorkers } = await import('@/lib/workers/whatsapp.worker')
+
+    outboxProcessor.startPolling(5000)
+    startWorkers()
+    logger.info('[QueueManager] Outbox poller and worker listeners bootstrapped successfully.')
   }
 }

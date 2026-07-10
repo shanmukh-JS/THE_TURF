@@ -170,6 +170,78 @@ export class BookingService {
       throw new Error(`Failed to confirm booking: ${error.message}`)
     }
 
+    const qrToken = crypto
+      .createHash('sha256')
+      .update(`${bookingId}_${params.customerId}_salt`)
+      .digest('hex')
+      .substring(0, 16)
+
+    // Save QR token back to bookings
+    await supabase.from('bookings').update({ qr_code: qrToken }).eq('id', bookingId)
+
+    // Fetch details for notifications
+    const { data: userProfile } = await supabase
+      .from('customer_profiles')
+      .select('full_name')
+      .eq('user_id', params.customerId)
+      .maybeSingle()
+
+    const { data: userRecord } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('id', params.customerId)
+      .single()
+
+    const { data: venueRecord } = await supabase
+      .from('venues')
+      .select('name')
+      .eq('id', params.venueId)
+      .single()
+
+    const { data: slotRecord } = await supabase
+      .from('slots')
+      .select('date, start_time, duration')
+      .eq('id', params.slotId)
+      .single()
+
+    // Trigger asynchronous notification flows
+    try {
+      const { emitBookingConfirmedEvent } = await import('@/lib/events/handlers')
+      const { notificationScheduler } = await import('@/lib/services/notifications/Scheduler')
+
+      const dateStr = slotRecord?.date ? new Date(slotRecord.date).toLocaleDateString() : ''
+      const timeStr = slotRecord
+        ? new Date(slotRecord.start_time).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : ''
+      const durationStr = slotRecord ? `${slotRecord.duration || 60} mins` : '60 mins'
+
+      await emitBookingConfirmedEvent({
+        bookingId,
+        userId: params.customerId,
+        phone: userRecord?.phone || '',
+        fullName: userProfile?.full_name || 'Player',
+        venueName: venueRecord?.name || 'the Turf',
+        date: dateStr,
+        time: timeStr,
+        duration: durationStr,
+        amount: params.advancePaid.toString(),
+        qrToken: qrToken,
+      })
+
+      await notificationScheduler.scheduleBookingNotifications({
+        bookingId,
+        slotId: params.slotId,
+        recipientPhone: userRecord?.phone || '',
+        customerName: userProfile?.full_name || 'Player',
+        venueName: venueRecord?.name || 'the Turf',
+      })
+    } catch (e) {
+      console.error('Failed to trigger confirmation events and reminders scheduler:', e)
+    }
+
     // 3. Audit Log
     await writeAuditLog({
       actor_id: params.customerId,
@@ -209,6 +281,41 @@ export class BookingService {
 
     // Update booking status
     await bookingRepository.updateStatus(params.bookingId, 'CANCELLED')
+
+    // Trigger cancellation notification event
+    try {
+      const supabase = createAdminClient()
+      const { data: userProfile } = await supabase
+        .from('customer_profiles')
+        .select('full_name')
+        .eq('user_id', booking.customer_id)
+        .maybeSingle()
+
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('phone')
+        .eq('id', booking.customer_id)
+        .single()
+
+      const { data: venueRecord } = await supabase
+        .from('venues')
+        .select('name')
+        .eq('id', booking.venue_id)
+        .single()
+
+      const { emitBookingCancelledEvent } = await import('@/lib/events/handlers')
+      await emitBookingCancelledEvent({
+        bookingId: params.bookingId,
+        userId: booking.customer_id,
+        phone: userRecord?.phone || '',
+        fullName: userProfile?.full_name || 'Player',
+        venueName: venueRecord?.name || 'the Turf',
+        amount: booking.advance_paid.toString(),
+        reason: params.reason || 'User requested cancellation',
+      })
+    } catch (e) {
+      console.error('Failed to trigger cancellation notification event:', e)
+    }
 
     // Free up the slot
     if (booking.slot_id) {
