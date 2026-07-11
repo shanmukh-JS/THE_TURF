@@ -10,7 +10,7 @@ import { writeAuditLog } from '@/lib/utils/logger'
 import { BOOKING } from '@/config/settings'
 import { getEnv } from '@/config/env'
 import type { Booking, BookingStatus } from '@/types/models'
-import { paymentProvider } from '@/lib/payments/provider'
+import { getPaymentProvider } from '@/lib/payments/factory'
 import { createAdminClient } from '@/lib/supabase/admin'
 import crypto from 'crypto'
 import { addTraceAttributes } from '@/lib/utils/tracing'
@@ -78,7 +78,7 @@ export class BookingService {
       }
 
       // 3. Create Razorpay Order via PaymentProvider (which handles Circuit Breaking)
-      const order = await paymentProvider.createOrder({
+      const order = await getPaymentProvider().createOrder({
         amount: Math.round(params.advancePaid * 100), // amount in smallest currency unit (paise)
         receipt: `receipt_${params.slotId}_${Date.now()}`,
         notes: {
