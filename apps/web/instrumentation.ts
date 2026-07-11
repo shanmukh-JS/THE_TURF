@@ -9,7 +9,7 @@ export async function register() {
     const { NodeSDK } = await import('@opentelemetry/sdk-node')
     const { OTLPTraceExporter } = await import('@opentelemetry/exporter-trace-otlp-http')
     // @ts-ignore - Dynamic import type mapping issue
-    const { Resource } = await import('@opentelemetry/resources')
+    const { resourceFromAttributes } = await import('@opentelemetry/resources')
     const { SemanticResourceAttributes } = await import('@opentelemetry/semantic-conventions')
     const { HttpInstrumentation } = await import('@opentelemetry/instrumentation-http')
 
@@ -18,7 +18,7 @@ export async function register() {
     })
 
     const sdk = new NodeSDK({
-      resource: new Resource({
+      resource: resourceFromAttributes({
         [SemanticResourceAttributes.SERVICE_NAME]: 'trufgaming-web',
         [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
       }),
