@@ -322,6 +322,49 @@ export class BookingService {
       await slotRepository.updateStatus(booking.slot_id, 'Available', false)
     }
 
+    // Queue async refund job (don't block cancellation if Razorpay is down)
+    if (booking.payment_id && booking.advance_paid > 0) {
+      try {
+        const supabase = createAdminClient()
+
+        // Update payment status to REFUND_INITIATED
+        await supabase
+          .from('bookings')
+          .update({ payment_status: 'REFUND_INITIATED' })
+          .eq('id', params.bookingId)
+
+        // Write refund job to outbox (processed by OutboxProcessor → BullMQ worker)
+        await supabase.from('notification_outbox').insert({
+          event_type: 'payment.refund',
+          payload: {
+            bookingId: params.bookingId,
+            paymentId: booking.payment_id,
+            amount: booking.advance_paid,
+            customerId: booking.customer_id,
+            reason: params.reason || 'User requested cancellation',
+          },
+          idempotency_key: `refund_${params.bookingId}_${Date.now()}`,
+          priority: 'HIGH',
+          status: 'PENDING',
+        })
+
+        // Log in payment audit
+        await supabase.from('payment_audit').insert({
+          booking_id: params.bookingId,
+          user_id: booking.customer_id,
+          razorpay_payment_id: booking.payment_id,
+          status: 'REFUND_INITIATED',
+          amount: booking.advance_paid,
+          metadata: { reason: params.reason },
+        })
+
+        console.log(`[BookingService] Refund job queued for booking ${params.bookingId}`)
+      } catch (refundErr) {
+        console.error('Failed to queue refund job:', refundErr)
+        // Don't block cancellation — the refund can be retried manually
+      }
+    }
+
     // Audit log
     await writeAuditLog({
       actor_id: params.actorId,

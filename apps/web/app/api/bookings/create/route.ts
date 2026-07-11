@@ -13,12 +13,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Role-based guard: only owners and admins can create free bookings (walk-ins/offline)
+    // Players must use the Razorpay payment flow via /api/bookings/checkout + /api/bookings/verify
+    const adminClient = createAdminClient()
+    const { data: userRecord } = await adminClient
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!userRecord || !['owner', 'admin'].includes(userRecord.role)) {
+      return NextResponse.json(
+        {
+          error:
+            'Only venue owners and admins can create direct bookings. Players must use the payment flow.',
+        },
+        { status: 403 }
+      )
+    }
+
     const { slotId } = await req.json()
     if (!slotId) {
       return NextResponse.json({ error: 'Slot ID is required' }, { status: 400 })
     }
-
-    const adminClient = createAdminClient()
 
     // 1. Fetch slot to verify it's available and get price
     const { data: slot, error: slotError } = await adminClient

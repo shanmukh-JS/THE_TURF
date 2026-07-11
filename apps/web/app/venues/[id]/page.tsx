@@ -43,10 +43,22 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<any | null>(null)
+  const [paymentPhase, setPaymentPhase] = useState<string>('')
 
   // Booking modal states
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Load Razorpay checkout script
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    document.body.appendChild(script)
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [])
 
   const handleSelectSlot = (slot: any) => {
     setSelectedSlot(slot)
@@ -55,7 +67,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         'tg_draft_booking',
         JSON.stringify({
           venueId: id,
-          venueName: venue?.name || 'Olympia Turf',
+          venueName: venue?.name || 'the Turf',
           slotDate: slot.date,
           slotTime: `${formatSlotTime(slot.start_time)} – ${formatSlotTime(slot.end_time)}`,
           price: slot.price,
@@ -240,45 +252,129 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     }
   }, [id])
 
-  // Handle Checkout Booking flow
+  // Handle Checkout Booking flow — Razorpay integrated
   const handleConfirmBooking = async () => {
     if (!currentUser) {
       router.push('/auth/login')
       return
     }
 
-    if (!selectedSlot) return
+    if (!selectedSlot || !venue) return
 
     setBookingLoading(true)
+    setPaymentPhase('Reserving slot...')
 
     try {
-      const response = await fetch('/api/bookings/create', {
+      const advanceAmount = Math.round(selectedSlot.price * 0.5)
+
+      // Step 1: Lock slot + create Razorpay order
+      const checkoutRes = await fetch('/api/bookings/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slotId: selectedSlot.id }),
+        body: JSON.stringify({
+          slotId: selectedSlot.id,
+          venueId: id,
+          totalAmount: selectedSlot.price,
+          advancePaid: advanceAmount,
+        }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create booking')
+      const checkoutData = await checkoutRes.json()
+      if (!checkoutRes.ok) {
+        throw new Error(checkoutData.error || 'Failed to initialize checkout')
       }
 
-      // Clear draft booking from LocalStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('tg_draft_booking')
+      const { order, checkoutId } = checkoutData
+      setPaymentPhase('Opening payment...')
+
+      // Step 2: Open Razorpay checkout modal
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'TRUF GAMING',
+        description: `Advance for ${venue.name}`,
+        order_id: order.orderId,
+        handler: async function (response: any) {
+          try {
+            setPaymentPhase('Verifying payment...')
+
+            // Step 3: Verify payment signature + create booking
+            const verifyRes = await fetch('/api/bookings/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                slotId: selectedSlot.id,
+                venueId: id,
+                totalAmount: selectedSlot.price,
+                advancePaid: advanceAmount,
+                checkoutId,
+              }),
+            })
+
+            const verifyData = await verifyRes.json()
+            if (!verifyRes.ok) {
+              throw new Error(verifyData.error || 'Payment verification failed')
+            }
+
+            // Step 4: Booking confirmed with real ID
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('tg_draft_booking')
+            }
+
+            setSelectedSlot(null)
+            setBookingLoading(false)
+            setPaymentPhase('')
+            setToast({
+              message: `Booking confirmed! ID: ${verifyData.bookingId?.substring(0, 8).toUpperCase()}`,
+              type: 'success',
+            })
+
+            setTimeout(() => {
+              router.push('/player/bookings')
+            }, 2000)
+          } catch (verifyErr: any) {
+            setToast({ message: verifyErr.message || 'Verification failed', type: 'error' })
+            setBookingLoading(false)
+            setPaymentPhase('')
+            fetchData()
+          }
+        },
+        prefill: {
+          name: currentUser.user_metadata?.full_name || '',
+          contact: currentUser.phone || '',
+        },
+        theme: { color: '#22c55e' },
+        modal: {
+          ondismiss: function () {
+            setBookingLoading(false)
+            setPaymentPhase('')
+            setToast({
+              message: 'Payment cancelled. Slot will be released shortly.',
+              type: 'error',
+            })
+            fetchData()
+          },
+        },
       }
 
-      setToast({ message: 'Booking confirmed! Redirecting...', type: 'success' })
-
-      // Redirect after confirmation
-      setTimeout(() => {
-        router.push('/player/bookings')
-      }, 1500)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rzp = new (window as any).Razorpay(options)
+      rzp.on('payment.failed', function (response: any) {
+        setToast({ message: `Payment failed: ${response.error.description}`, type: 'error' })
+        setBookingLoading(false)
+        setPaymentPhase('')
+        fetchData()
+      })
+      rzp.open()
     } catch (error: any) {
-      setToast({ message: error.message, type: 'error' })
+      setToast({ message: error.message || 'Checkout failed', type: 'error' })
       setBookingLoading(false)
-      fetchData() // Refresh slots
+      setPaymentPhase('')
+      fetchData()
     }
   }
 
@@ -689,7 +785,9 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                   disabled={bookingLoading}
                   className="px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-bold text-sm transition-all shadow-lg shadow-green-900/30 disabled:opacity-55"
                 >
-                  {bookingLoading ? 'Processing...' : 'Confirm Booking'}
+                  {bookingLoading
+                    ? paymentPhase || 'Processing...'
+                    : `Pay ₹${Math.round(selectedSlot.price * 0.5).toLocaleString()} & Book`}
                 </button>
               </div>
             </div>

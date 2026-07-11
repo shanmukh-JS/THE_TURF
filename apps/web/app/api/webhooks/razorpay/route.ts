@@ -18,56 +18,56 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const payload = JSON.parse(payloadString)
-    const eventId =
-      payload.headers && payload.headers['x-razorpay-event-id']
-        ? payload.headers['x-razorpay-event-id']
-        : payload.payload?.payment?.entity?.id // Fallback ID
-
+    // 2. Extract Event ID from HTTP headers (NOT from payload body)
+    const eventId = req.headers.get('x-razorpay-event-id')
     if (!eventId) {
-      return NextResponse.json({ success: true }) // Ignore unrecognized events gracefully
+      console.warn('Webhook missing x-razorpay-event-id header — rejecting')
+      return NextResponse.json({ error: 'Missing event ID' }, { status: 400 })
     }
 
+    const payload = JSON.parse(payloadString)
     const supabase = createAdminClient()
 
-    // 2. Check Idempotency
+    // 3. Check Idempotency — reject duplicate events
     const { data: existingLog } = await supabase
       .from('webhook_logs')
       .select('id')
       .eq('event_id', eventId)
-      .single()
+      .maybeSingle()
 
     if (existingLog) {
-      console.log(`Webhook ${eventId} already processed`)
+      console.log(`Webhook ${eventId} already processed — skipping`)
       return NextResponse.json({ success: true, message: 'Already processed' })
     }
 
-    // 3. Process Event
-    // We only process order.paid as a fallback reconciliation if the frontend failed to call /api/bookings/verify
+    // 4. Process Event
+    // Reconciliation: if the frontend /verify call failed, the webhook ensures booking is created
     if (payload.event === 'order.paid') {
-      const entity = payload.payload.payment.entity
-      const notes = payload.payload.order.entity.notes
+      const entity = payload.payload?.payment?.entity
+      const notes = payload.payload?.order?.entity?.notes
 
       if (notes?.slotId && notes?.venueId && notes?.customerId) {
-        // We attempt to call rpc_book_slot. If it was already called by the frontend,
-        // it will throw an error ("already booked"), which is fine for reconciliation.
+        // Attempt rpc_book_slot. If already booked by the frontend verify flow,
+        // it will throw "already booked" — expected and safe for reconciliation.
         const { error } = await supabase.rpc('rpc_book_slot', {
           p_slot_id: notes.slotId,
           p_venue_id: notes.venueId,
           p_customer_id: notes.customerId,
           p_total_amount: Number(notes.totalAmount),
-          p_advance_paid: entity.amount / 100, // from paise to rupees
+          p_advance_paid: entity.amount / 100, // paise to rupees
           p_payment_id: entity.id,
         })
 
         if (error) {
-          // If already booked, this is expected if the primary flow succeeded.
-          console.log(`Reconciliation notice: slot ${notes.slotId} is already processed.`)
+          // If already booked, this is expected if the primary frontend flow succeeded.
+          console.log(`Reconciliation: slot ${notes.slotId} — ${error.message}`)
+        } else {
+          console.log(`Reconciliation: booking created for slot ${notes.slotId} via webhook`)
         }
       }
     }
 
-    // 4. Log Webhook
+    // 5. Log Webhook (with provider column)
     await supabase.from('webhook_logs').insert({
       event_id: eventId,
       provider: 'razorpay',

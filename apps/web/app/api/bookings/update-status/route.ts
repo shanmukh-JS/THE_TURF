@@ -1,18 +1,40 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { bookingId, status, ownerProfileId, notifyUser } = body
+    // 1. Authenticate user from session (NOT from request body)
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    if (!bookingId || !status || !ownerProfileId) {
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { bookingId, status, notifyUser } = body
+
+    if (!bookingId || !status) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     const adminClient = createAdminClient()
 
-    // 1. Verify owner owns the venue for this booking
+    // 2. Resolve owner profile from authenticated user's session
+    const { data: ownerProfile } = await adminClient
+      .from('owner_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (!ownerProfile) {
+      return NextResponse.json({ error: 'Not authorized as a venue owner' }, { status: 403 })
+    }
+
+    // 3. Verify this owner owns the venue for this booking
     const { data: booking, error: bookingError } = await adminClient
       .from('bookings')
       .select('id, venue_id, customer_id, total_amount, venues(owner_id)')
@@ -25,11 +47,11 @@ export async function POST(request: Request) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const venue = booking.venues as any
-    if (venue.owner_id !== ownerProfileId) {
-      return NextResponse.json({ error: 'Unauthorized to update this booking' }, { status: 403 })
+    if (venue.owner_id !== ownerProfile.id) {
+      return NextResponse.json({ error: 'You do not own this venue' }, { status: 403 })
     }
 
-    // 2. Update Booking Status
+    // 4. Update Booking Status
     const { error: updateError } = await adminClient
       .from('bookings')
       .update({ status })
@@ -39,7 +61,7 @@ export async function POST(request: Request) {
       throw updateError
     }
 
-    // 3. Send Notification securely
+    // 5. Send Notification securely
     if (notifyUser && booking.customer_id) {
       let title = ''
       let message = ''
