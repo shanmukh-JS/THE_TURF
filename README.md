@@ -1,5 +1,7 @@
 # TRUF GAMING 🏏
 
+> **This repository values correctness over convenience, clarity over cleverness, and documentation over assumption. Every financial event must be explainable, every balance reproducible, and every architectural decision understandable.**
+
 > **Premium Cricket Box Booking Marketplace**
 > Connects cricket players with cricket box owners. Built like Airbnb, for cricket.
 
@@ -7,20 +9,20 @@
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Monorepo | Turborepo + npm workspaces |
-| Frontend | Next.js 14 (App Router), Tailwind CSS, Zustand, Framer Motion |
-| Backend | Express.js + TypeScript |
-| Database | PostgreSQL + Prisma ORM |
-| Cache / Locks | Redis |
-| Background Jobs | BullMQ |
-| Payments | Razorpay |
-| Real-time | Socket.IO |
-| Media | Cloudinary |
-| SMS | Twilio |
-| Auth | JWT (Access + Refresh Tokens) |
-| Containerization | Docker + Docker Compose |
+| Layer            | Technology                                                    |
+| ---------------- | ------------------------------------------------------------- |
+| Monorepo         | Turborepo + npm workspaces                                    |
+| Frontend         | Next.js 14 (App Router), Tailwind CSS, Zustand, Framer Motion |
+| Backend          | Express.js + TypeScript                                       |
+| Database         | PostgreSQL + Prisma ORM                                       |
+| Cache / Locks    | Redis                                                         |
+| Background Jobs  | BullMQ                                                        |
+| Payments         | Razorpay                                                      |
+| Real-time        | Socket.IO                                                     |
+| Media            | Cloudinary                                                    |
+| SMS              | Twilio                                                        |
+| Auth             | JWT (Access + Refresh Tokens)                                 |
+| Containerization | Docker + Docker Compose                                       |
 
 ---
 
@@ -46,11 +48,13 @@ truf-gaming/
 ## Getting Started
 
 ### 1. Prerequisites
+
 - Node.js 18+
 - Docker Desktop (for PostgreSQL & Redis)
 - npm
 
 ### 2. Clone & Install
+
 ```bash
 git clone https://github.com/your-org/truf-gaming.git
 cd truf-gaming
@@ -58,6 +62,7 @@ npm install
 ```
 
 ### 3. Set Up Environment
+
 ```bash
 cp .env.example apps/api/.env
 # Edit apps/api/.env with your credentials
@@ -66,17 +71,20 @@ cp .env.example apps/web/.env.local
 ```
 
 ### 4. Start Infrastructure (Docker)
+
 ```bash
 docker-compose up -d
 # Starts PostgreSQL on :5432 and Redis on :6379
 ```
 
 ### 5. Run Database Migrations
+
 ```bash
 npm run db:migrate -w @truf-gaming/database
 ```
 
 ### 6. Start Development Servers
+
 ```bash
 npm run dev
 # Starts both Next.js (:3000) and Express API (:3001) simultaneously
@@ -89,23 +97,24 @@ npm run dev
 Base URL: `http://localhost:3001/api/v1`
 
 All responses follow the contract:
+
 ```json
 { "success": true, "message": "...", "data": {} }
 { "success": false, "error": { "code": "ERR_CODE", "message": "..." } }
 ```
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| POST | `/auth/register` | — | Register customer or owner |
-| POST | `/auth/login` | — | Login, receive JWT |
-| GET | `/venues` | — | List approved venues |
-| POST | `/venues` | OWNER | Create venue draft |
-| PATCH | `/venues/:id/status` | SUPER_ADMIN | Approve / reject venue |
-| GET | `/slots/available` | — | Get available slots |
-| POST | `/bookings/lock` | CUSTOMER | Lock a slot (10 min TTL) |
-| POST | `/bookings` | CUSTOMER | Create booking (after lock) |
-| POST | `/payments/verify` | CUSTOMER | Verify Razorpay payment |
-| GET | `/healthz` | — | API health check |
+| Method | Endpoint             | Auth        | Description                 |
+| ------ | -------------------- | ----------- | --------------------------- |
+| POST   | `/auth/register`     | —           | Register customer or owner  |
+| POST   | `/auth/login`        | —           | Login, receive JWT          |
+| GET    | `/venues`            | —           | List approved venues        |
+| POST   | `/venues`            | OWNER       | Create venue draft          |
+| PATCH  | `/venues/:id/status` | SUPER_ADMIN | Approve / reject venue      |
+| GET    | `/slots/available`   | —           | Get available slots         |
+| POST   | `/bookings/lock`     | CUSTOMER    | Lock a slot (10 min TTL)    |
+| POST   | `/bookings`          | CUSTOMER    | Create booking (after lock) |
+| POST   | `/payments/verify`   | CUSTOMER    | Verify Razorpay payment     |
+| GET    | `/healthz`           | —           | API health check            |
 
 ---
 
@@ -129,12 +138,12 @@ BullMQ Worker        →  Commission calculated, SMS/Email sent
 
 ## Available Routes (Frontend)
 
-| Route | Description |
-|---|---|
-| `/` | Customer landing page |
+| Route     | Description              |
+| --------- | ------------------------ |
+| `/`       | Customer landing page    |
 | `/venues` | Browse all cricket boxes |
-| `/owner` | Owner dashboard |
-| `/admin` | Super Admin CRM |
+| `/owner`  | Owner dashboard          |
+| `/admin`  | Super Admin CRM          |
 
 ---
 

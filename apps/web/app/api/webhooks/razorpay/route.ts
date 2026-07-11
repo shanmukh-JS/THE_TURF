@@ -29,30 +29,30 @@ export async function POST(req: Request) {
     const supabase = createAdminClient()
 
     // 3. Map Provider Event to Business Event (Domain Language)
-    let businessEvent: string | null = null;
+    let businessEvent: string | null = null
     if (payload.event === 'order.paid' || payload.event === 'payment.captured') {
-      businessEvent = 'BOOKING_PAID';
+      businessEvent = 'BOOKING_PAID'
     } else if (payload.event === 'payment.failed') {
-      businessEvent = 'PAYMENT_FAILED';
+      businessEvent = 'PAYMENT_FAILED'
     } else if (payload.event === 'refund.processed') {
-      businessEvent = 'REFUND_COMPLETED';
+      businessEvent = 'REFUND_COMPLETED'
     }
 
     if (!businessEvent) {
-      console.log(`Ignoring unsupported webhook event: ${payload.event}`);
-      return NextResponse.json({ success: true, message: 'Ignored unsupported event' });
+      console.log(`Ignoring unsupported webhook event: ${payload.event}`)
+      return NextResponse.json({ success: true, message: 'Ignored unsupported event' })
     }
 
     // Extract necessary IDs
-    const entity = payload.payload?.payment?.entity || {};
-    const notes = payload.payload?.order?.entity?.notes || entity.notes || {};
-    const paymentId = entity.id;
-    const bookingId = notes.bookingId || notes.slotId; // Depends on how frontend passes it
-    const amountPaid = entity.amount ? entity.amount / 100 : 0; // Convert from paise to rupees
+    const entity = payload.payload?.payment?.entity || {}
+    const notes = payload.payload?.order?.entity?.notes || entity.notes || {}
+    const paymentId = entity.id
+    const bookingId = notes.bookingId || notes.slotId // Depends on how frontend passes it
+    const amountPaid = entity.amount ? entity.amount / 100 : 0 // Convert from paise to rupees
 
     if (!paymentId) {
-      console.warn('Webhook payload missing payment ID');
-      return NextResponse.json({ error: 'Invalid payload missing payment_id' }, { status: 400 });
+      console.warn('Webhook payload missing payment ID')
+      return NextResponse.json({ error: 'Invalid payload missing payment_id' }, { status: 400 })
     }
 
     // 4. Call the Atomic PostgreSQL RPC
@@ -63,35 +63,35 @@ export async function POST(req: Request) {
       p_payment_id: paymentId,
       p_amount: amountPaid,
       p_payload: payload,
-    });
+    })
 
     if (error) {
-      console.error('Database Error in process_payment_webhook:', error.message);
+      console.error('Database Error in process_payment_webhook:', error.message)
       // We throw 500 to trigger Razorpay's exponential backoff retry mechanism
-      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 
     if (result === 'ALREADY_PROCESSED') {
-      console.log(`Webhook ${eventId} already processed — treating as success no-op`);
-      return NextResponse.json({ success: true, message: 'Already processed' });
+      console.log(`Webhook ${eventId} already processed — treating as success no-op`)
+      return NextResponse.json({ success: true, message: 'Already processed' })
     }
 
     if (result === 'SUCCESS') {
       // 5. Enqueue Side Effects (outside of the database transaction)
       // TODO: Replace with real event pub/sub or queueing (e.g. Inngest, Upstash QStash)
-      console.log(`Successfully processed webhook ${eventId}. Queueing side effects...`);
-      
+      console.log(`Successfully processed webhook ${eventId}. Queueing side effects...`)
+
       // We asynchronously trigger side-effects without blocking the 200 OK response
       queueSideEffects({
         businessEvent,
         bookingId,
-        paymentId
-      }).catch(err => console.error('Failed to queue side effects:', err));
+        paymentId,
+      }).catch((err) => console.error('Failed to queue side effects:', err))
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true })
     }
 
-    return NextResponse.json({ error: 'Unknown state' }, { status: 500 });
+    return NextResponse.json({ error: 'Unknown state' }, { status: 500 })
   } catch (error: any) {
     console.error('Webhook processing error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -101,5 +101,5 @@ export async function POST(req: Request) {
 // Dummy implementation for side effects to ensure they run decoupled
 async function queueSideEffects(data: any) {
   // E.g. Send Email, WhatsApp, Push Notification
-  console.log('Side effects queued:', data);
+  console.log('Side effects queued:', data)
 }

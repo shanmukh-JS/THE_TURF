@@ -40,23 +40,23 @@ export enum ChartOfAccounts {
 }
 
 export interface LedgerLine {
-  account: ChartOfAccounts;
-  debit: number;
-  credit: number;
-  currency?: string;
-  exchangeRate?: number;
-  baseCurrency?: string;
+  account: ChartOfAccounts
+  debit: number
+  credit: number
+  currency?: string
+  exchangeRate?: number
+  baseCurrency?: string
 }
 
 export interface JournalRequest {
-  event: BusinessEvent;
-  transactionId: string; // UUID referencing financial_transactions
-  idempotencyKey: string;
-  lines: LedgerLine[];
+  event: BusinessEvent
+  transactionId: string // UUID referencing financial_transactions
+  idempotencyKey: string
+  lines: LedgerLine[]
 }
 
 export interface PostJournalResult {
-  success: boolean;
-  journalId?: string;
-  error?: string;
+  success: boolean
+  journalId?: string
+  error?: string
 }

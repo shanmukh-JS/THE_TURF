@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { v4 as uuidv4 } from 'uuid';
-import { postJournal } from '../../lib/accounting/postJournal';
-import { BusinessEvent } from '../../lib/accounting/types';
-import { supabase, createDummyTransaction } from './setup';
+import { describe, it, expect, beforeAll } from 'vitest'
+import { v4 as uuidv4 } from 'uuid'
+import { postJournal } from '../../lib/accounting/postJournal'
+import { BusinessEvent } from '../../lib/accounting/types'
+import { supabase, createDummyTransaction } from './setup'
 
 describe('Accounting Invariants: Account Validation', () => {
-  let transactionId: string;
+  let transactionId: string
 
   beforeAll(async () => {
-    transactionId = await createDummyTransaction();
-  });
+    transactionId = await createDummyTransaction()
+  })
 
   it('Rejects unknown account codes', async () => {
     const response = await postJournal(supabase, {
@@ -28,13 +28,13 @@ describe('Accounting Invariants: Account Validation', () => {
           credit: 100,
         },
       ],
-    });
+    })
 
     if (!response.success && response.error?.includes('function post_journal')) {
-      return; // Skip if migration missing
+      return // Skip if migration missing
     }
 
-    expect(response.success).toBe(false);
-    expect(response.error).toMatch(/foreign key constraint/i); // fk violation on financial_accounts
-  });
-});
+    expect(response.success).toBe(false)
+    expect(response.error).toMatch(/foreign key constraint/i) // fk violation on financial_accounts
+  })
+})
