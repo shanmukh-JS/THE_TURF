@@ -1,37 +1,75 @@
-import Razorpay from 'razorpay'
-import { getEnv } from '@/config/env'
-import { paymentBreaker } from '@/lib/utils/circuitBreaker'
+// Payment Provider Abstraction
+// Defines the contract that any payment gateway must fulfill.
 
-export class PaymentProvider {
-  /**
-   * Generates a Razorpay Order protected by a Circuit Breaker.
-   * Also respects Chaos Injection if configured.
-   */
-  async createOrder(params: { amount: number; receipt: string; notes: Record<string, string> }) {
-    const env = getEnv()
-    if (!env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !env.RAZORPAY_SECRET) {
-      throw new Error('Payment gateway not configured properly.')
-    }
-
-    const razorpay = new Razorpay({
-      key_id: env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      key_secret: env.RAZORPAY_SECRET,
-    })
-
-    const options = {
-      amount: params.amount,
-      currency: 'INR',
-      receipt: params.receipt,
-      notes: params.notes,
-    }
-
-    // Wrap the external call in the circuit breaker
-    return await paymentBreaker.fire(async () => {
-      // In Chaos mode, if razorpay_500 is injected, this is handled via a global monkey patch or interceptor,
-      // but for cleanliness we rely on the chaos middleware or direct injection hooks if necessary.
-      return await razorpay.orders.create(options)
-    })
-  }
+export interface OrderRequest {
+  amount: number // In smallest currency unit (e.g., paise for INR)
+  currency: string
+  receiptId: string
+  notes?: Record<string, string>
 }
 
-export const paymentProvider = new PaymentProvider()
+export interface OrderResponse {
+  id: string
+  amount: number
+  currency: string
+  status: string
+}
+
+export interface WebhookEvent {
+  eventId: string
+  eventType: string
+  payload: any
+  signatureValid: boolean
+}
+
+export interface PayoutRequest {
+  accountId: string // The owner's bank account or virtual account ID
+  amount: number
+  currency: string
+  referenceId: string
+  notes?: Record<string, string>
+}
+
+export interface PayoutResponse {
+  id: string
+  status: string
+  amount: number
+  utr?: string // Unique Transaction Reference (often provided after clearing)
+}
+
+export interface PaymentProvider {
+  /**
+   * Creates a customer order for payment collection.
+   */
+  createOrder(request: OrderRequest): Promise<OrderResponse>
+
+  /**
+   * Validates an incoming webhook signature.
+   */
+  verifyWebhook(body: string, signature: string): boolean
+
+  /**
+   * Retrieves the current status of an order/payment.
+   */
+  fetchPayment(paymentId: string): Promise<any>
+
+  /**
+   * Executes a payout to an external bank account (e.g., RazorpayX).
+   */
+  createPayout(request: PayoutRequest): Promise<PayoutResponse>
+
+  /**
+   * Retrieves the current status of a payout transfer.
+   */
+  fetchPayout(payoutId: string): Promise<any>
+
+  /**
+   * Refunds a captured payment.
+   */
+  refund(paymentId: string, amount?: number): Promise<any>
+
+  /**
+   * Checks the health and connectivity of the provider API.
+   */
+  healthCheck(): Promise<boolean>
+}
