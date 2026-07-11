@@ -118,22 +118,31 @@ export default function AdminApprovalsPage() {
     if (action === 'REQUEST_INFO') statusText = 'REQUEST_CHANGES'
     if (action === 'SAVE_DRAFT') statusText = 'PENDING' // Keep as pending but save notes
 
-    const updateData: any = { verification_status: statusText }
+    try {
+      const response = await fetch('/api/admin/venues/update-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          venueId: venue.id,
+          verificationStatus: statusText,
+          adminNotes,
+          reason,
+        }),
+      })
 
-    const { error } = await supabase.from('venues').update(updateData).eq('id', venue.id)
+      const result = await response.json()
 
-    if (!error) {
-      await logAdminAction(
-        `Venue status set to: ${statusText}`,
-        'venues',
-        venue.id,
-        `Verification updated to ${statusText}. Notes: ${adminNotes || 'None'}. Remarks: ${reason || 'None'}`
-      )
-      showToast(`Review action [${action}] executed successfully!`, 'success')
-      fetchApprovals()
-      setSelectedVenue(null)
-    } else {
-      showToast(`Failed to execute review: ${error.message}`, 'error')
+      if (response.ok && result.success) {
+        showToast(`Review action [${action}] executed successfully!`, 'success')
+        fetchApprovals()
+        setSelectedVenue(null)
+      } else {
+        showToast(`Failed to execute review: ${result.error || 'Server error'}`, 'error')
+      }
+    } catch (err: any) {
+      showToast(`Failed to execute review: ${err.message || err}`, 'error')
     }
 
     setActionLoading(false)
