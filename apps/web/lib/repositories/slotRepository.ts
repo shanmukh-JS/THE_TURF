@@ -41,15 +41,19 @@ export const slotRepository = {
     if (error) throw error
     return (data || []) as Slot[]
   },
-
   async updateStatus(id: string, status: SlotStatus, isBooked: boolean): Promise<void> {
-    const { error } = await supabase
-      .from('slots')
-      .update({ status, is_booked: isBooked, updated_at: new Date().toISOString() })
-      .eq('id', id)
+    const updateData: any = {
+      status,
+      is_booked: isBooked,
+      updated_at: new Date().toISOString(),
+    }
+    if (status === 'Available') {
+      updateData.is_locked = false
+      updateData.lock_expires = null
+    }
+    const { error } = await supabase.from('slots').update(updateData).eq('id', id)
     if (error) throw error
   },
-
   async lockSlot(id: string, lockExpiresAt: string): Promise<boolean> {
     const { error } = await supabase
       .from('slots')
