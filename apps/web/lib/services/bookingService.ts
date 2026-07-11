@@ -64,6 +64,11 @@ export class BookingService {
     // 1. Validate slot availability
     await this.validateSlotAvailability(params.slotId)
 
+    // 1b. Validate full payment rule
+    if (params.advancePaid < params.totalAmount) {
+      throw new Error('Full payment is required to secure this booking.')
+    }
+
     // 2. Lock the slot temporarily
     const lockExpiry = new Date(Date.now() + BOOKING.lockDurationSeconds * 1000).toISOString()
     const locked = await slotRepository.lockSlot(params.slotId, lockExpiry)
@@ -138,6 +143,10 @@ export class BookingService {
     const env = getEnv()
     if (!env.RAZORPAY_SECRET) {
       throw new Error('Payment gateway not configured properly.')
+    }
+
+    if (params.advancePaid < params.totalAmount) {
+      throw new Error('Full payment is required to confirm this booking.')
     }
 
     // 1. Verify Signature
