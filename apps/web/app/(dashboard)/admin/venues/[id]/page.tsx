@@ -281,19 +281,25 @@ export default function EnterpriseVerificationReviewPage() {
 
             {/* Embedded Map Placeholder / iframe */}
             {venue.google_maps_link && venue.google_maps_link.includes('http') ? (
-              <a
-                href={venue.google_maps_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full h-48 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative cursor-pointer group"
-              >
-                <div className="absolute inset-0 flex items-center justify-center bg-[#111] group-hover:bg-[#1a1a1a] transition-colors">
-                  <MapPin className="w-8 h-8 text-green-500/30 group-hover:text-green-500/60" />
-                  <span className="absolute text-xs text-green-500/50 mt-12 font-medium group-hover:text-green-500/80">
-                    Click to Open in Google Maps
+              <div className="relative w-full h-48 rounded-xl border border-white/10 overflow-hidden group">
+                <iframe
+                  src={venue.google_maps_link}
+                  className="w-full h-full border-0"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+                <a
+                  href={venue.google_maps_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <span className="flex items-center gap-2 px-3 py-1.5 bg-green-500 text-black text-xs font-bold rounded-full shadow-xl">
+                    <MapPin className="w-3.5 h-3.5" /> Click to Open in Google Maps
                   </span>
-                </div>
-              </a>
+                </a>
+              </div>
             ) : (
               <div className="w-full h-48 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative">
                 <span className="text-xs text-gray-500 font-medium">No Map Available</span>

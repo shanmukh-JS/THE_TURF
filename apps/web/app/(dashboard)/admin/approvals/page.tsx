@@ -78,7 +78,9 @@ export default function AdminApprovalsPage() {
           owner_settings(business_phone, bank_account_name, bank_account_number, bank_ifsc, bank_upi)
         ),
         venue_images(url, is_cover),
-        venue_pricing(price, weekend_price, peak_price, advance_limit)
+        venue_pricing(price, weekend_price, peak_price, advance_limit),
+        cities(name),
+        areas(name)
       `
       )
       .order('id', { ascending: false })
@@ -113,7 +115,7 @@ export default function AdminApprovalsPage() {
     let statusText = 'PENDING'
     if (action === 'APPROVED') statusText = 'APPROVED'
     if (action === 'REJECTED') statusText = 'REJECTED'
-    if (action === 'REQUEST_INFO') statusText = 'DRAFT'
+    if (action === 'REQUEST_INFO') statusText = 'REQUEST_CHANGES'
     if (action === 'SAVE_DRAFT') statusText = 'PENDING' // Keep as pending but save notes
 
     const updateData: any = { verification_status: statusText }
@@ -329,465 +331,563 @@ export default function AdminApprovalsPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column: Venue Details, Location, pricing, specifications */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Section: Venue Information */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
-                    <Building className="w-4 h-4" /> Venue Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-300">
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Turf Name
-                      </p>
-                      <p className="text-white font-bold mt-0.5">{selectedVenue.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Turf Type
-                      </p>
-                      <p className="text-white font-medium mt-0.5">
-                        {selectedVenue.turf_type || 'Artificial Grass'}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Description
-                      </p>
-                      <p className="mt-1 leading-relaxed">
-                        {selectedVenue.description || 'No description provided.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            {(() => {
+              let score = 20
+              if (selectedVenue.venue_images?.length > 0) score += 20
+              if (selectedVenue.documents_url) score += 30
+              const hasBank = Array.isArray(selectedVenue.owner_profiles?.owner_settings)
+                ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_account_number
+                : selectedVenue.owner_profiles?.owner_settings?.bank_account_number
+              if (hasBank) score += 30
+              score = Math.min(score, 98)
 
-                {/* Section: Location */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
-                    <MapPin className="w-4 h-4" /> Location Details
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-xs text-gray-300">
-                    <div className="col-span-2 flex items-start justify-between">
-                      <div>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                          Full Address
-                        </p>
-                        <p className="text-white font-medium mt-0.5">{selectedVenue.address}</p>
-                      </div>
-                      <button
-                        onClick={() => handleCopyText(selectedVenue.address, 'Address')}
-                        className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        City
-                      </p>
-                      <p className="text-white font-medium mt-0.5">Hyderabad</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        State
-                      </p>
-                      <p className="text-white font-medium mt-0.5">Telangana</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Pincode
-                      </p>
-                      <p className="text-white font-medium mt-0.5">500081</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Google Maps Link
-                      </p>
-                      <a
-                        href={selectedVenue.google_maps_link || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-green-400 hover:underline inline-flex items-center gap-1 mt-0.5 truncate max-w-full"
-                      >
-                        Open Maps <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
+              const riskLevel = score > 80 ? 'LOW RISK' : score > 50 ? 'MEDIUM RISK' : 'HIGH RISK'
+              const riskColor =
+                score > 80
+                  ? 'text-green-400 bg-green-500/10 border-green-500/20'
+                  : score > 50
+                    ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                    : 'text-red-400 bg-red-500/10 border-red-500/20'
+              const riskBarColor =
+                score > 80 ? 'bg-green-500' : score > 50 ? 'bg-amber-500' : 'bg-red-500'
+              const aiAction =
+                score > 80
+                  ? '🟢 Recommended Action: Approve'
+                  : score > 50
+                    ? '🟡 Recommended Action: Request Changes'
+                    : '🔴 Recommended Action: Reject'
+              const aiActionText =
+                score > 80
+                  ? 'All documentation checklists have passed. No duplicate listings or coordinates flags detected on the network.'
+                  : score > 50
+                    ? 'Some documentation or bank details are missing. Please review carefully.'
+                    : 'Critical information is missing. High risk listing.'
 
-                  {/* Map Preview */}
-                  {selectedVenue.google_maps_link &&
-                  selectedVenue.google_maps_link.includes('http') ? (
-                    <a
-                      href={selectedVenue.google_maps_link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="h-36 w-full rounded-xl bg-green-950/20 border border-green-500/10 flex items-center justify-center text-xs text-green-400/60 font-semibold gap-2 hover:bg-green-900/30 transition-colors group relative overflow-hidden"
-                    >
-                      <MapPin className="w-4 h-4 animate-bounce group-hover:text-green-400" />
-                      <span className="group-hover:text-green-400">
-                        Click to Open in Google Maps
-                      </span>
-                    </a>
-                  ) : (
-                    <div className="h-36 w-full rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xs text-gray-500 font-semibold gap-2">
-                      <MapPin className="w-4 h-4" /> No Map Available
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column: Venue Details, Location, pricing, specifications */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Section: Venue Information */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
+                        <Building className="w-4 h-4" /> Venue Information
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-xs text-gray-300">
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            Turf Name
+                          </p>
+                          <p className="text-white font-bold mt-0.5">{selectedVenue.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            Turf Type
+                          </p>
+                          <p className="text-white font-medium mt-0.5">
+                            {selectedVenue.turf_type || 'Artificial Grass'}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            Description
+                          </p>
+                          <p className="mt-1 leading-relaxed">
+                            {selectedVenue.description || 'No description provided.'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Section: Pricing & Operating Hours */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3.5">
-                    <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
-                      Pricing Structure
-                    </h4>
-                    <div className="space-y-2 text-xs text-gray-300">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Base Price</span>
-                        <span className="font-semibold text-white">
-                          ₹
-                          {selectedVenue.venue_pricing?.[0]?.price ||
-                            selectedVenue.venue_pricing?.price ||
-                            0}
-                          /hr
-                        </span>
+                    {/* Section: Location */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-2">
+                        <MapPin className="w-4 h-4" /> Location Details
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-xs text-gray-300">
+                        <div className="col-span-2 flex items-start justify-between">
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                              Full Address
+                            </p>
+                            <p className="text-white font-medium mt-0.5">{selectedVenue.address}</p>
+                          </div>
+                          <button
+                            onClick={() => handleCopyText(selectedVenue.address, 'Address')}
+                            className="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            City
+                          </p>
+                          <p className="text-white font-medium mt-0.5">
+                            {selectedVenue.cities?.name || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            Area
+                          </p>
+                          <p className="text-white font-medium mt-0.5">
+                            {selectedVenue.areas?.name || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            Pincode
+                          </p>
+                          <p className="text-white font-medium mt-0.5">
+                            {selectedVenue.pincode || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            Google Maps Link
+                          </p>
+                          <a
+                            href={selectedVenue.google_maps_link || '#'}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-green-400 hover:underline inline-flex items-center gap-1 mt-0.5 truncate max-w-full"
+                          >
+                            Open Maps <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Weekend Price</span>
-                        <span className="font-semibold text-white">
-                          ₹
-                          {selectedVenue.venue_pricing?.[0]?.weekend_price ||
-                            selectedVenue.venue_pricing?.weekend_price ||
-                            selectedVenue.venue_pricing?.[0]?.price ||
-                            selectedVenue.venue_pricing?.price ||
-                            0}
-                          /hr
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Peak Hour Price</span>
-                        <span className="font-semibold text-white">
-                          ₹
-                          {selectedVenue.venue_pricing?.[0]?.peak_price ||
-                            selectedVenue.venue_pricing?.peak_price ||
-                            selectedVenue.venue_pricing?.[0]?.price ||
-                            selectedVenue.venue_pricing?.price ||
-                            0}
-                          /hr
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Advance Limit</span>
-                        <span className="font-semibold text-white">
-                          {selectedVenue.venue_pricing?.[0]?.advance_limit ||
-                            selectedVenue.venue_pricing?.advance_limit ||
-                            15}{' '}
-                          Days
-                        </span>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3.5">
-                    <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
-                      Operating Times
-                    </h4>
-                    <div className="space-y-2 text-xs text-gray-300">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Opening Time</span>
-                        <span className="font-semibold text-white">
-                          {selectedVenue.opening_time
-                            ? selectedVenue.opening_time.substring(0, 5)
-                            : '06:00'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Closing Time</span>
-                        <span className="font-semibold text-white">
-                          {selectedVenue.closing_time
-                            ? selectedVenue.closing_time.substring(0, 5)
-                            : '23:00'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Weekly Holidays</span>
-                        <span className="font-semibold text-white">
-                          {selectedVenue.weekly_holidays?.length
-                            ? selectedVenue.weekly_holidays.join(', ')
-                            : 'None'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Slot Duration</span>
-                        <span className="font-semibold text-white">
-                          {selectedVenue.slot_duration || 60} Mins
-                        </span>
-                      </div>
+                      {/* Map Preview */}
+                      {selectedVenue.google_maps_link &&
+                      selectedVenue.google_maps_link.includes('http') ? (
+                        <div className="relative h-36 w-full rounded-xl border border-white/10 overflow-hidden group">
+                          <iframe
+                            src={selectedVenue.google_maps_link}
+                            className="w-full h-full border-0"
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          />
+                          <a
+                            href={selectedVenue.google_maps_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <span className="flex items-center gap-2 px-3 py-1.5 bg-green-500 text-black text-xs font-bold rounded-full shadow-xl">
+                              <MapPin className="w-3.5 h-3.5" /> Open Maps
+                            </span>
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="h-36 w-full rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xs text-gray-500 font-semibold gap-2">
+                          <MapPin className="w-4 h-4" /> No Map Available
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
 
-                {/* Section: Turf Specifications & Amenities */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
-                    Turf Specifications & Amenities
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-gray-300">
-                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
-                      <span className="text-gray-500 block text-[9px] uppercase">Size</span>
-                      <span className="font-bold text-white">{selectedVenue.size || 'N/A'}</span>
-                    </div>
-                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
-                      <span className="text-gray-500 block text-[9px] uppercase">
-                        Indoor/Outdoor
-                      </span>
-                      <span className="font-bold text-white">
-                        {selectedVenue.is_indoor ? 'Indoor' : 'Outdoor'}
-                      </span>
-                    </div>
-                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
-                      <span className="text-gray-500 block text-[9px] uppercase">Max Players</span>
-                      <span className="font-bold text-white">
-                        {selectedVenue.max_players || 14} Players
-                      </span>
-                    </div>
-                    <div className="bg-white/5 p-2.5 rounded-xl text-center">
-                      <span className="text-gray-500 block text-[9px] uppercase">Surface</span>
-                      <span className="font-bold text-white">
-                        {selectedVenue.surface || 'Lawn Turf'}
-                      </span>
-                    </div>
-                  </div>
+                    {/* Section: Pricing & Operating Hours */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3.5">
+                        <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
+                          Pricing Structure
+                        </h4>
+                        <div className="space-y-2 text-xs text-gray-300">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Base Price</span>
+                            <span className="font-semibold text-white">
+                              ₹
+                              {selectedVenue.venue_pricing?.[0]?.price ||
+                                selectedVenue.venue_pricing?.price ||
+                                0}
+                              /hr
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Weekend Price</span>
+                            <span className="font-semibold text-white">
+                              ₹
+                              {selectedVenue.venue_pricing?.[0]?.weekend_price ||
+                                selectedVenue.venue_pricing?.weekend_price ||
+                                selectedVenue.venue_pricing?.[0]?.price ||
+                                selectedVenue.venue_pricing?.price ||
+                                0}
+                              /hr
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Peak Hour Price</span>
+                            <span className="font-semibold text-white">
+                              ₹
+                              {selectedVenue.venue_pricing?.[0]?.peak_price ||
+                                selectedVenue.venue_pricing?.peak_price ||
+                                selectedVenue.venue_pricing?.[0]?.price ||
+                                selectedVenue.venue_pricing?.price ||
+                                0}
+                              /hr
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Advance Limit</span>
+                            <span className="font-semibold text-white">
+                              {selectedVenue.venue_pricing?.[0]?.advance_limit ||
+                                selectedVenue.venue_pricing?.advance_limit ||
+                                15}{' '}
+                              Days
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                    {[
-                      'Parking Available',
-                      'Flood Lights',
-                      'Washrooms',
-                      'Drinking Water',
-                      'Changing Room',
-                      'First Aid Kit',
-                    ].map((amenity, idx) => {
-                      const hasAmenity = selectedVenue.amenities?.includes(amenity)
-                      return (
-                        <div key={idx} className="flex items-center gap-2 text-xs text-gray-300">
-                          {hasAmenity ? (
-                            <Check className="w-3.5 h-3.5 text-green-400" />
-                          ) : (
-                            <span className="text-gray-600">✕</span>
-                          )}
-                          <span className={hasAmenity ? 'text-white' : 'text-gray-500'}>
-                            {amenity}
+                      <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3.5">
+                        <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
+                          Operating Times
+                        </h4>
+                        <div className="space-y-2 text-xs text-gray-300">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Opening Time</span>
+                            <span className="font-semibold text-white">
+                              {selectedVenue.opening_time
+                                ? selectedVenue.opening_time.substring(0, 5)
+                                : '06:00'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Closing Time</span>
+                            <span className="font-semibold text-white">
+                              {selectedVenue.closing_time
+                                ? selectedVenue.closing_time.substring(0, 5)
+                                : '23:00'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Weekly Holidays</span>
+                            <span className="font-semibold text-white">
+                              {selectedVenue.weekly_holidays?.length
+                                ? selectedVenue.weekly_holidays.join(', ')
+                                : 'None'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Slot Duration</span>
+                            <span className="font-semibold text-white">
+                              {selectedVenue.slot_duration || 60} Mins
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Turf Specifications & Amenities */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest">
+                        Turf Specifications & Amenities
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-gray-300">
+                        <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                          <span className="text-gray-500 block text-[9px] uppercase">Size</span>
+                          <span className="font-bold text-white">
+                            {selectedVenue.size || 'N/A'}
                           </span>
                         </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Section: Turf Gallery */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center justify-between">
-                    <span>
-                      Turf Gallery ({Math.min((selectedVenue.venue_images || []).length, 2)} Images)
-                    </span>
-                    <span className="text-[10px] text-gray-500 lowercase">Click to Zoom</span>
-                  </h4>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {(selectedVenue.venue_images || []).slice(0, 2).map((img: any, idx: number) => (
-                      <div
-                        key={idx}
-                        onClick={() => {
-                          setActiveImageIndex(idx)
-                          setIsFullscreenImage(true)
-                        }}
-                        className="relative h-24 rounded-xl overflow-hidden cursor-pointer border border-white/10 hover:border-green-400 transition-all group"
-                      >
-                        <img
-                          src={img.url}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
-                          alt="Turf preview"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                          <ZoomIn className="w-4 h-4 text-white" />
+                        <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                          <span className="text-gray-500 block text-[9px] uppercase">
+                            Indoor/Outdoor
+                          </span>
+                          <span className="font-bold text-white">
+                            {selectedVenue.is_indoor ? 'Indoor' : 'Outdoor'}
+                          </span>
+                        </div>
+                        <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                          <span className="text-gray-500 block text-[9px] uppercase">
+                            Max Players
+                          </span>
+                          <span className="font-bold text-white">
+                            {selectedVenue.max_players || 14} Players
+                          </span>
+                        </div>
+                        <div className="bg-white/5 p-2.5 rounded-xl text-center">
+                          <span className="text-gray-500 block text-[9px] uppercase">Surface</span>
+                          <span className="font-bold text-white">
+                            {selectedVenue.surface || 'Lawn Turf'}
+                          </span>
                         </div>
                       </div>
-                    ))}
-                    {(selectedVenue.venue_images || []).length === 0 && (
-                      <div className="col-span-2 py-8 text-center text-xs text-gray-500 border border-white/5 border-dashed rounded-xl bg-white/[0.01]">
-                        No images uploaded
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                        {[
+                          'Parking Available',
+                          'Flood Lights',
+                          'Washrooms',
+                          'Drinking Water',
+                          'Changing Room',
+                          'First Aid Kit',
+                        ].map((amenity, idx) => {
+                          const hasAmenity = selectedVenue.amenities?.includes(amenity)
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2 text-xs text-gray-300"
+                            >
+                              {hasAmenity ? (
+                                <Check className="w-3.5 h-3.5 text-green-400" />
+                              ) : (
+                                <span className="text-gray-600">✕</span>
+                              )}
+                              <span className={hasAmenity ? 'text-white' : 'text-gray-500'}>
+                                {amenity}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: AI Verification score, Checklist, notes, actions */}
-              <div className="space-y-6">
-                {/* Section: AI Score Summary */}
-                <div className="bg-gradient-to-br from-green-950/20 to-emerald-950/10 border border-green-500/20 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4" /> AI Verification Summary
-                  </h4>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-white">96%</p>
-                      <p className="text-[9px] text-gray-400 uppercase tracking-wider">
-                        Verification Score
-                      </p>
                     </div>
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-green-500/10 text-green-400 border border-green-500/20">
-                      LOW RISK
-                    </span>
+
+                    {/* Section: Turf Gallery */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center justify-between">
+                        <span>
+                          Turf Gallery ({Math.min((selectedVenue.venue_images || []).length, 2)}{' '}
+                          Images)
+                        </span>
+                        <span className="text-[10px] text-gray-500 lowercase">Click to Zoom</span>
+                      </h4>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {(selectedVenue.venue_images || [])
+                          .slice(0, 2)
+                          .map((img: any, idx: number) => (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                setActiveImageIndex(idx)
+                                setIsFullscreenImage(true)
+                              }}
+                              className="relative h-24 rounded-xl overflow-hidden cursor-pointer border border-white/10 hover:border-green-400 transition-all group"
+                            >
+                              <img
+                                src={img.url}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                                alt="Turf preview"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                <ZoomIn className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          ))}
+                        {(selectedVenue.venue_images || []).length === 0 && (
+                          <div className="col-span-2 py-8 text-center text-xs text-gray-500 border border-white/5 border-dashed rounded-xl bg-white/[0.01]">
+                            No images uploaded
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full" style={{ width: '96%' }} />
-                  </div>
+                  {/* Right Column: AI Verification score, Checklist, notes, actions */}
+                  <div className="space-y-6">
+                    {/* Section: AI Score Summary */}
+                    <div className="bg-gradient-to-br from-green-950/20 to-emerald-950/10 border border-green-500/20 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" /> AI Verification Summary
+                      </h4>
 
-                  <div className="bg-white/5 rounded-xl p-3.5 text-xs text-gray-300 border border-white/5 space-y-2">
-                    <p className="font-semibold text-white flex items-center gap-1">
-                      🟢 Recommended Action: Approve
-                    </p>
-                    <p className="text-gray-400 text-[11px] leading-relaxed">
-                      All documentation checklists have passed. No duplicate listings or coordinates
-                      flags detected on the network.
-                    </p>
-                  </div>
-                </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-2xl font-bold text-white">{score}%</p>
+                          <p className="text-[9px] text-gray-400 uppercase tracking-wider">
+                            Verification Score
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold border ${riskColor}`}
+                        >
+                          {riskLevel}
+                        </span>
+                      </div>
 
-                {/* Section: Categorized Verification Checklist */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <ClipboardList className="w-4 h-4" /> Verification Checklist
-                  </h4>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${riskBarColor}`}
+                          style={{ width: `${score}%` }}
+                        />
+                      </div>
 
-                  <div className="space-y-4 text-xs">
-                    {/* Category: Identity */}
+                      <div className="bg-white/5 rounded-xl p-3.5 text-xs text-gray-300 border border-white/5 space-y-2">
+                        <p className="font-semibold text-white flex items-center gap-1">
+                          {aiAction}
+                        </p>
+                        <p className="text-gray-400 text-[11px] leading-relaxed">{aiActionText}</p>
+                      </div>
+                    </div>
+
+                    {/* Section: Categorized Verification Checklist */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <ClipboardList className="w-4 h-4" /> Verification Checklist
+                      </h4>
+
+                      <div className="space-y-4 text-xs">
+                        {/* Category: Identity */}
+                        <div className="space-y-2">
+                          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
+                            Identity
+                          </p>
+                          <div className="flex justify-between">
+                            <span>Email Verified</span>
+                            <span className="text-green-400 font-semibold">Passed</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Phone Verified</span>
+                            <span className="text-green-400 font-semibold">Passed</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Govt ID Uploaded</span>
+                            <span
+                              className={
+                                selectedVenue.documents_url
+                                  ? 'text-green-400 font-semibold'
+                                  : 'text-amber-400 font-semibold'
+                              }
+                            >
+                              {selectedVenue.documents_url ? 'Passed' : 'Pending'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Bank Details</span>
+                            <span
+                              className={
+                                hasBank
+                                  ? 'text-green-400 font-semibold'
+                                  : 'text-amber-400 font-semibold'
+                              }
+                            >
+                              {hasBank ? 'Passed' : 'Pending'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Category: Venue */}
+                        <div className="space-y-2 border-t border-white/5 pt-3">
+                          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
+                            Venue
+                          </p>
+                          <div className="flex justify-between">
+                            <span>Turf Images</span>
+                            <span
+                              className={
+                                selectedVenue.venue_images?.length > 0
+                                  ? 'text-green-400 font-semibold'
+                                  : 'text-amber-400 font-semibold'
+                              }
+                            >
+                              {selectedVenue.venue_images?.length > 0 ? 'Passed' : 'Pending'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Location Verified</span>
+                            <span
+                              className={
+                                selectedVenue.google_maps_link
+                                  ? 'text-green-400 font-semibold'
+                                  : 'text-amber-400 font-semibold'
+                              }
+                            >
+                              {selectedVenue.google_maps_link ? 'Passed' : 'Pending'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Operating Hours</span>
+                            <span className="text-green-400 font-semibold">Passed</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Verification Timeline */}
+                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <History className="w-4 h-4" /> Review Timeline
+                      </h4>
+
+                      <div className="relative pl-5 border-l border-white/10 space-y-4 text-xs">
+                        <div className="relative">
+                          <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
+                          <p className="font-semibold text-white">Owner Registered</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {selectedVenue.owner_profiles?.created_at
+                              ? new Date(
+                                  selectedVenue.owner_profiles.created_at
+                                ).toLocaleDateString()
+                              : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="relative">
+                          <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
+                          <p className="font-semibold text-white">Documents Uploaded</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {selectedVenue.created_at
+                              ? new Date(selectedVenue.created_at).toLocaleDateString()
+                              : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="relative">
+                          <div
+                            className={`absolute -left-[25px] top-0.5 w-2 h-2 rounded-full ${
+                              selectedVenue.verification_status === 'APPROVED'
+                                ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]'
+                                : selectedVenue.verification_status === 'REJECTED'
+                                  ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                                  : selectedVenue.verification_status === 'REQUEST_CHANGES'
+                                    ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                                    : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse'
+                            }`}
+                          />
+                          <p
+                            className={`font-semibold ${
+                              selectedVenue.verification_status === 'APPROVED'
+                                ? 'text-green-400'
+                                : selectedVenue.verification_status === 'REJECTED'
+                                  ? 'text-red-400'
+                                  : 'text-amber-500'
+                            }`}
+                          >
+                            {selectedVenue.verification_status === 'APPROVED'
+                              ? 'Approved & Live'
+                              : selectedVenue.verification_status === 'REJECTED'
+                                ? 'Verification Rejected'
+                                : selectedVenue.verification_status === 'REQUEST_CHANGES'
+                                  ? 'Changes Requested'
+                                  : 'Verification Pending'}
+                          </p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            {selectedVenue.verification_status === 'PENDING'
+                              ? 'Assigned to Super Admin'
+                              : selectedVenue.updated_at
+                                ? new Date(selectedVenue.updated_at).toLocaleDateString()
+                                : 'Recently updated'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section: Internal Admin Notes */}
                     <div className="space-y-2">
-                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
-                        Identity
-                      </p>
-                      <div className="flex justify-between">
-                        <span>Email Verified</span>
-                        <span className="text-green-400 font-semibold">Passed</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Phone Verified</span>
-                        <span className="text-green-400 font-semibold">Passed</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Govt ID Uploaded</span>
-                        <span className="text-green-400 font-semibold">Passed</span>
-                      </div>
-                    </div>
-
-                    {/* Category: Venue */}
-                    <div className="space-y-2 border-t border-white/5 pt-3">
-                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
-                        Venue
-                      </p>
-                      <div className="flex justify-between">
-                        <span>Turf Images</span>
-                        <span className="text-green-400 font-semibold">Passed</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Location Verified</span>
-                        <span className="text-green-400 font-semibold">Passed</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Operating Hours</span>
-                        <span className="text-green-400 font-semibold">Passed</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section: Verification Timeline */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
-                  <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <History className="w-4 h-4" /> Review Timeline
-                  </h4>
-
-                  <div className="relative pl-5 border-l border-white/10 space-y-4 text-xs">
-                    <div className="relative">
-                      <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
-                      <p className="font-semibold text-white">Owner Registered</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">
-                        {selectedVenue.owner_profiles?.created_at
-                          ? new Date(selectedVenue.owner_profiles.created_at).toLocaleDateString()
-                          : 'N/A'}
-                      </p>
-                    </div>
-                    <div className="relative">
-                      <div className="absolute -left-[25px] top-0.5 w-2 h-2 rounded-full bg-green-500" />
-                      <p className="font-semibold text-white">Documents Uploaded</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">
-                        {selectedVenue.created_at
-                          ? new Date(selectedVenue.created_at).toLocaleDateString()
-                          : 'N/A'}
-                      </p>
-                    </div>
-                    <div className="relative">
-                      <div
-                        className={`absolute -left-[25px] top-0.5 w-2 h-2 rounded-full ${
-                          selectedVenue.verification_status === 'APPROVED'
-                            ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]'
-                            : selectedVenue.verification_status === 'REJECTED'
-                              ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
-                              : selectedVenue.verification_status === 'REQUEST_CHANGES'
-                                ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                                : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse'
-                        }`}
+                      <label className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                        Internal Reviewer Notes
+                      </label>
+                      <textarea
+                        value={adminNotes}
+                        onChange={(e) => setAdminNotes(e.target.value)}
+                        placeholder="Write internal audit observations (Admin only)..."
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                        rows={4}
                       />
-                      <p
-                        className={`font-semibold ${
-                          selectedVenue.verification_status === 'APPROVED'
-                            ? 'text-green-400'
-                            : selectedVenue.verification_status === 'REJECTED'
-                              ? 'text-red-400'
-                              : 'text-amber-500'
-                        }`}
-                      >
-                        {selectedVenue.verification_status === 'APPROVED'
-                          ? 'Approved & Live'
-                          : selectedVenue.verification_status === 'REJECTED'
-                            ? 'Verification Rejected'
-                            : selectedVenue.verification_status === 'REQUEST_CHANGES'
-                              ? 'Changes Requested'
-                              : 'Verification Pending'}
-                      </p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">
-                        {selectedVenue.verification_status === 'PENDING'
-                          ? 'Assigned to Super Admin'
-                          : selectedVenue.updated_at
-                            ? new Date(selectedVenue.updated_at).toLocaleDateString()
-                            : 'Recently updated'}
-                      </p>
                     </div>
                   </div>
                 </div>
-
-                {/* Section: Internal Admin Notes */}
-                <div className="space-y-2">
-                  <label className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">
-                    Internal Reviewer Notes
-                  </label>
-                  <textarea
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    placeholder="Write internal audit observations (Admin only)..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
-                    rows={4}
-                  />
-                </div>
-              </div>
-            </div>
-
+              )
+            })()}
             {/* Bottom Actions Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/10">
               <button

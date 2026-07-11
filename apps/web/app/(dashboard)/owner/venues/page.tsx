@@ -37,6 +37,12 @@ const statusMap = {
   },
   DRAFT: { icon: AlertCircle, color: 'text-gray-400', bg: 'bg-gray-400/10', label: 'Draft' },
   REJECTED: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10', label: 'Rejected' },
+  REQUEST_CHANGES: {
+    icon: AlertTriangle,
+    color: 'text-amber-500',
+    bg: 'bg-amber-500/10',
+    label: 'Changes Requested',
+  },
 }
 
 export default function OwnerVenuesPage() {
@@ -128,7 +134,7 @@ export default function OwnerVenuesPage() {
       .select(
         `
         *,
-        venue_pricing(price),
+        venue_pricing(price, weekend_price, peak_price, advance_limit),
         venue_images(url, is_cover)
       `
       )
