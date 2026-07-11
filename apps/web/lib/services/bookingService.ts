@@ -80,6 +80,7 @@ export class BookingService {
       // 3. Create Razorpay Order via PaymentProvider (which handles Circuit Breaking)
       const order = await getPaymentProvider().createOrder({
         amount: Math.round(params.advancePaid * 100), // amount in smallest currency unit (paise)
+        currency: 'INR',
         receiptId: `receipt_${params.slotId}_${Date.now()}`,
         notes: {
           slotId: params.slotId,
