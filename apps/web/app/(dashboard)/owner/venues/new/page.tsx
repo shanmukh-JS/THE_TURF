@@ -328,7 +328,7 @@ export default function NewVenuePage() {
           closing_time: formData.closingTime,
           weekly_holidays: formData.weeklyHolidays,
           slot_duration: parseInt(formData.slotDuration),
-          verification_status: 'UNDER_REVIEW',
+          verification_status: 'PENDING',
           documents_url: formData.documents,
         })
         .select()

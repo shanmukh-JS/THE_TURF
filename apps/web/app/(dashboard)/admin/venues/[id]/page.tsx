@@ -280,18 +280,25 @@ export default function EnterpriseVerificationReviewPage() {
             </div>
 
             {/* Embedded Map Placeholder / iframe */}
-            <div className="w-full h-48 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative">
-              {venue.google_maps_link && venue.google_maps_link.includes('http') ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#111]">
-                  <MapPin className="w-8 h-8 text-green-500/30" />
-                  <span className="absolute text-xs text-green-500/50 mt-12 font-medium">
-                    Map Location Available
+            {venue.google_maps_link && venue.google_maps_link.includes('http') ? (
+              <a
+                href={venue.google_maps_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-48 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative cursor-pointer group"
+              >
+                <div className="absolute inset-0 flex items-center justify-center bg-[#111] group-hover:bg-[#1a1a1a] transition-colors">
+                  <MapPin className="w-8 h-8 text-green-500/30 group-hover:text-green-500/60" />
+                  <span className="absolute text-xs text-green-500/50 mt-12 font-medium group-hover:text-green-500/80">
+                    Click to Open in Google Maps
                   </span>
                 </div>
-              ) : (
+              </a>
+            ) : (
+              <div className="w-full h-48 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative">
                 <span className="text-xs text-gray-500 font-medium">No Map Available</span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

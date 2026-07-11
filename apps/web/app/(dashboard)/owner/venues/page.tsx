@@ -14,6 +14,7 @@ import {
   Clock,
   AlertCircle,
   X,
+  XCircle,
   CheckCircle2,
   AlertTriangle,
   CalendarCheck,
@@ -28,13 +29,14 @@ import {
 
 const statusMap = {
   APPROVED: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', label: 'Live' },
-  UNDER_REVIEW: {
+  PENDING: {
     icon: Clock,
     color: 'text-amber-400',
     bg: 'bg-amber-400/10',
     label: 'Under Review',
   },
   DRAFT: { icon: AlertCircle, color: 'text-gray-400', bg: 'bg-gray-400/10', label: 'Draft' },
+  REJECTED: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10', label: 'Rejected' },
 }
 
 export default function OwnerVenuesPage() {
@@ -314,7 +316,7 @@ export default function OwnerVenuesPage() {
           closing_time: editFormData.closingTime,
           weekly_holidays: editFormData.weeklyHolidays,
           slot_duration: parseInt(editFormData.slotDuration),
-          verification_status: 'UNDER_REVIEW',
+          verification_status: 'PENDING',
         })
         .eq('id', editingVenue.id)
 

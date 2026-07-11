@@ -77,7 +77,8 @@ export default function AdminApprovalsPage() {
           id, full_name, business_name, user_id,
           owner_settings(business_phone, bank_account_name, bank_account_number, bank_ifsc, bank_upi)
         ),
-        venue_images(url, is_cover)
+        venue_images(url, is_cover),
+        venue_pricing(price, weekend_price, peak_price, advance_limit)
       `
       )
       .order('id', { ascending: false })
@@ -405,18 +406,35 @@ export default function AdminApprovalsPage() {
                         Google Maps Link
                       </p>
                       <a
-                        href="#"
-                        className="text-green-400 hover:underline inline-flex items-center gap-1 mt-0.5"
+                        href={selectedVenue.google_maps_link || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-green-400 hover:underline inline-flex items-center gap-1 mt-0.5 truncate max-w-full"
                       >
                         Open Maps <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
                   </div>
 
-                  {/* Mock Map Preview */}
-                  <div className="h-36 w-full rounded-xl bg-green-950/20 border border-green-500/10 flex items-center justify-center text-xs text-green-400/60 font-semibold gap-2">
-                    <MapPin className="w-4 h-4 animate-bounce" /> Embedded Google Maps Preview
-                  </div>
+                  {/* Map Preview */}
+                  {selectedVenue.google_maps_link &&
+                  selectedVenue.google_maps_link.includes('http') ? (
+                    <a
+                      href={selectedVenue.google_maps_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="h-36 w-full rounded-xl bg-green-950/20 border border-green-500/10 flex items-center justify-center text-xs text-green-400/60 font-semibold gap-2 hover:bg-green-900/30 transition-colors group relative overflow-hidden"
+                    >
+                      <MapPin className="w-4 h-4 animate-bounce group-hover:text-green-400" />
+                      <span className="group-hover:text-green-400">
+                        Click to Open in Google Maps
+                      </span>
+                    </a>
+                  ) : (
+                    <div className="h-36 w-full rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-xs text-gray-500 font-semibold gap-2">
+                      <MapPin className="w-4 h-4" /> No Map Available
+                    </div>
+                  )}
                 </div>
 
                 {/* Section: Pricing & Operating Hours */}
@@ -428,19 +446,46 @@ export default function AdminApprovalsPage() {
                     <div className="space-y-2 text-xs text-gray-300">
                       <div className="flex justify-between">
                         <span className="text-gray-500">Base Price</span>
-                        <span className="font-semibold text-white">₹1,000/hr</span>
+                        <span className="font-semibold text-white">
+                          ₹
+                          {selectedVenue.venue_pricing?.[0]?.price ||
+                            selectedVenue.venue_pricing?.price ||
+                            0}
+                          /hr
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Weekend Price</span>
-                        <span className="font-semibold text-white">₹1,200/hr</span>
+                        <span className="font-semibold text-white">
+                          ₹
+                          {selectedVenue.venue_pricing?.[0]?.weekend_price ||
+                            selectedVenue.venue_pricing?.weekend_price ||
+                            selectedVenue.venue_pricing?.[0]?.price ||
+                            selectedVenue.venue_pricing?.price ||
+                            0}
+                          /hr
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Peak Hour Price</span>
-                        <span className="font-semibold text-white">₹1,500/hr</span>
+                        <span className="font-semibold text-white">
+                          ₹
+                          {selectedVenue.venue_pricing?.[0]?.peak_price ||
+                            selectedVenue.venue_pricing?.peak_price ||
+                            selectedVenue.venue_pricing?.[0]?.price ||
+                            selectedVenue.venue_pricing?.price ||
+                            0}
+                          /hr
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Advance Limit</span>
-                        <span className="font-semibold text-white">15 Days</span>
+                        <span className="font-semibold text-white">
+                          {selectedVenue.venue_pricing?.[0]?.advance_limit ||
+                            selectedVenue.venue_pricing?.advance_limit ||
+                            15}{' '}
+                          Days
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -452,19 +497,33 @@ export default function AdminApprovalsPage() {
                     <div className="space-y-2 text-xs text-gray-300">
                       <div className="flex justify-between">
                         <span className="text-gray-500">Opening Time</span>
-                        <span className="font-semibold text-white">06:00 AM</span>
+                        <span className="font-semibold text-white">
+                          {selectedVenue.opening_time
+                            ? selectedVenue.opening_time.substring(0, 5)
+                            : '06:00'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Closing Time</span>
-                        <span className="font-semibold text-white">11:00 PM</span>
+                        <span className="font-semibold text-white">
+                          {selectedVenue.closing_time
+                            ? selectedVenue.closing_time.substring(0, 5)
+                            : '23:00'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Weekly Holidays</span>
-                        <span className="font-semibold text-white">None</span>
+                        <span className="font-semibold text-white">
+                          {selectedVenue.weekly_holidays?.length
+                            ? selectedVenue.weekly_holidays.join(', ')
+                            : 'None'}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">Slot Duration</span>
-                        <span className="font-semibold text-white">60 Mins</span>
+                        <span className="font-semibold text-white">
+                          {selectedVenue.slot_duration || 60} Mins
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -478,44 +537,53 @@ export default function AdminApprovalsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-gray-300">
                     <div className="bg-white/5 p-2.5 rounded-xl text-center">
                       <span className="text-gray-500 block text-[9px] uppercase">Size</span>
-                      <span className="font-bold text-white">120x80 ft</span>
+                      <span className="font-bold text-white">{selectedVenue.size || 'N/A'}</span>
                     </div>
                     <div className="bg-white/5 p-2.5 rounded-xl text-center">
                       <span className="text-gray-500 block text-[9px] uppercase">
                         Indoor/Outdoor
                       </span>
-                      <span className="font-bold text-white">Outdoor</span>
+                      <span className="font-bold text-white">
+                        {selectedVenue.is_indoor ? 'Indoor' : 'Outdoor'}
+                      </span>
                     </div>
                     <div className="bg-white/5 p-2.5 rounded-xl text-center">
                       <span className="text-gray-500 block text-[9px] uppercase">Max Players</span>
-                      <span className="font-bold text-white">14 Players</span>
+                      <span className="font-bold text-white">
+                        {selectedVenue.max_players || 14} Players
+                      </span>
                     </div>
                     <div className="bg-white/5 p-2.5 rounded-xl text-center">
                       <span className="text-gray-500 block text-[9px] uppercase">Surface</span>
-                      <span className="font-bold text-white">Lawn Turf</span>
+                      <span className="font-bold text-white">
+                        {selectedVenue.surface || 'Lawn Turf'}
+                      </span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                     {[
-                      { name: 'Parking Available', status: true },
-                      { name: 'Flood Lights', status: true },
-                      { name: 'Washrooms', status: true },
-                      { name: 'Drinking Water', status: true },
-                      { name: 'Changing Room', status: false },
-                      { name: 'First Aid Kit', status: true },
-                    ].map((amenity, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs text-gray-300">
-                        {amenity.status ? (
-                          <Check className="w-3.5 h-3.5 text-green-400" />
-                        ) : (
-                          <span className="text-gray-600">✕</span>
-                        )}
-                        <span className={amenity.status ? 'text-white' : 'text-gray-500'}>
-                          {amenity.name}
-                        </span>
-                      </div>
-                    ))}
+                      'Parking Available',
+                      'Flood Lights',
+                      'Washrooms',
+                      'Drinking Water',
+                      'Changing Room',
+                      'First Aid Kit',
+                    ].map((amenity, idx) => {
+                      const hasAmenity = selectedVenue.amenities?.includes(amenity)
+                      return (
+                        <div key={idx} className="flex items-center gap-2 text-xs text-gray-300">
+                          {hasAmenity ? (
+                            <Check className="w-3.5 h-3.5 text-green-400" />
+                          ) : (
+                            <span className="text-gray-600">✕</span>
+                          )}
+                          <span className={hasAmenity ? 'text-white' : 'text-gray-500'}>
+                            {amenity}
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
 
@@ -694,8 +762,7 @@ export default function AdminApprovalsPage() {
                               : 'Verification Pending'}
                       </p>
                       <p className="text-[10px] text-gray-500 mt-0.5">
-                        {selectedVenue.verification_status === 'PENDING' ||
-                        selectedVenue.verification_status === 'UNDER_REVIEW'
+                        {selectedVenue.verification_status === 'PENDING'
                           ? 'Assigned to Super Admin'
                           : selectedVenue.updated_at
                             ? new Date(selectedVenue.updated_at).toLocaleDateString()
