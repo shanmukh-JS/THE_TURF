@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { PayoutBatchService } from '../../../../../../services/payouts/payoutBatchService'
 import { PayoutDomainError } from '../../../../../../services/payouts/errors'
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   try {
     // 1. Authenticate & Authorize
     const authHeader = req.headers.get('Authorization')
@@ -26,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const service = new PayoutBatchService(supabase)
 
     await service.approveBatch({
-      batchId: params.id,
+      batchId: id,
       approverId,
     })
 
@@ -35,7 +36,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       JSON.stringify({
         level: 'INFO',
         action: 'APPROVE_BATCH',
-        batchId: params.id,
+        batchId: id,
         approverId,
         timestamp: new Date().toISOString(),
       })
