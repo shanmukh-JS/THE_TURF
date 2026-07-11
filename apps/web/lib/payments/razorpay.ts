@@ -9,7 +9,8 @@ import {
 } from './provider'
 
 // Standard Razorpay instances
-const key_id = process.env.RAZORPAY_KEY_ID || 'rzp_test_xxx'
+const key_id =
+  process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || 'rzp_test_xxx'
 const key_secret = process.env.RAZORPAY_SECRET || 'secret'
 const webhook_secret = process.env.RAZORPAY_WEBHOOK_SECRET || 'webhook_secret'
 
