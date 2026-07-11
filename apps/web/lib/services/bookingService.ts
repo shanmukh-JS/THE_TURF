@@ -81,7 +81,7 @@ export class BookingService {
       const order = await getPaymentProvider().createOrder({
         amount: Math.round(params.advancePaid * 100), // amount in smallest currency unit (paise)
         currency: 'INR',
-        receiptId: `receipt_${params.slotId}_${Date.now()}`,
+        receiptId: `rcpt_${params.slotId.substring(0, 8)}_${Date.now()}`,
         notes: {
           slotId: params.slotId,
           venueId: params.venueId,
