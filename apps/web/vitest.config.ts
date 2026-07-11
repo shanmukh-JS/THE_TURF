@@ -8,5 +8,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './'),
     },
+    reporters: ['default', './__tests__/payment-validation/reporting/PaymentValidationReporter.ts'],
   },
 })
