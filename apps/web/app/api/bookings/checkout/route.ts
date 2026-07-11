@@ -93,6 +93,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ order, checkoutId })
   } catch (error: any) {
     console.error('Checkout error:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+    const message = error.message || error.error?.description || 'Internal Server Error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
