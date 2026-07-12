@@ -45,7 +45,9 @@ export default async function PlayerDashboard() {
       address,
       areas(name),
       venue_pricing(price),
-      venue_images(url, is_cover)
+      venue_images(url, is_cover),
+      slots(status, date, start_time),
+      reviews(rating)
     `
       )
       .eq('verification_status', 'APPROVED')
@@ -87,15 +89,38 @@ export default async function PlayerDashboard() {
     .filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
     .reduce((sum, b) => sum + Number(b.total_amount), 0)
 
-  // Map cover images for venues
+  // Map cover images for venues and calculate dynamic slotsCount & rating
   const mappedVenues = (venuesData || []).map((v: any) => {
     const coverImage =
       v.venue_images?.find((img: any) => img.is_cover)?.url ||
       v.venue_images?.[0]?.url ||
       'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
+
+    // Calculate live available slots count
+    const now = new Date()
+    const todayStr = now.toISOString().split('T')[0] || ''
+    const availableSlots = (v.slots || []).filter((s: any) => {
+      if (s.status !== 'Available' || s.date < todayStr) return false
+      const slotStart = new Date(s.start_time)
+      return slotStart.getTime() >= now.getTime()
+    })
+    const slotsCount = availableSlots.length
+
+    // Calculate rating
+    const reviewsList = v.reviews || []
+    const rating =
+      reviewsList.length > 0
+        ? (
+            reviewsList.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
+            reviewsList.length
+          ).toFixed(1)
+        : '4.8'
+
     return {
       ...v,
       image: coverImage,
+      slotsCount,
+      rating,
     }
   })
 

@@ -601,10 +601,11 @@ export function PlayerDashboardClient({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {venues.slice(0, 2).map((v) => {
-              // Mock details safely
-              const rating = (4.5 + (v.id.charCodeAt(0) % 5) * 0.1).toFixed(1)
+              // Map live details with fallback
+              const rating = v.rating || (4.5 + (v.id.charCodeAt(0) % 5) * 0.1).toFixed(1)
               const distance = (1.2 + (v.id.charCodeAt(1) % 4) * 0.5).toFixed(1)
-              const slotsCount = 3 + (v.id.charCodeAt(2) % 6)
+              const slotsCount =
+                v.slotsCount !== undefined ? v.slotsCount : 3 + (v.id.charCodeAt(2) % 6)
               const price = v.venue_pricing?.[0]?.price || 1000
 
               return (
@@ -641,8 +642,9 @@ export function PlayerDashboardClient({
                       </h3>
 
                       <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-green-400" /> {distance} km
+                        <span className="flex items-center gap-1 text-gray-400 font-medium">
+                          <MapPin className="w-3.5 h-3.5 text-green-400 shrink-0" />{' '}
+                          {v.areas?.name || 'Visakhapatnam'} ({distance} km)
                         </span>
                         <span className="flex items-center gap-1 font-semibold text-yellow-400">
                           <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rating}
