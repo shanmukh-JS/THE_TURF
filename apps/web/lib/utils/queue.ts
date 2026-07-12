@@ -6,13 +6,13 @@
 
 import { Queue, Worker, Job } from 'bullmq'
 import { logger } from '@/lib/utils/logger'
+import IORedis from 'ioredis'
 
 // Fallback to local Redis if env is missing
-const connection = {
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
+const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null, // Required by BullMQ for resilience
   enableOfflineQueue: false, // Fail fast if Redis is completely down
-}
+})
 
 /**
  * Main application queue for handling diverse asynchronous tasks.
