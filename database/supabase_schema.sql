@@ -17,7 +17,9 @@ create table public.users (
 create table public.customer_profiles (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references public.users(id) on delete cascade unique not null,
-  full_name text not null
+  full_name text not null,
+  profile_image_url text,
+  banner_image_url text
 );
 
 -- OWNER PROFILES

@@ -56,6 +56,8 @@ export function PlayerProfileClient({
   const [editName, setEditName] = useState(fullName)
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [bannerImage, setBannerImage] = useState<File | null>(null)
+  const [removeExistingProfile, setRemoveExistingProfile] = useState(false)
+  const [removeExistingBanner, setRemoveExistingBanner] = useState(false)
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null)
   const [cropTarget, setCropTarget] = useState<'profile' | 'banner' | null>(null)
   const [loading, setLoading] = useState(false)
@@ -111,6 +113,13 @@ export function PlayerProfileClient({
       let profileImageUrl = customerProfile?.profile_image_url || null
       let bannerImageUrl = customerProfile?.banner_image_url || null
 
+      if (removeExistingProfile) {
+        profileImageUrl = null
+      }
+      if (removeExistingBanner) {
+        bannerImageUrl = null
+      }
+
       if (profileImage) {
         const fileExt = profileImage.name.split('.').pop()
         const filePath = `${user.id}/profile_${Math.random()}.${fileExt}`
@@ -155,6 +164,10 @@ export function PlayerProfileClient({
 
       // Update local state and close modal
       setFullName(editName.trim())
+      setRemoveExistingProfile(false)
+      setRemoveExistingBanner(false)
+      setProfileImage(null)
+      setBannerImage(null)
       setIsEditing(false)
       setToast({ message: 'Profile updated successfully!', type: 'success' })
 
@@ -383,7 +396,7 @@ export function PlayerProfileClient({
 
       {/* Edit Profile Modal */}
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-[#0a0f0a] border border-white/10 rounded-3xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsEditing(false)}
@@ -414,14 +427,39 @@ export function PlayerProfileClient({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                    Profile Image{' '}
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
+                      Profile Image{' '}
+                      {profileImage && (
+                        <span className="text-green-400 lowercase normal-case">
+                          (Ready to upload)
+                        </span>
+                      )}
+                      {removeExistingProfile && (
+                        <span className="text-red-400 lowercase normal-case">
+                          (Will be removed)
+                        </span>
+                      )}
+                    </label>
                     {profileImage && (
-                      <span className="text-green-400 lowercase normal-case">
-                        (Ready to upload)
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setProfileImage(null)}
+                        className="text-red-400 hover:text-red-300 text-xs font-bold focus:outline-none"
+                      >
+                        Clear Staged
+                      </button>
                     )}
-                  </label>
+                    {customerProfile?.profile_image_url && !profileImage && (
+                      <button
+                        type="button"
+                        onClick={() => setRemoveExistingProfile(!removeExistingProfile)}
+                        className="text-red-400 hover:text-red-300 text-[10px] font-bold uppercase tracking-wider focus:outline-none"
+                      >
+                        {removeExistingProfile ? 'Keep Image' : 'Remove Image'}
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="file"
                     accept="image/*"
@@ -432,14 +470,39 @@ export function PlayerProfileClient({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                    Banner Background{' '}
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
+                      Banner Background{' '}
+                      {bannerImage && (
+                        <span className="text-green-400 lowercase normal-case">
+                          (Ready to upload)
+                        </span>
+                      )}
+                      {removeExistingBanner && (
+                        <span className="text-red-400 lowercase normal-case">
+                          (Will be removed)
+                        </span>
+                      )}
+                    </label>
                     {bannerImage && (
-                      <span className="text-green-400 lowercase normal-case">
-                        (Ready to upload)
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBannerImage(null)}
+                        className="text-red-400 hover:text-red-300 text-xs font-bold focus:outline-none"
+                      >
+                        Clear Staged
+                      </button>
                     )}
-                  </label>
+                    {customerProfile?.banner_image_url && !bannerImage && (
+                      <button
+                        type="button"
+                        onClick={() => setRemoveExistingBanner(!removeExistingBanner)}
+                        className="text-red-400 hover:text-red-300 text-[10px] font-bold uppercase tracking-wider focus:outline-none"
+                      >
+                        {removeExistingBanner ? 'Keep Banner' : 'Remove Banner'}
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="file"
                     accept="image/*"

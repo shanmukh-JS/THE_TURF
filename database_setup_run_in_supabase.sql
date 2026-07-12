@@ -222,5 +222,10 @@ SELECT cron.schedule(
 );
 
 
--- 8. RELOAD SCHEMA CACHE
+-- 8. ADD COLUMNS FOR PLAYER PROFILES (IF MISSING)
+ALTER TABLE public.customer_profiles 
+ADD COLUMN IF NOT EXISTS profile_image_url TEXT,
+ADD COLUMN IF NOT EXISTS banner_image_url TEXT;
+
+-- 9. RELOAD SCHEMA CACHE
 NOTIFY pgrst, 'reload schema';
