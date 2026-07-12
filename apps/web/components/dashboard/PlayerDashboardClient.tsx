@@ -43,24 +43,28 @@ function AnimatedNumber({ value }: { value: number }) {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
-    let start = 0
+    const start = 0
     const end = value
     if (start === end) {
       setCount(end)
       return
     }
 
-    const duration = 1000 // 1s animation
-    const incrementTime = Math.max(Math.floor(duration / Math.max(end, 1)), 20)
+    const duration = 1000 // 1s animation duration
+    const steps = 30 // 30 updates
+    const increment = Math.ceil(end / steps)
+    const stepTime = Math.floor(duration / steps)
 
+    let current = start
     const timer = setInterval(() => {
-      start += 1
-      setCount(start)
-      if (start >= end) {
+      current += increment
+      if (current >= end) {
         setCount(end)
         clearInterval(timer)
+      } else {
+        setCount(current)
       }
-    }, incrementTime)
+    }, stepTime)
 
     return () => clearInterval(timer)
   }, [value])
@@ -556,10 +560,9 @@ export function PlayerDashboardClient({
             ) : (
               <div className="relative border-l border-white/10 pl-6 space-y-6">
                 {pastList.slice(0, 4).map((act) => {
-                  const isCompleted = act.status === 'COMPLETED'
-                  const statusLabel = isCompleted ? 'Booked' : 'Cancelled Booking at'
+                  const isCancelled = act.status === 'CANCELLED'
                   const venueName = act.venues?.name || 'Venue'
-                  const statusColor = isCompleted ? 'bg-green-500' : 'bg-red-500'
+                  const statusColor = isCancelled ? 'bg-red-500' : 'bg-green-500'
 
                   return (
                     <div key={act.id} className="relative group">
@@ -573,9 +576,9 @@ export function PlayerDashboardClient({
                           {formatRelativeTime(act.slots?.date || new Date())}
                         </span>
                         <h4 className="text-sm font-bold text-white leading-snug">
-                          {isCompleted
-                            ? `Booked ${venueName}`
-                            : `Cancelled booking at ${venueName}`}
+                          {isCancelled
+                            ? `Cancelled booking at ${venueName}`
+                            : `Played at ${venueName}`}
                         </h4>
                         <div className="h-px bg-white/5 my-2 w-full" />
                       </div>
