@@ -292,16 +292,14 @@ export default function ManageSlotsPage() {
 
       if (!isBulk) {
         // Single slot creation
-        const startDateTimeStr = `${dateStr}T${formData.startTime}:00`
+        const startDate = new Date(`${dateStr}T${formData.startTime}:00`)
 
         // Calculate End Time based on duration
-        const startDate = new Date(startDateTimeStr)
         const endDate = new Date(startDate.getTime() + durationMins * 60 * 1000)
 
         const endHours = String(endDate.getHours()).padStart(2, '0')
         const endMins = String(endDate.getMinutes()).padStart(2, '0')
         const endTimeStr = `${endHours}:${endMins}`
-        const endDateTimeStr = `${dateStr}T${endTimeStr}:00`
 
         if (endDate <= startDate) {
           setToast({ message: 'End time must be after start time.', type: 'error' })
@@ -323,8 +321,8 @@ export default function ManageSlotsPage() {
           owner_id: ownerProfileId,
           venue_id: formData.venueId,
           date: dateStr,
-          start_time: startDateTimeStr,
-          end_time: endDateTimeStr,
+          start_time: startDate.toISOString(),
+          end_time: endDate.toISOString(),
           duration: durationMins,
           price: priceNum,
           max_players: maxPl,
@@ -363,12 +361,15 @@ export default function ManageSlotsPage() {
             return
           }
 
+          const startDate = new Date(`${dateStr}T${currentStartStr}:00`)
+          const endDate = new Date(`${dateStr}T${currentEndStr}:00`)
+
           slotsToInsert.push({
             owner_id: ownerProfileId,
             venue_id: formData.venueId,
             date: dateStr,
-            start_time: `${dateStr}T${currentStartStr}:00`,
-            end_time: `${dateStr}T${currentEndStr}:00`,
+            start_time: startDate.toISOString(),
+            end_time: endDate.toISOString(),
             duration: durationMins,
             price: priceNum,
             max_players: maxPl,

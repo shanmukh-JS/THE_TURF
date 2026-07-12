@@ -74,7 +74,11 @@ export default function AdminBookingsPage() {
   }
 
   async function fetchCommissionPct() {
-    const { data } = await supabase.from('admin_settings').select('commission_percentage').single()
+    const { data } = await supabase
+      .from('admin_settings')
+      .select('commission_percentage')
+      .limit(1)
+      .maybeSingle()
     if (data) setCommissionPct(Number(data.commission_percentage))
   }
 

@@ -217,8 +217,10 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         const thresholdTime = now.getTime() + bufferMs
 
         activeSlots = activeSlots.filter((slot: any) => {
-          // Create date obj assuming slot.start_time is "HH:mm:ss" and slot.date is "YYYY-MM-DD"
-          const slotStart = new Date(`${slot.date}T${slot.start_time}`)
+          // Create date obj supporting both full ISO timestamps and legacy timezone-less time strings
+          const slotStart = slot.start_time.includes('T')
+            ? new Date(slot.start_time)
+            : new Date(`${slot.date}T${slot.start_time}`)
           return slotStart.getTime() >= thresholdTime
         })
       }
