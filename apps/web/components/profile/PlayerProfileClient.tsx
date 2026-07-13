@@ -339,7 +339,7 @@ export function PlayerProfileClient({
                   type="button"
                   onClick={() => handleRemoveImage('banner')}
                   disabled={loading}
-                  className="px-3 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:scale-105 active:scale-95 flex items-center gap-1.5 transition-all text-xs font-semibold backdrop-blur-md"
+                  className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white hover:scale-105 active:scale-95 flex items-center gap-1.5 transition-all text-xs font-bold shadow-lg shadow-black/40 backdrop-blur-md border border-red-500"
                 >
                   Delete
                 </button>
