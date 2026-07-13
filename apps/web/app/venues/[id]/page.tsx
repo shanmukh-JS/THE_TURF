@@ -132,21 +132,26 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       setLoading(false)
       return // Will render a not-found or access-denied state below
     }
-
     // Format venue object
     const formattedVenue = {
       id: venueData.id,
       name: venueData.name,
       description: venueData.description || 'No description provided.',
       area: venueData.area?.name || 'Unknown Area',
-      city: venueData.city?.name || 'Unknown City',
+      city: venueData.city?.name || venueData.address?.split(',')[4]?.trim() || 'Unknown City',
       address: venueData.address,
-      rating: 4.8, // Default rating fallback
+      rating: null as number | null,
       reviewsCount: 0,
-      price: venueData.venue_pricing?.[0]?.price || 1000,
+      price: Array.isArray(venueData.venue_pricing)
+        ? venueData.venue_pricing[0]?.price
+        : venueData.venue_pricing?.price || 1000,
       pitches: venueData.pitches || 1,
       isIndoor: venueData.is_indoor || false,
       verificationStatus: venueData.verification_status,
+      amenities:
+        venueData.amenities && venueData.amenities.length > 0
+          ? venueData.amenities
+          : defaultAmenities,
       images:
         venueData.venue_images && venueData.venue_images.length > 0
           ? venueData.venue_images.map((img: any) => img.url)
@@ -458,10 +463,18 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
             <span className="flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1 rounded-full text-xs font-semibold border border-green-500/20">
               ₹{venue.price.toLocaleString()} / hour
             </span>
-            <span className="flex items-center gap-1.5">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <strong className="text-white">{venue.rating}</strong> ({venue.reviewsCount} reviews)
-            </span>
+            {venue.reviewsCount > 0 ? (
+              <span className="flex items-center gap-1.5">
+                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <strong className="text-white">{venue.rating}</strong> ({venue.reviewsCount}{' '}
+                {venue.reviewsCount === 1 ? 'review' : 'reviews'})
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-gray-400">
+                <Star className="w-4 h-4 text-gray-500" />
+                <strong className="text-gray-400">New Turf</strong> (0 reviews)
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <MapPin className="w-4 h-4" />
               {venue.address || `${venue.area}, ${venue.city}`}
@@ -591,7 +604,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
           <h2 className="text-lg font-semibold mb-4 text-white">Amenities</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {defaultAmenities.map((a) => (
+            {venue.amenities.map((a: string) => (
               <div key={a} className="flex items-center gap-2 text-sm text-gray-300">
                 <Zap className="w-4 h-4 text-green-400 flex-shrink-0" />
                 {a}
