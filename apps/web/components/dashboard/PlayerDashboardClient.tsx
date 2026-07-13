@@ -656,8 +656,7 @@ export function PlayerDashboardClient({
                             v.cities?.name ||
                             v.address?.split(',')[4]?.trim() ||
                             v.address?.split(',')[0] ||
-                            'Tadepalligudem'}{' '}
-                          ({distance} km)
+                            'Tadepalligudem'}
                         </span>
                         <span className="flex items-center gap-1 font-semibold text-yellow-400">
                           <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rating}
