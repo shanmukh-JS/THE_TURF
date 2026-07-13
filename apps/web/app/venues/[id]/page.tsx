@@ -26,11 +26,7 @@ import {
 
 // Default values for fields not stored in DB
 const defaultAmenities = ['Parking', 'WiFi', 'Floodlights', 'Changing Rooms', 'Water Dispenser']
-const defaultRules = [
-  'No metal spikes allowed',
-  'Booking must be cancelled 2 hrs before slot',
-  'Maximum 12 players per booking',
-]
+const defaultRules = ['No metal spikes allowed', 'Booking must be cancelled 2 hrs before slot']
 
 export default function VenueDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -254,7 +250,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     const { data: ownerSettingsData } = await supabase
       .from('owner_settings')
       .select(
-        'auto_accept_bookings, booking_buffer_time, cancellation_policy, notify_bookings, notify_email'
+        'auto_accept_bookings, booking_buffer_time, cancellation_policy, notify_bookings, notify_email, max_players_per_booking'
       )
       .eq('owner_id', venueData.owner_id)
       .maybeSingle()
@@ -721,6 +717,10 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                 <span className="text-amber-400 mt-0.5">•</span> {r}
               </li>
             ))}
+            <li className="flex items-start gap-2 text-sm text-gray-300">
+              <span className="text-amber-400 mt-0.5">•</span> Maximum{' '}
+              {ownerSettings?.max_players_per_booking || 12} players per booking
+            </li>
             {ownerSettings?.cancellation_policy && (
               <li className="flex items-start gap-2 text-sm text-gray-300 mt-4 pt-4 border-t border-amber-500/20">
                 <span className="text-amber-400 mt-0.5">•</span>

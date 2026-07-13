@@ -35,6 +35,7 @@ const defaultSettings = {
     autoAccept: true,
     cancellationPolicy: 'flexible',
     bufferTime: '0',
+    maxPlayers: 12,
   },
 
   notifications: {
@@ -169,6 +170,7 @@ export default function OwnerSettingsPage() {
             autoAccept: settings ? settings.auto_accept_bookings : true,
             cancellationPolicy: settings?.cancellation_policy || 'flexible',
             bufferTime: settings?.booking_buffer_time || '0',
+            maxPlayers: settings?.max_players_per_booking || 12,
           },
 
           notifications: {
@@ -250,6 +252,7 @@ export default function OwnerSettingsPage() {
         auto_accept_bookings: formData.booking.autoAccept,
         cancellation_policy: formData.booking.cancellationPolicy,
         booking_buffer_time: formData.booking.bufferTime,
+        max_players_per_booking: Number(formData.booking.maxPlayers) || 12,
 
         notify_bookings: formData.notifications.booking,
         notify_payments: formData.notifications.payment,
@@ -608,7 +611,7 @@ export default function OwnerSettingsPage() {
               onChange={(v: boolean) => updateSection('booking', 'autoAccept', v)}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   Cancellation Policy
@@ -651,6 +654,22 @@ export default function OwnerSettingsPage() {
                     1 Hour
                   </option>
                 </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Maximum Players limit
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.booking.maxPlayers}
+                  onChange={(e) =>
+                    updateSection('booking', 'maxPlayers', Number(e.target.value) || 12)
+                  }
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50"
+                  placeholder="e.g. 12"
+                />
               </div>
             </div>
           </div>
