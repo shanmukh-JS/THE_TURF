@@ -33,7 +33,10 @@ export default async function CustomerFavoritesPage() {
           name,
           address,
           areas (name),
-          venue_images (url, is_cover)
+          cities (name),
+          venue_pricing (price),
+          venue_images (url, is_cover),
+          reviews (rating)
         )
       `
       )
@@ -46,8 +49,10 @@ export default async function CustomerFavoritesPage() {
         name,
         address,
         areas (name),
+        cities (name),
         venue_pricing (price),
-        venue_images (url, is_cover)
+        venue_images (url, is_cover),
+        reviews (rating)
       `
       )
       .eq('verification_status', 'APPROVED')
@@ -55,37 +60,64 @@ export default async function CustomerFavoritesPage() {
       .limit(3),
   ])
 
-  const favorites = (rawFavorites || []).map((fav: any) => {
-    const venue = fav.venues || {}
-    const coverImage =
-      venue.venue_images?.find((img: any) => img.is_cover)?.url ||
-      venue.venue_images?.[0]?.url ||
-      'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800&q=80'
-    return {
-      id: fav.id,
-      venue_id: venue.id,
-      name: venue.name,
-      address: venue.address,
-      area: venue.areas?.name || 'Unknown Area',
-      image: coverImage,
-    }
-  })
-
-  const recommendations = (recommendedVenuesData || []).map((v: any) => {
+  const mapVenueData = (v: any) => {
+    if (!v) return null
     const coverImage =
       v.venue_images?.find((img: any) => img.is_cover)?.url ||
       v.venue_images?.[0]?.url ||
-      'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?w=800&q=80'
+      'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
+
+    const price = Array.isArray(v.venue_pricing)
+      ? v.venue_pricing[0]?.price
+      : v.venue_pricing?.price || 1000
+
+    const reviewsList = v.reviews || []
+    const rating =
+      reviewsList.length > 0
+        ? (
+            reviewsList.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
+            reviewsList.length
+          ).toFixed(1)
+        : null
+
+    const area = v.areas?.name || v.address?.split(',')[0]?.trim() || 'Unknown Area'
+    const city = v.cities?.name || v.address?.split(',')[4]?.trim() || 'Unknown City'
+
     return {
       id: v.id,
       name: v.name,
       address: v.address,
-      area: v.areas?.name || 'Unknown Area',
-      price: v.venue_pricing?.[0]?.price || 1000,
+      area,
+      city,
+      price,
       image: coverImage,
-      rating: (4.5 + (v.id.charCodeAt(0) % 5) * 0.1).toFixed(1),
+      rating,
+      reviewsCount: reviewsList.length,
     }
-  })
+  }
+
+  const favorites = (rawFavorites || [])
+    .map((fav: any) => {
+      const mapped = mapVenueData(fav.venues)
+      if (!mapped) return null
+      return {
+        id: fav.id,
+        venue_id: mapped.id,
+        name: mapped.name,
+        address: mapped.address,
+        area: mapped.area,
+        city: mapped.city,
+        price: mapped.price,
+        image: mapped.image,
+        rating: mapped.rating,
+        reviewsCount: mapped.reviewsCount,
+      }
+    })
+    .filter(Boolean) as any[]
+
+  const recommendations = (recommendedVenuesData || [])
+    .map((v: any) => mapVenueData(v))
+    .filter(Boolean) as any[]
 
   return (
     <DashboardAnimationWrapper className="p-8 space-y-12">
@@ -147,9 +179,15 @@ export default async function CustomerFavoritesPage() {
                           <h4 className="font-bold text-white text-sm group-hover:text-green-400 transition-colors truncate">
                             {rec.name}
                           </h4>
-                          <span className="text-xs text-yellow-400 flex items-center gap-1 font-semibold flex-shrink-0">
-                            <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rec.rating}
-                          </span>
+                          {rec.rating ? (
+                            <span className="text-xs text-yellow-400 flex items-center gap-1 font-semibold flex-shrink-0">
+                              <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rec.rating}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 flex items-center gap-1 font-semibold flex-shrink-0">
+                              <Star className="w-3.5 h-3.5 text-gray-500" /> New
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-1">
                           <MapPin className="w-3 h-3 text-green-400" /> {rec.area}
@@ -181,15 +219,29 @@ export default async function CustomerFavoritesPage() {
                     className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                  <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/55 backdrop-blur-md flex items-center justify-center border border-white/10 text-red-500">
+                  <span className="absolute bottom-3 right-3 text-white text-xs font-bold font-mono">
+                    ₹{fav.price}/hr
+                  </span>
+                  <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-black/55 backdrop-blur-md flex items-center justify-center border border-white/10 text-red-500">
                     <Heart className="w-4 h-4 fill-red-500" />
                   </div>
                 </div>
                 <div className="p-4 space-y-3">
                   <div>
-                    <h3 className="font-bold text-white text-base group-hover:text-green-400 transition-colors line-clamp-1">
-                      {fav.name}
-                    </h3>
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="font-bold text-white text-sm group-hover:text-green-400 transition-colors line-clamp-1">
+                        {fav.name}
+                      </h3>
+                      {fav.rating ? (
+                        <span className="text-xs text-yellow-400 flex items-center gap-1 font-semibold flex-shrink-0">
+                          <Star className="w-3.5 h-3.5 fill-yellow-400" /> {fav.rating}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400 flex items-center gap-1 font-semibold flex-shrink-0">
+                          <Star className="w-3.5 h-3.5 text-gray-500" /> New
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
                       <MapPin className="w-3.5 h-3.5 text-green-400" /> {fav.area}
                     </p>

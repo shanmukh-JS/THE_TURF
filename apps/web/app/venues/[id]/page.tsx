@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   X,
+  Heart,
 } from 'lucide-react'
 import { ImageCarousel } from '@/components/venues/ImageCarousel'
 import {
@@ -48,6 +49,64 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
   // Booking modal states
   const [selectedSlot, setSelectedSlot] = useState<any | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Favorites State
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [favLoading, setFavLoading] = useState(false)
+
+  // Check if current venue is favorited
+  useEffect(() => {
+    async function checkFavorite() {
+      if (!currentUser || !id) return
+      try {
+        const { data } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('user_id', currentUser.id)
+          .eq('venue_id', id)
+          .maybeSingle()
+        if (data) {
+          setIsFavorite(true)
+        }
+      } catch (err) {
+        console.error('Error checking favorite status:', err)
+      }
+    }
+    checkFavorite()
+  }, [currentUser, id])
+
+  const handleToggleFavorite = async () => {
+    if (!currentUser) {
+      router.push('/auth/login')
+      return
+    }
+    setFavLoading(true)
+    try {
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('venue_id', id)
+        if (error) throw error
+        setIsFavorite(false)
+        setToast({ message: 'Removed from favorites', type: 'success' })
+      } else {
+        const { error } = await supabase.from('favorites').insert({
+          user_id: currentUser.id,
+          venue_id: id,
+        })
+        if (error) throw error
+        setIsFavorite(true)
+        setToast({ message: 'Added to favorites!', type: 'success' })
+      }
+    } catch (e: any) {
+      console.error(e)
+      setToast({ message: 'Failed to update favorite status', type: 'error' })
+    } finally {
+      setFavLoading(false)
+    }
+  }
 
   // Load Razorpay checkout script
   useEffect(() => {
@@ -461,16 +520,37 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
         {/* Header */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm text-gray-400">
-            <Link href="/venues" className="hover:text-white transition-colors">
-              Explore
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span>{venue.city}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-white truncate">{venue.name}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <Link href="/venues" className="hover:text-white transition-colors">
+                  Explore
+                </Link>
+                <ChevronRight className="w-3.5 h-3.5" />
+                <span>{venue.city}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+                <span className="text-white truncate">{venue.name}</span>
+              </div>
+              <h1 className="text-3xl font-bold text-white tracking-tight">{venue.name}</h1>
+            </div>
+
+            <button
+              onClick={handleToggleFavorite}
+              disabled={favLoading}
+              className={`px-4 py-2.5 rounded-xl border transition-all flex items-center gap-2 font-bold text-xs shrink-0 select-none ${
+                isFavorite
+                  ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'
+                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Heart
+                className={`w-4 h-4 transition-transform duration-300 ${
+                  isFavorite ? 'fill-red-500 scale-110' : 'scale-100 hover:scale-110'
+                }`}
+              />
+              {isFavorite ? 'Favorited' : 'Favorite'}
+            </button>
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">{venue.name}</h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1 rounded-full text-xs font-semibold border border-green-500/20">
               ₹{venue.price.toLocaleString()} / hour
