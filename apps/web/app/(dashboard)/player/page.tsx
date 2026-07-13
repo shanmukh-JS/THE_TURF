@@ -44,10 +44,12 @@ export default async function PlayerDashboard() {
       name,
       address,
       areas(name),
+      cities(name),
       venue_pricing(price),
       venue_images(url, is_cover),
       slots(status, date, start_time),
-      reviews(rating)
+      reviews(rating),
+      amenities
     `
       )
       .eq('verification_status', 'APPROVED')

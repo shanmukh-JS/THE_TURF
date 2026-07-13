@@ -612,7 +612,9 @@ export function PlayerDashboardClient({
               const distance = (1.2 + (v.id.charCodeAt(1) % 4) * 0.5).toFixed(1)
               const slotsCount =
                 v.slotsCount !== undefined ? v.slotsCount : 3 + (v.id.charCodeAt(2) % 6)
-              const price = v.venue_pricing?.[0]?.price || 1000
+              const price = Array.isArray(v.venue_pricing)
+                ? v.venue_pricing[0]?.price
+                : v.venue_pricing?.price || 1000
 
               return (
                 <div
@@ -650,7 +652,12 @@ export function PlayerDashboardClient({
                       <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap">
                         <span className="flex items-center gap-1 text-gray-400 font-medium">
                           <MapPin className="w-3.5 h-3.5 text-green-400 shrink-0" />{' '}
-                          {v.areas?.name || 'Visakhapatnam'} ({distance} km)
+                          {v.areas?.name ||
+                            v.cities?.name ||
+                            v.address?.split(',')[4]?.trim() ||
+                            v.address?.split(',')[0] ||
+                            'Tadepalligudem'}{' '}
+                          ({distance} km)
                         </span>
                         <span className="flex items-center gap-1 font-semibold text-yellow-400">
                           <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rating}
@@ -662,15 +669,37 @@ export function PlayerDashboardClient({
                     </div>
 
                     <div className="flex gap-2 items-center flex-wrap pt-1 text-[10px] text-gray-400">
-                      <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md">
-                        <Car className="w-3 h-3 text-green-400" /> Parking
-                      </span>
-                      <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md">
-                        <Wifi className="w-3 h-3 text-green-400" /> WiFi
-                      </span>
-                      <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md">
-                        <Zap className="w-3 h-3 text-green-400" /> Lights
-                      </span>
+                      {Array.isArray(v.amenities) && v.amenities.length > 0 ? (
+                        v.amenities.slice(0, 3).map((amenity: string) => {
+                          const lower = amenity.toLowerCase()
+                          let IconComp = Zap
+                          if (lower.includes('park')) IconComp = Car
+                          else if (lower.includes('wifi') || lower.includes('internet'))
+                            IconComp = Wifi
+
+                          return (
+                            <span
+                              key={amenity}
+                              className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md"
+                            >
+                              <IconComp className="w-3 h-3 text-green-400" />{' '}
+                              {amenity.replace(' Available', '')}
+                            </span>
+                          )
+                        })
+                      ) : (
+                        <>
+                          <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md">
+                            <Car className="w-3 h-3 text-green-400" /> Parking
+                          </span>
+                          <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md">
+                            <Wifi className="w-3 h-3 text-green-400" /> WiFi
+                          </span>
+                          <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md">
+                            <Zap className="w-3 h-3 text-green-400" /> Lights
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     <Link
