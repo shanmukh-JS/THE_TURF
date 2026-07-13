@@ -227,6 +227,39 @@ export default function OwnerSettingsPage() {
     try {
       if (!user) throw new Error('Not logged in')
 
+      // 1. Validate Email
+      const email = formData.business.email.trim()
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!email) {
+        throw new Error('Email address is required')
+      }
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address')
+      }
+
+      // 2. Validate Phone
+      let phone = formData.business.phone.trim().replace(/[\s\-\+\(\)]/g, '')
+      if (!phone) {
+        throw new Error('Phone number is required')
+      }
+      if (phone.startsWith('91') && phone.length === 12) {
+        phone = phone.substring(2)
+      }
+      const phoneRegex = /^[0-9]{10}$/
+      if (!phoneRegex.test(phone)) {
+        throw new Error('Please enter a valid 10-digit phone number')
+      }
+
+      // Sync normalized values back to state so user sees formatting cleanup
+      setFormData((prev) => ({
+        ...prev,
+        business: {
+          ...prev.business,
+          email,
+          phone,
+        },
+      }))
+
       const { data: profile } = await supabase
         .from('owner_profiles')
         .select('id')
@@ -247,8 +280,8 @@ export default function OwnerSettingsPage() {
       // Then upsert settings
       const settingsPayload = {
         owner_id: profile.id,
-        business_email: formData.business.email,
-        business_phone: formData.business.phone,
+        business_email: email,
+        business_phone: phone,
         business_address: formData.business.address,
         business_logo_url: formData.business.logoUrl,
 
