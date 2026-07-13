@@ -101,8 +101,11 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         setToast({ message: 'Added to favorites!', type: 'success' })
       }
     } catch (e: any) {
-      console.error(e)
-      setToast({ message: 'Failed to update favorite status', type: 'error' })
+      console.error('Favorite Toggle Error:', e)
+      setToast({
+        message: `Error: ${e.message || 'Failed to update favorite status'}`,
+        type: 'error',
+      })
     } finally {
       setFavLoading(false)
     }
