@@ -70,9 +70,7 @@ export default function VenuesPage() {
 
           // Live amenities list
           const amenities =
-            v.facilities && v.facilities.length > 0
-              ? v.facilities
-              : ['Parking', 'WiFi', 'Floodlights']
+            v.amenities && v.amenities.length > 0 ? v.amenities : ['Parking', 'WiFi', 'Floodlights']
 
           // Live operating hours
           const peakHours = v.operating_hours || '7:00 PM – 10:00 PM'
@@ -80,11 +78,17 @@ export default function VenuesPage() {
           return {
             id: v.id,
             name: v.name,
-            area: v.area?.name || 'Unknown Area',
-            city: v.city?.name || 'Unknown City',
+            area:
+              v.area?.name ||
+              v.address?.split(',')[4]?.trim() ||
+              v.address?.split(',')[0] ||
+              'Unknown Area',
+            city: v.city?.name || v.address?.split(',')[4]?.trim() || 'Unknown City',
             rating,
             reviews: reviewsCount,
-            price: v.venue_pricing?.[0]?.price || 1000,
+            price: Array.isArray(v.venue_pricing)
+              ? v.venue_pricing[0]?.price
+              : v.venue_pricing?.price || 1000,
             pitches: v.pitches,
             amenities,
             image:
