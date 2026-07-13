@@ -2,6 +2,39 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PlayerDashboardClient } from '@/components/dashboard/PlayerDashboardClient'
 
+function formatTimeStr(timeStr: string | null) {
+  if (!timeStr) return null
+  const [hours, minutes] = timeStr.split(':')
+  if (!hours) return null
+  const hr = parseInt(hours, 10)
+  const ampm = hr >= 12 ? 'PM' : 'AM'
+  const displayHr = hr % 12 || 12
+  return `${displayHr}:${minutes || '00'} ${ampm}`
+}
+
+function isOpenNow(openingTime: string | null, closingTime: string | null) {
+  if (!openingTime || !closingTime) return true
+  const now = new Date()
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+  const opParts = openingTime.split(':').map(Number)
+  const clParts = closingTime.split(':').map(Number)
+
+  const opHr = opParts[0] || 0
+  const opMin = opParts[1] || 0
+  const clHr = clParts[0] || 0
+  const clMin = clParts[1] || 0
+
+  const openMinutes = opHr * 60 + opMin
+  const closeMinutes = clHr * 60 + clMin
+
+  if (closeMinutes > openMinutes) {
+    return currentMinutes >= openMinutes && currentMinutes <= closeMinutes
+  } else {
+    return currentMinutes >= openMinutes || currentMinutes <= closeMinutes
+  }
+}
+
 export default async function PlayerDashboard() {
   const supabase = await createClient()
   const {
@@ -49,7 +82,9 @@ export default async function PlayerDashboard() {
       venue_images(url, is_cover),
       slots(status, date, start_time),
       reviews(rating),
-      amenities
+      amenities,
+      opening_time,
+      closing_time
     `
       )
       .eq('verification_status', 'APPROVED')
@@ -119,12 +154,19 @@ export default async function PlayerDashboard() {
           ).toFixed(1)
         : null
 
+    const openStr = formatTimeStr(v.opening_time)
+    const closeStr = formatTimeStr(v.closing_time)
+    const timings = openStr && closeStr ? `${openStr} – ${closeStr}` : '06:00 AM – 11:00 PM'
+    const openStatus = isOpenNow(v.opening_time, v.closing_time)
+
     return {
       ...v,
       image: coverImage,
       slotsCount,
       rating,
       reviewsCount,
+      timings,
+      isOpen: openStatus,
     }
   })
 

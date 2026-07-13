@@ -632,9 +632,15 @@ export function PlayerDashboardClient({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
 
                     {/* Badge */}
-                    <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-md bg-green-500/20 backdrop-blur-md border border-green-500/30 text-green-400 text-[10px] font-bold">
-                      Open Now
-                    </span>
+                    {v.isOpen ? (
+                      <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-md bg-green-500/20 backdrop-blur-md border border-green-500/30 text-green-400 text-[10px] font-bold">
+                        Open Now
+                      </span>
+                    ) : (
+                      <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-md bg-red-500/20 backdrop-blur-md border border-red-500/30 text-red-400 text-[10px] font-bold">
+                        Closed
+                      </span>
+                    )}
 
                     <span className="absolute bottom-3 right-3 text-white text-sm font-extrabold font-mono">
                       ₹{price}
