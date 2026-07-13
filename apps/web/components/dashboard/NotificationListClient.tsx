@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, CalendarCheck, CreditCard, Info, ShieldAlert, Check } from 'lucide-react'
+import { Bell, CalendarCheck, CreditCard, Info, ShieldAlert, Check, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const getIconAndColor = (type: string) => {
@@ -72,6 +72,13 @@ export function NotificationListClient({
   const handleMarkAsRead = async (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)))
     await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+  }
+
+  // Delete single notification
+  const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation() // Prevent triggering handleMarkAsRead when clicking delete
+    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    await supabase.from('notifications').delete().eq('id', id)
   }
 
   // Mark all notifications as read
@@ -169,9 +176,18 @@ export function NotificationListClient({
                     >
                       {n.title}
                     </h4>
-                    <span className="text-[10px] text-gray-500 whitespace-nowrap">
-                      {timeAgo(n.created_at)}
-                    </span>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                        {timeAgo(n.created_at)}
+                      </span>
+                      <button
+                        onClick={(e) => handleDeleteNotification(e, n.id)}
+                        className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
+                        title="Delete notification"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-gray-400 leading-relaxed pr-6">{n.message}</p>
                 </div>
