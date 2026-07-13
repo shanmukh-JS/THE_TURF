@@ -12,6 +12,39 @@ const amenityIcons: Record<string, React.ElementType> = {
   Floodlights: Zap,
 }
 
+function formatTimeStr(timeStr: string | null) {
+  if (!timeStr) return null
+  const [hours, minutes] = timeStr.split(':')
+  if (!hours) return null
+  const hr = parseInt(hours, 10)
+  const ampm = hr >= 12 ? 'PM' : 'AM'
+  const displayHr = hr % 12 || 12
+  return `${displayHr}:${minutes || '00'} ${ampm}`
+}
+
+function isOpenNow(openingTime: string | null, closingTime: string | null) {
+  if (!openingTime || !closingTime) return true
+  const now = new Date()
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+  const opParts = openingTime.split(':').map(Number)
+  const clParts = closingTime.split(':').map(Number)
+
+  const opHr = opParts[0] || 0
+  const opMin = opParts[1] || 0
+  const clHr = clParts[0] || 0
+  const clMin = clParts[1] || 0
+
+  const openMinutes = opHr * 60 + opMin
+  const closeMinutes = clHr * 60 + clMin
+
+  if (closeMinutes > openMinutes) {
+    return currentMinutes >= openMinutes && currentMinutes <= closeMinutes
+  } else {
+    return currentMinutes >= openMinutes || currentMinutes <= closeMinutes
+  }
+}
+
 export default function VenuesPage() {
   const supabase = createClient()
   const [search, setSearch] = useState('')
@@ -69,11 +102,13 @@ export default function VenuesPage() {
           const reviewsCount = venueReviews.length
 
           // Live amenities list
-          const amenities =
-            v.amenities && v.amenities.length > 0 ? v.amenities : ['Parking', 'WiFi', 'Floodlights']
+          const amenities = v.amenities || []
 
-          // Live operating hours
-          const peakHours = v.operating_hours || '7:00 PM – 10:00 PM'
+          // Live operating hours and open status
+          const openStr = formatTimeStr(v.opening_time)
+          const closeStr = formatTimeStr(v.closing_time)
+          const timings = openStr && closeStr ? `${openStr} – ${closeStr}` : '06:00 AM – 11:00 PM'
+          const openStatus = isOpenNow(v.opening_time, v.closing_time)
 
           return {
             id: v.id,
@@ -100,7 +135,8 @@ export default function VenuesPage() {
             distance: null, // Only show real distance if GPS coordinate matches are implemented
             slotsCount,
             friendPlayed: false,
-            peakHours,
+            timings,
+            isOpen: openStatus,
           }
         })
         setAllVenues(mappedVenues)
@@ -224,9 +260,15 @@ export default function VenuesPage() {
                       {v.badge}
                     </span>
                   )}
-                  <span className="px-3 py-1 rounded bg-green-500/10 backdrop-blur-md border border-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-wider">
-                    Open Now
-                  </span>
+                  {v.isOpen ? (
+                    <span className="px-3 py-1 rounded bg-green-500/10 backdrop-blur-md border border-green-500/20 text-green-400 text-[10px] font-bold uppercase tracking-wider">
+                      Open Now
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded bg-red-500/10 backdrop-blur-md border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider">
+                      Closed
+                    </span>
+                  )}
                 </div>
 
                 {/* Pricing Badge */}
@@ -277,7 +319,7 @@ export default function VenuesPage() {
                 {/* Available Slots */}
                 <div className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-xl border border-white/5 text-[11px]">
                   <span className="text-gray-400 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-green-400" /> Peak: {v.peakHours}
+                    <Clock className="w-3.5 h-3.5 text-green-400" /> Timings: {v.timings}
                   </span>
                   <span className="text-green-400 font-bold">{v.slotsCount} Slots Left</span>
                 </div>
