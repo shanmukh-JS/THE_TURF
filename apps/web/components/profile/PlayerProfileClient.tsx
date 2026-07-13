@@ -89,6 +89,8 @@ export function PlayerProfileClient({
         setCropTarget(target)
       }
       reader.readAsDataURL(file)
+      // Reset input value so selecting the same file again triggers onChange
+      e.target.value = ''
     }
   }
 
