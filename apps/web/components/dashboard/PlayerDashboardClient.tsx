@@ -270,10 +270,10 @@ export function PlayerDashboardClient({
             <Plus className="w-4 h-4" /> Book Turf
           </Link>
           <Link
-            href="/venues"
+            href="/player/favorites"
             className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/8 text-sm font-semibold transition-all active:scale-98"
           >
-            <Compass className="w-4 h-4 text-green-400" /> Explore Nearby
+            <Heart className="w-4 h-4 text-red-500 fill-red-500/20" /> My Favorites
           </Link>
         </div>
       </motion.div>
@@ -443,10 +443,10 @@ export function PlayerDashboardClient({
                     Explore Turf
                   </Link>
                   <Link
-                    href="/venues"
+                    href="/player/bookings"
                     className="px-4 py-2 rounded-xl bg-white/5 border border-white/8 text-white text-xs font-semibold transition-all hover:bg-white/10"
                   >
-                    Book Now
+                    View History
                   </Link>
                 </div>
               </div>
@@ -517,10 +517,10 @@ export function PlayerDashboardClient({
                 icon: Clock,
               },
               {
-                label: 'Browse Turfs',
-                desc: 'Explore details & ratings',
-                href: '/venues',
-                icon: Compass,
+                label: 'My Favorites',
+                desc: 'View your saved venues',
+                href: '/player/favorites',
+                icon: Heart,
               },
             ].map((act) => {
               const ActIcon = act.icon
