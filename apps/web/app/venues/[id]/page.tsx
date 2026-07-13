@@ -148,6 +148,8 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       pitches: venueData.pitches || 1,
       isIndoor: venueData.is_indoor || false,
       verificationStatus: venueData.verification_status,
+      openingTime: venueData.opening_time || '06:00:00',
+      closingTime: venueData.closing_time || '23:00:00',
       amenities:
         venueData.amenities && venueData.amenities.length > 0
           ? venueData.amenities
@@ -399,6 +401,16 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     return new Date(timeStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
   }
 
+  const formatTimeStr = (timeStr: string) => {
+    if (!timeStr) return ''
+    const parts = timeStr.split(':')
+    const hours = parseInt(parts[0] || '0', 10)
+    const minutes = parts[1] || '00'
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    const dispHours = hours % 12 || 12
+    return `${dispHours}:${minutes} ${ampm}`
+  }
+
   // Filter slots based on sports filter
   const filteredSlots = slots.filter((s) => {
     if (sportFilter !== 'ALL' && s.sport_type !== sportFilter) return false
@@ -486,6 +498,10 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
             <span className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
               {venue.pitches} {venue.pitches > 1 ? 'Pitches' : 'Pitch'}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-green-400" />
+              Timings: {formatTimeStr(venue.openingTime)} – {formatTimeStr(venue.closingTime)}
             </span>
           </div>
         </div>

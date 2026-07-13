@@ -432,7 +432,9 @@ export default function AdminApprovalsPage() {
                             City
                           </p>
                           <p className="text-white font-medium mt-0.5">
-                            {selectedVenue.cities?.name || 'N/A'}
+                            {selectedVenue.cities?.name ||
+                              selectedVenue.address?.split(',')[4]?.trim() ||
+                              'N/A'}
                           </p>
                         </div>
                         <div>
@@ -440,7 +442,9 @@ export default function AdminApprovalsPage() {
                             Area
                           </p>
                           <p className="text-white font-medium mt-0.5">
-                            {selectedVenue.areas?.name || 'N/A'}
+                            {selectedVenue.areas?.name ||
+                              selectedVenue.address?.split(',')[0]?.trim() ||
+                              'N/A'}
                           </p>
                         </div>
                         <div>
@@ -469,22 +473,31 @@ export default function AdminApprovalsPage() {
                       {/* Map Preview */}
                       {selectedVenue.google_maps_link &&
                       selectedVenue.google_maps_link.includes('http') ? (
-                        <div className="relative h-36 w-full rounded-xl border border-white/10 overflow-hidden group">
-                          <iframe
-                            src={selectedVenue.google_maps_link}
-                            className="w-full h-full border-0"
-                            allowFullScreen
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
+                        <div className="relative h-36 w-full rounded-xl border border-white/10 overflow-hidden bg-zinc-900 flex items-center justify-center group cursor-pointer">
+                          <div
+                            className="absolute inset-0 bg-cover bg-center opacity-30 blur-[2px]"
+                            style={{
+                              backgroundImage: `url('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=600')`,
+                            }}
                           />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                          <div className="relative z-10 text-center space-y-2 p-4">
+                            <MapPin className="w-8 h-8 text-green-400 mx-auto animate-bounce" />
+                            <p className="text-xs font-bold text-white uppercase tracking-wider">
+                              Interactive Map Location
+                            </p>
+                            <p className="text-[10px] text-gray-400 truncate max-w-sm mx-auto">
+                              {selectedVenue.google_maps_link}
+                            </p>
+                          </div>
                           <a
                             href={selectedVenue.google_maps_link}
                             target="_blank"
                             rel="noreferrer"
-                            className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute inset-0 z-20 flex items-center justify-center bg-black/65 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            <span className="flex items-center gap-2 px-3 py-1.5 bg-green-500 text-black text-xs font-bold rounded-full shadow-xl">
-                              <MapPin className="w-3.5 h-3.5" /> Open Maps
+                            <span className="flex items-center gap-2 px-4 py-2 bg-green-500 text-black text-xs font-bold rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all">
+                              <ExternalLink className="w-3.5 h-3.5" /> View on Google Maps
                             </span>
                           </a>
                         </div>
