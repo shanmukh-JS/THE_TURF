@@ -17,16 +17,40 @@ export class InAppProvider implements NotificationProvider {
 
       const message = this.buildInAppMessage(templateName, variables)
 
+      // Map template name to a user-friendly Title, Type, and Link
+      let title = 'Notification'
+      let mappedType = 'INFO'
+      let link: string | null = null
+
+      if (templateName.includes('confirm') || templateName.includes('book')) {
+        title = 'Booking Confirmed'
+        mappedType = 'BOOKING'
+        link = '/player/bookings'
+      } else if (templateName.includes('cancel')) {
+        title = 'Booking Cancelled'
+        mappedType = 'WARNING'
+        link = '/player/bookings'
+      } else if (templateName.includes('remind')) {
+        title = 'Match Reminder'
+        mappedType = 'INFO'
+        link = '/player/bookings'
+      } else if (templateName.includes('login')) {
+        title = 'Security Alert'
+        mappedType = 'WARNING'
+      } else if (templateName.includes('rating') || templateName.includes('rate')) {
+        title = 'Share Feedback'
+        mappedType = 'SUCCESS'
+      }
+
       const { data, error } = await supabase
         .from('notifications')
         .insert({
           user_id: userId,
-          booking_id: bookingId || null,
-          type: 'IN_APP',
-          status: 'DELIVERED',
-          recipient: userId,
-          payload: { message, templateName, variables },
-          provider: 'in_app',
+          title,
+          message,
+          type: mappedType,
+          is_read: false,
+          link,
         })
         .select('id')
         .single()
