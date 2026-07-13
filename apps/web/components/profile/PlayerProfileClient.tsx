@@ -61,12 +61,8 @@ export function PlayerProfileClient({
     customerProfile?.full_name || user.user_metadata?.full_name || 'Valued Gamer'
   )
   const [editName, setEditName] = useState(fullName)
-  const [profileImage, setProfileImage] = useState<File | null>(null)
-  const [bannerImage, setBannerImage] = useState<File | null>(null)
-  const [profilePreviewUrl, setProfilePreviewUrl] = useState<string | null>(null)
-  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null)
-  const [removeExistingProfile, setRemoveExistingProfile] = useState(false)
-  const [removeExistingBanner, setRemoveExistingBanner] = useState(false)
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null)
+  const [cropTarget, setCropTarget] = useState<'profile' | 'banner' | null>(null)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -76,38 +72,6 @@ export function PlayerProfileClient({
   const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(
     customerProfile?.banner_image_url || null
   )
-
-  const handleFileSelect = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    target: 'profile' | 'banner'
-  ) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      if (target === 'profile') {
-        setProfileImage(file)
-        setProfilePreviewUrl(url)
-        setRemoveExistingProfile(false)
-      } else {
-        setBannerImage(file)
-        setBannerPreviewUrl(url)
-        setRemoveExistingBanner(false)
-      }
-      // Reset input value so selecting the same file again triggers onChange
-      e.target.value = ''
-    }
-  }
-
-  const handleClose = () => {
-    setIsEditing(false)
-    setEditName(fullName)
-    setProfileImage(null)
-    setBannerImage(null)
-    setProfilePreviewUrl(null)
-    setBannerPreviewUrl(null)
-    setRemoveExistingProfile(false)
-    setRemoveExistingBanner(false)
-  }
 
   // Leveling engine parameters
   const totalXp = bookings.length * 250
@@ -130,6 +94,140 @@ export function PlayerProfileClient({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const matchesPlayed = bookings.filter((b: any) => b.status === 'COMPLETED').length
 
+  const handleFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: 'profile' | 'banner'
+  ) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setCropImageSrc(reader.result as string)
+        setCropTarget(target)
+      }
+      reader.readAsDataURL(file)
+      // Reset input value so selecting the same file again triggers onChange
+      e.target.value = ''
+    }
+  }
+
+  const handleInstantCropUpload = async (croppedFile: File) => {
+    setCropImageSrc(null)
+    const target = cropTarget
+    setCropTarget(null)
+    setLoading(true)
+    setToast(null)
+
+    try {
+      const fileExt = croppedFile.name.split('.').pop()
+      const filePath = `${user.id}/${target}_${Math.random()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('player_profiles')
+        .upload(filePath, croppedFile, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from('player_profiles').getPublicUrl(filePath)
+      const uploadedUrl = data.publicUrl
+
+      // Get current database values
+      const { data: currentProfile } = await supabase
+        .from('customer_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      const updatePayload: any = {
+        user_id: user.id,
+        full_name: currentProfile?.full_name || fullName,
+      }
+
+      if (target === 'profile') {
+        updatePayload.profile_image_url = uploadedUrl
+        updatePayload.banner_image_url = currentProfile?.banner_image_url || bannerImageUrl
+      } else {
+        updatePayload.profile_image_url = currentProfile?.profile_image_url || profileImageUrl
+        updatePayload.banner_image_url = uploadedUrl
+      }
+
+      // Update public.customer_profiles table
+      const { error: profileError } = await supabase
+        .from('customer_profiles')
+        .upsert(updatePayload, { onConflict: 'user_id' })
+
+      if (profileError) throw profileError
+
+      if (target === 'profile') {
+        setProfileImageUrl(uploadedUrl)
+        useAuthStore.getState().setLogoUrl(uploadedUrl)
+        setToast({ message: 'Profile photo updated successfully!', type: 'success' })
+      } else {
+        setBannerImageUrl(uploadedUrl)
+        setToast({ message: 'Banner cover updated successfully!', type: 'success' })
+      }
+
+      router.refresh()
+      setTimeout(() => setToast(null), 3000)
+    } catch (err: any) {
+      console.error('Error uploading cropped image:', err)
+      setToast({ message: err.message || 'Failed to upload image', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRemoveImage = async (target: 'profile' | 'banner') => {
+    setLoading(true)
+    setToast(null)
+
+    try {
+      // Get current database values
+      const { data: currentProfile } = await supabase
+        .from('customer_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      const updatePayload: any = {
+        user_id: user.id,
+        full_name: currentProfile?.full_name || fullName,
+      }
+
+      if (target === 'profile') {
+        updatePayload.profile_image_url = null
+        updatePayload.banner_image_url = currentProfile?.banner_image_url || bannerImageUrl
+      } else {
+        updatePayload.profile_image_url = currentProfile?.profile_image_url || profileImageUrl
+        updatePayload.banner_image_url = null
+      }
+
+      // Update public.customer_profiles table
+      const { error: profileError } = await supabase
+        .from('customer_profiles')
+        .upsert(updatePayload, { onConflict: 'user_id' })
+
+      if (profileError) throw profileError
+
+      if (target === 'profile') {
+        setProfileImageUrl(null)
+        useAuthStore.getState().setLogoUrl('')
+        setToast({ message: 'Profile photo removed successfully!', type: 'success' })
+      } else {
+        setBannerImageUrl(null)
+        setToast({ message: 'Banner cover removed successfully!', type: 'success' })
+      }
+
+      router.refresh()
+      setTimeout(() => setToast(null), 3000)
+    } catch (err: any) {
+      console.error('Error removing image:', err)
+      setToast({ message: err.message || 'Failed to remove image', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editName.trim()) {
@@ -141,84 +239,39 @@ export function PlayerProfileClient({
     setToast(null)
 
     try {
-      let profileImageUrl = customerProfile?.profile_image_url || null
-      let bannerImageUrl = customerProfile?.banner_image_url || null
+      // Get current database values
+      const { data: currentProfile } = await supabase
+        .from('customer_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
 
-      if (removeExistingProfile) {
-        profileImageUrl = null
-      }
-      if (removeExistingBanner) {
-        bannerImageUrl = null
-      }
-
-      if (profileImage) {
-        const fileExt = profileImage.name.split('.').pop()
-        const filePath = `${user.id}/profile_${Math.random()}.${fileExt}`
-        const { error: uploadError } = await supabase.storage
-          .from('player_profiles')
-          .upload(filePath, profileImage, { upsert: true })
-        if (uploadError) throw uploadError
-        const { data } = supabase.storage.from('player_profiles').getPublicUrl(filePath)
-        profileImageUrl = data.publicUrl
-      }
-
-      if (bannerImage) {
-        const fileExt = bannerImage.name.split('.').pop()
-        const filePath = `${user.id}/banner_${Math.random()}.${fileExt}`
-        const { error: uploadError } = await supabase.storage
-          .from('player_profiles')
-          .upload(filePath, bannerImage, { upsert: true })
-        if (uploadError) throw uploadError
-        const { data } = supabase.storage.from('player_profiles').getPublicUrl(filePath)
-        bannerImageUrl = data.publicUrl
-      }
-
-      // 1. Update public.customer_profiles table
+      // Update public.customer_profiles table
       const { error: profileError } = await supabase.from('customer_profiles').upsert(
         {
           user_id: user.id,
           full_name: editName.trim(),
-          profile_image_url: profileImageUrl,
-          banner_image_url: bannerImageUrl,
+          profile_image_url: currentProfile?.profile_image_url || profileImageUrl,
+          banner_image_url: currentProfile?.banner_image_url || bannerImageUrl,
         },
         { onConflict: 'user_id' }
       )
 
       if (profileError) throw profileError
 
-      // 2. Update auth user metadata
+      // Update auth user metadata
       const { error: authError } = await supabase.auth.updateUser({
         data: { full_name: editName.trim() },
       })
 
       if (authError) throw authError
 
-      // Update local state and close modal
-      // Update local state URLs immediately
-      setProfileImageUrl(profileImageUrl)
-      setBannerImageUrl(bannerImageUrl)
-
-      // Update Zustand client auth store so the top-right navbar and bottom-left sidebar reflect it immediately!
-      useAuthStore.getState().setLogoUrl(profileImageUrl || '')
-
-      // Update local state and close modal
       setFullName(editName.trim())
-      setRemoveExistingProfile(false)
-      setRemoveExistingBanner(false)
-      setProfileImage(null)
-      setBannerImage(null)
-      setProfilePreviewUrl(null)
-      setBannerPreviewUrl(null)
       setIsEditing(false)
       setToast({ message: 'Profile updated successfully!', type: 'success' })
 
-      // Refresh page data
       router.refresh()
-
-      // Auto-dismiss toast
       setTimeout(() => setToast(null), 3000)
-      // Error payload from Supabase API can be an Error object, PostgrestError, or AuthError
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Error updating profile:', err)
       setToast({ message: err.message || 'Failed to update profile', type: 'error' })
@@ -244,6 +297,24 @@ export function PlayerProfileClient({
           </div>
         )}
 
+        {/* Hidden inputs for direct background uploads */}
+        <input
+          id="avatar-input"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleFileSelect(e, 'profile')}
+          disabled={loading}
+        />
+        <input
+          id="banner-input"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleFileSelect(e, 'banner')}
+          disabled={loading}
+        />
+
         {/* 1. Profile Header with Stadium Cover Banner */}
         <DashboardAnimationItem className="relative rounded-3xl border border-white/8 overflow-hidden bg-black">
           {/* Banner overlay background */}
@@ -254,22 +325,62 @@ export function PlayerProfileClient({
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+            {/* Banner camera action overlay */}
+            <div className="absolute top-4 right-4 z-20 flex gap-2">
+              <label
+                htmlFor="banner-input"
+                className="cursor-pointer px-3 py-2 rounded-xl bg-black/60 hover:bg-black/80 hover:scale-105 active:scale-95 border border-white/10 text-white flex items-center gap-1.5 transition-all text-xs font-semibold backdrop-blur-md"
+              >
+                📷 Change Cover
+              </label>
+              {bannerImageUrl && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage('banner')}
+                  disabled={loading}
+                  className="px-3 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:scale-105 active:scale-95 flex items-center gap-1.5 transition-all text-xs font-semibold backdrop-blur-md"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Profile Identity overlay */}
           <div className="px-8 pb-6 flex flex-col sm:flex-row sm:items-end gap-5 -mt-10 relative z-10">
             <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl blur opacity-30" />
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl blur opacity-30 animate-pulse" />
               <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0f240f] to-green-950 border-2 border-green-500/40 flex items-center justify-center text-4xl font-extrabold text-green-400 relative overflow-hidden">
                 {profileImageUrl ? (
                   <img src={profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   fullName.charAt(0).toUpperCase()
                 )}
+
+                {/* Avatar camera hover action overlay */}
+                <label
+                  htmlFor="avatar-input"
+                  className="absolute inset-0 z-10 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center cursor-pointer text-white gap-1 text-[10px] font-bold"
+                >
+                  📷
+                  <span>Change Photo</span>
+                </label>
               </div>
               <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-green-500 border-2 border-black flex items-center justify-center text-xs font-black text-black shadow-lg">
                 {level}
               </div>
+              {profileImageUrl && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage('profile')}
+                  disabled={loading}
+                  className="absolute -top-1.5 -left-1.5 w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 border border-black flex items-center justify-center text-[10px] text-white shadow-lg z-20 cursor-pointer"
+                  title="Remove Profile Image"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             <div className="space-y-1 flex-1">
@@ -441,14 +552,14 @@ export function PlayerProfileClient({
         createPortal(
           <div
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
-            onClick={handleClose}
+            onClick={() => setIsEditing(false)}
           >
             <div
               className="w-full max-w-md bg-[#0a0f0a] border border-white/10 rounded-3xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                onClick={handleClose}
+                onClick={() => setIsEditing(false)}
                 className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -476,128 +587,6 @@ export function PlayerProfileClient({
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                        Profile Image{' '}
-                        {profileImage && (
-                          <span className="text-green-400 lowercase normal-case">
-                            (Ready to upload)
-                          </span>
-                        )}
-                        {removeExistingProfile && (
-                          <span className="text-red-400 lowercase normal-case">
-                            (Will be removed)
-                          </span>
-                        )}
-                      </label>
-                      {profileImage && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfileImage(null)
-                            setProfilePreviewUrl(null)
-                          }}
-                          className="text-red-400 hover:text-red-300 text-xs font-bold focus:outline-none"
-                        >
-                          Clear Staged
-                        </button>
-                      )}
-                      {customerProfile?.profile_image_url && !profileImage && (
-                        <button
-                          type="button"
-                          onClick={() => setRemoveExistingProfile(!removeExistingProfile)}
-                          className="text-red-400 hover:text-red-300 text-[10px] font-bold uppercase tracking-wider focus:outline-none"
-                        >
-                          {removeExistingProfile ? 'Keep Image' : 'Remove Image'}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Live Image Preview */}
-                    {(profilePreviewUrl || (profileImageUrl && !removeExistingProfile)) && (
-                      <div className="flex items-center gap-3 py-1 bg-black/20 px-3 py-2 rounded-xl border border-white/5">
-                        <img
-                          src={profilePreviewUrl || profileImageUrl || ''}
-                          alt="Profile Preview"
-                          className="w-10 h-10 rounded-lg object-cover border border-white/10"
-                        />
-                        <span className="text-[10px] text-gray-400">
-                          Preview of your profile picture
-                        </span>
-                      </div>
-                    )}
-
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileSelect(e, 'profile')}
-                      disabled={loading}
-                      className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-500/20 file:text-green-400 hover:file:bg-green-500/30"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                        Banner Background{' '}
-                        {bannerImage && (
-                          <span className="text-green-400 lowercase normal-case">
-                            (Ready to upload)
-                          </span>
-                        )}
-                        {removeExistingBanner && (
-                          <span className="text-red-400 lowercase normal-case">
-                            (Will be removed)
-                          </span>
-                        )}
-                      </label>
-                      {bannerImage && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBannerImage(null)
-                            setBannerPreviewUrl(null)
-                          }}
-                          className="text-red-400 hover:text-red-300 text-xs font-bold focus:outline-none"
-                        >
-                          Clear Staged
-                        </button>
-                      )}
-                      {customerProfile?.banner_image_url && !bannerImage && (
-                        <button
-                          type="button"
-                          onClick={() => setRemoveExistingBanner(!removeExistingBanner)}
-                          className="text-red-400 hover:text-red-300 text-[10px] font-bold uppercase tracking-wider focus:outline-none"
-                        >
-                          {removeExistingBanner ? 'Keep Banner' : 'Remove Banner'}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Live Banner Preview */}
-                    {(bannerPreviewUrl || (bannerImageUrl && !removeExistingBanner)) && (
-                      <div className="flex items-center gap-3 py-1 bg-black/20 px-3 py-2 rounded-xl border border-white/5">
-                        <img
-                          src={bannerPreviewUrl || bannerImageUrl || ''}
-                          alt="Banner Preview"
-                          className="w-20 h-8 rounded-lg object-cover border border-white/10"
-                        />
-                        <span className="text-[10px] text-gray-400">
-                          Preview of your profile banner
-                        </span>
-                      </div>
-                    )}
-
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileSelect(e, 'banner')}
-                      disabled={loading}
-                      className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-500/20 file:text-green-400 hover:file:bg-green-500/30"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
                     <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
                       Email Address
                     </label>
@@ -615,7 +604,7 @@ export function PlayerProfileClient({
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
-                      onClick={handleClose}
+                      onClick={() => setIsEditing(false)}
                       disabled={loading}
                       className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all active:scale-98"
                     >
@@ -639,6 +628,24 @@ export function PlayerProfileClient({
               </div>
             </div>
           </div>,
+          document.body
+        )}
+
+      {/* Image Cropper Modal for perfect aspect ratios */}
+      {mounted &&
+        cropImageSrc &&
+        cropTarget &&
+        createPortal(
+          <ImageCropperModal
+            imageSrc={cropImageSrc}
+            aspectRatio={cropTarget === 'profile' ? 1 : 3}
+            isCircular={cropTarget === 'profile'}
+            onCancel={() => {
+              setCropImageSrc(null)
+              setCropTarget(null)
+            }}
+            onCropComplete={handleInstantCropUpload}
+          />,
           document.body
         )}
     </>
