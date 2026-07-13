@@ -110,19 +110,21 @@ export default async function PlayerDashboard() {
 
     // Calculate rating
     const reviewsList = v.reviews || []
+    const reviewsCount = reviewsList.length
     const rating =
       reviewsList.length > 0
         ? (
             reviewsList.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
             reviewsList.length
           ).toFixed(1)
-        : '4.8'
+        : null
 
     return {
       ...v,
       image: coverImage,
       slotsCount,
       rating,
+      reviewsCount,
     }
   })
 

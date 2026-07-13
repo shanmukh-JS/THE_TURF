@@ -607,11 +607,10 @@ export function PlayerDashboardClient({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {venues.slice(0, 2).map((v) => {
-              // Map live details with fallback
-              const rating = v.rating || (4.5 + (v.id.charCodeAt(0) % 5) * 0.1).toFixed(1)
+              // Map live details
+              const rating = v.rating
               const distance = (1.2 + (v.id.charCodeAt(1) % 4) * 0.5).toFixed(1)
-              const slotsCount =
-                v.slotsCount !== undefined ? v.slotsCount : 3 + (v.id.charCodeAt(2) % 6)
+              const slotsCount = v.slotsCount || 0
               const price = Array.isArray(v.venue_pricing)
                 ? v.venue_pricing[0]?.price
                 : v.venue_pricing?.price || 1000
@@ -658,9 +657,20 @@ export function PlayerDashboardClient({
                             v.address?.split(',')[0] ||
                             'Tadepalligudem'}
                         </span>
-                        <span className="flex items-center gap-1 font-semibold text-yellow-400">
-                          <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rating}
-                        </span>
+                        {rating ? (
+                          <span className="flex items-center gap-1 font-semibold text-yellow-400">
+                            <Star className="w-3.5 h-3.5 fill-yellow-400" /> {rating}
+                            {v.reviewsCount !== undefined && v.reviewsCount > 0 && (
+                              <span className="text-gray-500 font-normal text-[10px] ml-0.5">
+                                ({v.reviewsCount})
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 font-semibold text-gray-400">
+                            <Star className="w-3.5 h-3.5 text-gray-500" /> New
+                          </span>
+                        )}
                         <span className="text-[10px] bg-white/5 border border-white/5 px-2 py-0.5 rounded text-gray-400">
                           {slotsCount} Slots Left
                         </span>
