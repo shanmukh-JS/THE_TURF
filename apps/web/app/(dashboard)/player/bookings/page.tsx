@@ -32,7 +32,7 @@ export default async function CustomerBookingsPage() {
       qr_code,
       check_in_status,
       slots!inner(date, start_time, end_time),
-      venues!inner(id, name, owner_id, areas(name), venue_images(url, is_cover))
+      venues!inner(id, name, address, owner_id, areas(name), venue_images(url, is_cover))
     `
     )
     .eq('customer_id', user.id)
@@ -89,7 +89,7 @@ export default async function CustomerBookingsPage() {
       id: b.id,
       venueId: b.venues.id,
       venue: b.venues.name,
-      area: b.venues.areas?.name || 'Unknown',
+      area: b.venues.areas?.name || b.venues.address?.split(',')[0]?.trim() || 'Unknown',
       date: formattedDate,
       time: formattedTime,
       amount: b.total_amount,
