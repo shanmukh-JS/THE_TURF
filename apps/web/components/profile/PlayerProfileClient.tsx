@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useAuthStore } from '@/store/useAuthStore'
 import {
   User,
   Mail,
@@ -68,6 +69,13 @@ export function PlayerProfileClient({
   const [cropTarget, setCropTarget] = useState<'profile' | 'banner' | null>(null)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(
+    customerProfile?.profile_image_url || null
+  )
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(
+    customerProfile?.banner_image_url || null
+  )
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -169,6 +177,14 @@ export function PlayerProfileClient({
       if (authError) throw authError
 
       // Update local state and close modal
+      // Update local state URLs immediately
+      setProfileImageUrl(profileImageUrl)
+      setBannerImageUrl(bannerImageUrl)
+
+      // Update Zustand client auth store so the top-right navbar and bottom-left sidebar reflect it immediately!
+      useAuthStore.getState().setLogoUrl(profileImageUrl || '')
+
+      // Update local state and close modal
       setFullName(editName.trim())
       setRemoveExistingProfile(false)
       setRemoveExistingBanner(false)
@@ -215,7 +231,7 @@ export function PlayerProfileClient({
           <div
             className="h-44 bg-cover bg-center relative"
             style={{
-              backgroundImage: `url('${customerProfile?.banner_image_url || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1200&auto=format&fit=crop'}')`,
+              backgroundImage: `url('${bannerImageUrl || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1200&auto=format&fit=crop'}')`,
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
@@ -226,12 +242,8 @@ export function PlayerProfileClient({
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl blur opacity-30" />
               <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-[#0f240f] to-green-950 border-2 border-green-500/40 flex items-center justify-center text-4xl font-extrabold text-green-400 relative overflow-hidden">
-                {customerProfile?.profile_image_url ? (
-                  <img
-                    src={customerProfile.profile_image_url}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
+                {profileImageUrl ? (
+                  <img src={profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   fullName.charAt(0).toUpperCase()
                 )}
