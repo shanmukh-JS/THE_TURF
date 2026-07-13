@@ -46,7 +46,14 @@ const defaultSettings = {
   },
 }
 
-const InputField = ({ label, value, onChange, type = 'text', placeholder = '' }: any) => (
+const InputField = ({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder = '',
+  error = '',
+}: any) => (
   <div className="space-y-1.5">
     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</label>
     <input
@@ -54,8 +61,13 @@ const InputField = ({ label, value, onChange, type = 'text', placeholder = '' }:
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/50 focus:bg-white/10 transition-all"
+      className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${
+        error
+          ? 'border-red-500/50 focus:border-red-500 bg-red-500/[0.02]'
+          : 'border-white/10 focus:border-green-500/50 focus:bg-white/10'
+      } text-white placeholder:text-gray-600 focus:outline-none transition-all`}
     />
+    {error && <p className="text-[11px] font-medium text-red-400 pl-1">{error}</p>}
   </div>
 )
 
@@ -103,6 +115,21 @@ export default function OwnerSettingsPage() {
   const supabase = createClient()
 
   const { user, isLoading: authLoading } = useAuthStore()
+
+  // Real-time validations
+  const emailVal = formData.business.email.trim()
+  const emailError =
+    emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)
+      ? 'Please enter a valid email address (e.g. name@domain.com)'
+      : ''
+
+  const phoneRaw = formData.business.phone.trim().replace(/[\s\-\+\(\)]/g, '')
+  let phoneCleaned = phoneRaw
+  if (phoneRaw.startsWith('91') && phoneRaw.length === 12) {
+    phoneCleaned = phoneRaw.substring(2)
+  }
+  const phoneError =
+    phoneRaw && !/^[0-9]{10}$/.test(phoneCleaned) ? 'Phone number must be exactly 10 digits' : ''
 
   useEffect(() => {
     // Auth store is done loading but no user — stop spinning
@@ -599,11 +626,13 @@ export default function OwnerSettingsPage() {
                 type="email"
                 value={formData.business.email}
                 onChange={(v: any) => updateSection('business', 'email', v)}
+                error={emailError}
               />
               <InputField
                 label="Phone Number"
                 value={formData.business.phone}
                 onChange={(v: any) => updateSection('business', 'phone', v)}
+                error={phoneError}
               />
               <div className="md:col-span-2">
                 <div className="space-y-1.5">
@@ -899,6 +928,42 @@ export default function OwnerSettingsPage() {
             </div>
           </div>
         </section>
+        {/* Secondary Inline Save Changes Bar for redundancy */}
+        {hasChanges && (
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/8 mt-6">
+            <div>
+              <p className="text-sm font-semibold text-white">Unsaved Changes</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {emailError || phoneError
+                  ? 'Please resolve validation errors before saving.'
+                  : 'Click save to apply your profile updates.'}
+              </p>
+            </div>
+            <div className="flex gap-3 w-full sm:w-auto justify-end">
+              <button
+                onClick={() => setFormData(initialData)}
+                className="px-5 py-2.5 rounded-xl border border-white/10 text-gray-300 text-sm font-medium hover:bg-white/5 transition-all w-full sm:w-auto"
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isSaving || !!emailError || !!phoneError}
+                className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-green-500 shadow-lg shadow-green-900/20 w-full sm:w-auto"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" /> Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sticky Save Bar */}
@@ -908,7 +973,9 @@ export default function OwnerSettingsPage() {
         }`}
       >
         <p className="text-sm font-medium text-gray-300 ml-4 hidden sm:block">
-          You have unsaved changes
+          {emailError || phoneError
+            ? 'Resolve validation errors before saving'
+            : 'You have unsaved changes'}
         </p>
         <div className="flex gap-3 ml-auto mr-4">
           <button
@@ -919,8 +986,8 @@ export default function OwnerSettingsPage() {
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-900/20"
+            disabled={isSaving || !!emailError || !!phoneError}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-green-500 shadow-lg shadow-green-900/20"
           >
             {isSaving ? (
               <>
