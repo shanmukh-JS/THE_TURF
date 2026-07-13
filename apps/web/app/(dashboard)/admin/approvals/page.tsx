@@ -173,6 +173,67 @@ export default function AdminApprovalsPage() {
     showToast(`${label} copied to clipboard!`)
   }
 
+  const handleDownloadDocs = (venue: any) => {
+    if (venue?.documents_url && venue.documents_url.length > 0) {
+      showToast('Preparing documents for download...', 'success')
+      // Preload images to guarantee they are cached before printing
+      const preloadPromises = venue.documents_url.map((url: string) => {
+        return new Promise((resolve) => {
+          const img = new Image()
+          img.onload = () => resolve(url)
+          img.onerror = () => resolve(url)
+          img.src = url
+        })
+      })
+
+      Promise.all(preloadPromises).then(() => {
+        const printWindow = window.open('', '_blank')
+        if (printWindow) {
+          const imagesHtml = venue.documents_url
+            .map(
+              (url: string) => `
+              <div style="page-break-after: always; text-align: center; padding: 20px;">
+                <img src="${url}" style="max-width: 100%; max-height: 90vh; object-fit: contain; border: 1px solid #ccc; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
+              </div>
+            `
+            )
+            .join('')
+
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>Venue Documents - ${venue.name}</title>
+                <style>
+                  body { margin: 0; padding: 0; background: #fff; font-family: sans-serif; }
+                  @media print {
+                    body { background: none; }
+                    div { page-break-after: always; }
+                  }
+                </style>
+              </head>
+              <body>
+                <h2 style="text-align: center; margin-top: 30px; font-family: sans-serif; color: #333;">Venue Documents Checklist</h2>
+                <p style="text-align: center; color: #666; margin-bottom: 40px;">Venue ID: ${venue.id} | Name: ${venue.name}</p>
+                ${imagesHtml}
+                <script>
+                  window.onload = function() {
+                    setTimeout(function() {
+                      window.print();
+                      setTimeout(function() { window.close(); }, 500);
+                    }, 300);
+                  };
+                </script>
+              </body>
+            </html>
+          `)
+          printWindow.document.close()
+        }
+      })
+    } else {
+      showToast('No documents uploaded for this venue.', 'error')
+    }
+  }
+
   return (
     <DashboardAnimationWrapper className="p-8 space-y-6">
       {/* Toast Notification */}
@@ -913,7 +974,7 @@ export default function AdminApprovalsPage() {
             {/* Bottom Actions Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-white/10">
               <button
-                onClick={() => showToast('Submitted documents download started!', 'success')}
+                onClick={() => handleDownloadDocs(selectedVenue)}
                 className="px-4 py-2 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-semibold text-gray-300 transition-colors inline-flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" /> Download Docs
