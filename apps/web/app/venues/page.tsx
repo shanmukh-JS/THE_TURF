@@ -104,6 +104,13 @@ export default function VenuesPage() {
           }
         })
         setAllVenues(mappedVenues)
+        if (
+          typeof window !== 'undefined' &&
+          !localStorage.getItem('user_location') &&
+          mappedVenues.length > 0
+        ) {
+          setDisplayLocation(mappedVenues[0]?.city || 'Hyderabad')
+        }
       }
       setLoading(false)
     }

@@ -23,24 +23,7 @@ export default async function CustomerFavoritesPage() {
 
   // Fetch actual favorites and recommendations in parallel
   const [{ data: rawFavorites }, { data: recommendedVenuesData }] = await Promise.all([
-    supabase
-      .from('favorites')
-      .select(
-        `
-        id,
-        venues:venue_id (
-          id,
-          name,
-          address,
-          areas (name),
-          cities (name),
-          venue_pricing (price),
-          venue_images (url, is_cover),
-          reviews (rating)
-        )
-      `
-      )
-      .eq('user_id', user.id),
+    supabase.from('favorites').select('id, venue_id').eq('user_id', user.id),
     supabase
       .from('venues')
       .select(
@@ -59,6 +42,27 @@ export default async function CustomerFavoritesPage() {
       .eq('is_disabled', false)
       .limit(3),
   ])
+
+  const favVenueIds = (rawFavorites || []).map((fav: any) => fav.venue_id).filter(Boolean)
+  let favoritedVenues: any[] = []
+  if (favVenueIds.length > 0) {
+    const { data } = await supabase
+      .from('venues')
+      .select(
+        `
+        id,
+        name,
+        address,
+        areas (name),
+        cities (name),
+        venue_pricing (price),
+        venue_images (url, is_cover),
+        reviews (rating)
+      `
+      )
+      .in('id', favVenueIds)
+    favoritedVenues = data || []
+  }
 
   const mapVenueData = (v: any) => {
     if (!v) return null
@@ -98,7 +102,9 @@ export default async function CustomerFavoritesPage() {
 
   const favorites = (rawFavorites || [])
     .map((fav: any) => {
-      const mapped = mapVenueData(fav.venues)
+      const venue = favoritedVenues.find((v: any) => v.id === fav.venue_id)
+      if (!venue) return null
+      const mapped = mapVenueData(venue)
       if (!mapped) return null
       return {
         id: fav.id,

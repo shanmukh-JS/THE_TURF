@@ -30,15 +30,7 @@ export default async function CustomerProfilePage() {
       `
         )
         .eq('customer_id', user.id),
-      supabase
-        .from('favorites')
-        .select(
-          `
-        venues:venue_id (name)
-      `
-        )
-        .eq('user_id', user.id)
-        .limit(1),
+      supabase.from('favorites').select('venue_id').eq('user_id', user.id).limit(1),
       supabase
         .from('customer_profiles')
         .select('profile_image_url, banner_image_url, full_name')
@@ -47,9 +39,18 @@ export default async function CustomerProfilePage() {
     ])
 
   const bookings = bookingsData || []
-
-  const favVenue: any = favoritesData?.[0]?.venues
-  const firstFavName = Array.isArray(favVenue) ? favVenue[0]?.name : favVenue?.name
+  const favData = favoritesData || []
+  let firstFavName = null
+  if (favData && favData.length > 0 && favData[0]?.venue_id) {
+    const { data: vData } = await supabase
+      .from('venues')
+      .select('name')
+      .eq('id', favData[0]?.venue_id)
+      .maybeSingle()
+    if (vData) {
+      firstFavName = vData.name
+    }
+  }
 
   const firstBookedVenue: any = bookings?.[0]?.venues
   const firstBookedName = Array.isArray(firstBookedVenue)
