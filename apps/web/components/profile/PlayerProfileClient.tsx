@@ -63,10 +63,10 @@ export function PlayerProfileClient({
   const [editName, setEditName] = useState(fullName)
   const [profileImage, setProfileImage] = useState<File | null>(null)
   const [bannerImage, setBannerImage] = useState<File | null>(null)
+  const [profilePreviewUrl, setProfilePreviewUrl] = useState<string | null>(null)
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null)
   const [removeExistingProfile, setRemoveExistingProfile] = useState(false)
   const [removeExistingBanner, setRemoveExistingBanner] = useState(false)
-  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null)
-  const [cropTarget, setCropTarget] = useState<'profile' | 'banner' | null>(null)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -83,15 +83,30 @@ export function PlayerProfileClient({
   ) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = () => {
-        setCropImageSrc(reader.result as string)
-        setCropTarget(target)
+      const url = URL.createObjectURL(file)
+      if (target === 'profile') {
+        setProfileImage(file)
+        setProfilePreviewUrl(url)
+        setRemoveExistingProfile(false)
+      } else {
+        setBannerImage(file)
+        setBannerPreviewUrl(url)
+        setRemoveExistingBanner(false)
       }
-      reader.readAsDataURL(file)
       // Reset input value so selecting the same file again triggers onChange
       e.target.value = ''
     }
+  }
+
+  const handleClose = () => {
+    setIsEditing(false)
+    setEditName(fullName)
+    setProfileImage(null)
+    setBannerImage(null)
+    setProfilePreviewUrl(null)
+    setBannerPreviewUrl(null)
+    setRemoveExistingProfile(false)
+    setRemoveExistingBanner(false)
   }
 
   // Leveling engine parameters
@@ -192,6 +207,8 @@ export function PlayerProfileClient({
       setRemoveExistingBanner(false)
       setProfileImage(null)
       setBannerImage(null)
+      setProfilePreviewUrl(null)
+      setBannerPreviewUrl(null)
       setIsEditing(false)
       setToast({ message: 'Profile updated successfully!', type: 'success' })
 
@@ -422,10 +439,16 @@ export function PlayerProfileClient({
       {mounted &&
         isEditing &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="w-full max-w-md bg-[#0a0f0a] border border-white/10 rounded-3xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={handleClose}
+          >
+            <div
+              className="w-full max-w-md bg-[#0a0f0a] border border-white/10 rounded-3xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
-                onClick={() => setIsEditing(false)}
+                onClick={handleClose}
                 className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -470,7 +493,10 @@ export function PlayerProfileClient({
                       {profileImage && (
                         <button
                           type="button"
-                          onClick={() => setProfileImage(null)}
+                          onClick={() => {
+                            setProfileImage(null)
+                            setProfilePreviewUrl(null)
+                          }}
                           className="text-red-400 hover:text-red-300 text-xs font-bold focus:outline-none"
                         >
                           Clear Staged
@@ -486,6 +512,21 @@ export function PlayerProfileClient({
                         </button>
                       )}
                     </div>
+
+                    {/* Live Image Preview */}
+                    {(profilePreviewUrl || (profileImageUrl && !removeExistingProfile)) && (
+                      <div className="flex items-center gap-3 py-1 bg-black/20 px-3 py-2 rounded-xl border border-white/5">
+                        <img
+                          src={profilePreviewUrl || profileImageUrl || ''}
+                          alt="Profile Preview"
+                          className="w-10 h-10 rounded-lg object-cover border border-white/10"
+                        />
+                        <span className="text-[10px] text-gray-400">
+                          Preview of your profile picture
+                        </span>
+                      </div>
+                    )}
+
                     <input
                       type="file"
                       accept="image/*"
@@ -513,7 +554,10 @@ export function PlayerProfileClient({
                       {bannerImage && (
                         <button
                           type="button"
-                          onClick={() => setBannerImage(null)}
+                          onClick={() => {
+                            setBannerImage(null)
+                            setBannerPreviewUrl(null)
+                          }}
                           className="text-red-400 hover:text-red-300 text-xs font-bold focus:outline-none"
                         >
                           Clear Staged
@@ -529,6 +573,21 @@ export function PlayerProfileClient({
                         </button>
                       )}
                     </div>
+
+                    {/* Live Banner Preview */}
+                    {(bannerPreviewUrl || (bannerImageUrl && !removeExistingBanner)) && (
+                      <div className="flex items-center gap-3 py-1 bg-black/20 px-3 py-2 rounded-xl border border-white/5">
+                        <img
+                          src={bannerPreviewUrl || bannerImageUrl || ''}
+                          alt="Banner Preview"
+                          className="w-20 h-8 rounded-lg object-cover border border-white/10"
+                        />
+                        <span className="text-[10px] text-gray-400">
+                          Preview of your profile banner
+                        </span>
+                      </div>
+                    )}
+
                     <input
                       type="file"
                       accept="image/*"
@@ -556,7 +615,7 @@ export function PlayerProfileClient({
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
-                      onClick={() => setIsEditing(false)}
+                      onClick={handleClose}
                       disabled={loading}
                       className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all active:scale-98"
                     >
@@ -580,29 +639,6 @@ export function PlayerProfileClient({
               </div>
             </div>
           </div>,
-          document.body
-        )}
-
-      {/* Crop Modal (Portalled to document.body) */}
-      {mounted &&
-        cropImageSrc &&
-        cropTarget &&
-        createPortal(
-          <ImageCropperModal
-            imageSrc={cropImageSrc}
-            aspectRatio={cropTarget === 'profile' ? 1 : 3}
-            isCircular={cropTarget === 'profile'}
-            onCancel={() => {
-              setCropImageSrc(null)
-              setCropTarget(null)
-            }}
-            onCropComplete={(croppedFile) => {
-              if (cropTarget === 'profile') setProfileImage(croppedFile)
-              if (cropTarget === 'banner') setBannerImage(croppedFile)
-              setCropImageSrc(null)
-              setCropTarget(null)
-            }}
-          />,
           document.body
         )}
     </>
