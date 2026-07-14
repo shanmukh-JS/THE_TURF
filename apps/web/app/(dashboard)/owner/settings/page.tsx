@@ -119,7 +119,7 @@ export default function OwnerSettingsPage() {
   // Real-time validations
   const emailVal = formData.business.email.trim()
   const emailError =
-    emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)
+    emailVal && !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,6}$/.test(emailVal)
       ? 'Please enter a valid email address (e.g. name@domain.com)'
       : ''
 
@@ -256,7 +256,7 @@ export default function OwnerSettingsPage() {
 
       // 1. Validate Email
       const email = formData.business.email.trim()
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,6}$/
       if (!email) {
         throw new Error('Email address is required')
       }
