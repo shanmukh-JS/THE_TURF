@@ -7,10 +7,10 @@ AS $$
 DECLARE
   assigned_role text;
 BEGIN
-  IF (new.email = 'jaminishannu9k@gmail.com') then
-    assigned_role := 'ADMIN';
+  IF (new.raw_user_meta_data->>'role' = 'OWNER') then
+    assigned_role := 'OWNER';
   ELSE
-    assigned_role := COALESCE(new.raw_user_meta_data->>'role', 'CUSTOMER');
+    assigned_role := 'CUSTOMER';
   END IF;
 
   INSERT INTO public.users (id, email, role)

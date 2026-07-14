@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       .eq('id', user.id)
       .single()
 
-    if (!userRecord || !['owner', 'admin'].includes(userRecord.role)) {
+    if (!userRecord || !['OWNER', 'ADMIN'].includes(userRecord.role)) {
       return NextResponse.json(
         {
           error:

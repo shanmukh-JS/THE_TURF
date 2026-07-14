@@ -5,7 +5,7 @@ import { rateLimitGuard } from '@/lib/utils/rateLimiter'
 
 export async function POST(req: NextRequest) {
   try {
-    const limitResponse = rateLimitGuard(req, 'login')
+    const limitResponse = await rateLimitGuard(req, 'login')
     if (limitResponse) return limitResponse
 
     const { email, password } = await req.json()
@@ -24,12 +24,19 @@ export async function POST(req: NextRequest) {
       return apiError('INVALID_CREDENTIALS', error.message || 'Invalid email or password.')
     }
 
+    const { data: dbUser } = await serverSupabase
+      .from('users')
+      .select('role')
+      .eq('id', data.user.id)
+      .single()
+    const role = dbUser?.role || 'CUSTOMER'
+
     return apiSuccess('Signed in successfully.', {
       session: data.session,
       user: {
         id: data.user.id,
         email: data.user.email,
-        role: data.user.user_metadata?.role || 'CUSTOMER',
+        role,
         fullName: data.user.user_metadata?.full_name,
       },
     })

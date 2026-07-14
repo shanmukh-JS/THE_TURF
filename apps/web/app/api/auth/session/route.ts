@@ -13,9 +13,13 @@ export async function GET() {
       return NextResponse.json({ user: null })
     }
 
+    // Fetch actual role from public.users
+    const { data: dbUser } = await supabase.from('users').select('role').eq('id', user.id).single()
+    const role = dbUser?.role || 'CUSTOMER'
+
     // Fetch owner profile for logo if OWNER role
     let logoUrl: string | undefined
-    if (user.user_metadata?.role === 'OWNER') {
+    if (role === 'OWNER') {
       try {
         const { data: profile } = await supabase
           .from('owner_profiles')
@@ -54,7 +58,7 @@ export async function GET() {
       user: {
         id: user.id,
         email: user.email!,
-        role: user.user_metadata?.role || 'CUSTOMER',
+        role,
         fullName: user.user_metadata?.full_name,
         logoUrl,
       },

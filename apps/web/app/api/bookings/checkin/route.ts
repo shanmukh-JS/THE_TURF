@@ -11,7 +11,12 @@ export async function POST(req: Request) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (!user || user.user_metadata?.role !== 'OWNER') {
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
+    }
+
+    const { data: dbUser } = await supabase.from('users').select('role').eq('id', user.id).single()
+    if (dbUser?.role !== 'OWNER') {
       return NextResponse.json(
         { error: 'Unauthorized. Only venue owners can scan check-ins.' },
         { status: 401 }

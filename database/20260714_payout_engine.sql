@@ -184,9 +184,9 @@ CREATE TABLE payout_transfer_items (
 );
 
 -- ------------------------------------------------------------------------------
--- 6. SETTLEMENTS (Immutable)
+-- 6. PAYOUT SETTLEMENTS (Immutable)
 -- ------------------------------------------------------------------------------
-CREATE TABLE settlements (
+CREATE TABLE payout_settlements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     transfer_id UUID NOT NULL REFERENCES payout_transfers(id) ON DELETE RESTRICT,
     provider_settlement_id VARCHAR(255) NOT NULL,
@@ -207,7 +207,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_prevent_settlement_mutation
-BEFORE UPDATE OR DELETE ON settlements
+BEFORE UPDATE OR DELETE ON payout_settlements
 FOR EACH ROW EXECUTE FUNCTION prevent_settlement_mutation();
 
 -- ------------------------------------------------------------------------------
@@ -257,7 +257,7 @@ SELECT
     s.settled_at,
     s.journal_id
 FROM payout_transfers t
-JOIN settlements s ON t.id = s.transfer_id
+JOIN payout_settlements s ON t.id = s.transfer_id
 WHERE t.status = 'SETTLED';
 
 CREATE VIEW owner_statement AS
@@ -282,7 +282,7 @@ SELECT
     CURRENT_DATE as reconciliation_date,
     (SELECT COALESCE(SUM(amount), 0) FROM outstanding_owner_liabilities) as total_outstanding_liabilities,
     (SELECT COALESCE(SUM(amount), 0) FROM pending_payout_transfers) as total_in_transit_clearing,
-    (SELECT COALESCE(SUM(amount), 0) FROM settlements WHERE DATE(settled_at) = CURRENT_DATE) as today_settlement_volume,
+    (SELECT COALESCE(SUM(amount), 0) FROM payout_settlements WHERE DATE(settled_at) = CURRENT_DATE) as today_settlement_volume,
     (SELECT MAX(executed_at) FROM reconciliation_reports) as last_reconciled_at;
 
 -- ==============================================================================
@@ -419,8 +419,8 @@ BEGIN
         RAISE EXCEPTION 'Payable already exists for booking %', p_booking_id;
     END IF;
 
-    -- 2. Calculations (Explicit ROUND)
-    v_commission_amount := ROUND((p_total_booking_amount * p_platform_commission_pct))::BIGINT;
+    -- 2. Calculations (Explicit ROUND and Division by 100.0 to fix math percentage config bug)
+    v_commission_amount := ROUND((p_total_booking_amount * (p_platform_commission_pct / 100.0)))::BIGINT;
     v_owner_amount := p_total_booking_amount - v_commission_amount;
 
     -- 3. Accounting (Assumes post_journal_v1 exists or can be mocked)
@@ -533,7 +533,7 @@ BEGIN
         RAISE EXCEPTION 'Concurrent settlement for transfer %', p_transfer_id;
     END IF;
 
-    IF EXISTS (SELECT 1 FROM settlements WHERE transfer_id = p_transfer_id) THEN
+    IF EXISTS (SELECT 1 FROM payout_settlements WHERE transfer_id = p_transfer_id) THEN
         RAISE EXCEPTION 'Transfer % is already settled', p_transfer_id;
     END IF;
 
@@ -544,7 +544,7 @@ BEGIN
     v_journal_id := gen_random_uuid();
 
     -- 3. Domain State
-    INSERT INTO settlements (transfer_id, provider_settlement_id, amount, settled_at, journal_id)
+    INSERT INTO payout_settlements (transfer_id, provider_settlement_id, amount, settled_at, journal_id)
     VALUES (p_transfer_id, p_provider_settlement_id, p_amount, p_settled_at, v_journal_id)
     RETURNING id INTO v_settlement_id;
 

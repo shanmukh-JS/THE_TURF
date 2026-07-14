@@ -45,15 +45,16 @@ CREATE POLICY "Owners read customer profiles for bookings" ON public.customer_pr
     )
   );
 
--- ── 4. NOTIFICATIONS: any authenticated user can INSERT ──────
+-- ── 4. NOTIFICATIONS: users can only insert for themselves ────
 DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Authenticated users can insert notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Service role can insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can insert own notifications" ON public.notifications;
 
-CREATE POLICY "Authenticated users can insert notifications"
+CREATE POLICY "Users can insert own notifications"
   ON public.notifications FOR INSERT
   TO authenticated
-  WITH CHECK (true);
+  WITH CHECK (auth.uid() = user_id);
 
 -- ── 5. REVIEWS: customers can insert reviews ─────────────────
 DROP POLICY IF EXISTS "Customers can insert reviews" ON public.reviews;

@@ -8,7 +8,7 @@ import { rateLimitGuard } from '@/lib/utils/rateLimiter'
 
 export async function POST(req: NextRequest) {
   try {
-    const limitResponse = rateLimitGuard(req, 'forgotPassword')
+    const limitResponse = await rateLimitGuard(req, 'forgotPassword')
     if (limitResponse) return limitResponse
 
     const { email } = await req.json()

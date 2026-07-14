@@ -10,7 +10,13 @@ async function verifyAdmin() {
   const {
     data: { user },
   } = await serverSupabase.auth.getUser()
-  return user && user.user_metadata?.role === 'ADMIN' ? user : null
+  if (!user) return null
+  const { data: dbUser } = await serverSupabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  return dbUser?.role === 'ADMIN' ? user : null
 }
 
 export async function POST(req: NextRequest) {

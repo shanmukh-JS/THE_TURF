@@ -214,10 +214,10 @@ as $$
 declare
   assigned_role text;
 begin
-  if (new.email = 'jaminishannu9k@gmail.com') then
-    assigned_role := 'ADMIN';
+  if (new.raw_user_meta_data->>'role' = 'OWNER') then
+    assigned_role := 'OWNER';
   else
-    assigned_role := coalesce(new.raw_user_meta_data->>'role', 'CUSTOMER');
+    assigned_role := 'CUSTOMER';
   end if;
 
   insert into public.users (id, email, role)

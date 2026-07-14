@@ -50,7 +50,15 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user) {
-    const role = user.user_metadata?.role || 'CUSTOMER'
+    let role = 'CUSTOMER'
+    try {
+      const { data } = await supabase.from('users').select('role').eq('id', user.id).single()
+      if (data) {
+        role = data.role
+      }
+    } catch {
+      // fallback to customer if fetch fails
+    }
 
     // Prevent non-owners/admins from accessing owner routes
     if (request.nextUrl.pathname.startsWith('/owner') && role !== 'OWNER' && role !== 'ADMIN') {

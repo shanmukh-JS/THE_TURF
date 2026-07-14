@@ -9,10 +9,10 @@ import { apiSuccess, apiError } from '@/lib/email/validation'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, otp } = await req.json()
+    const { email, otp, password } = await req.json()
 
-    if (!email || !otp) {
-      return apiError('MISSING_FIELDS', 'Email and OTP code are required.')
+    if (!email || !otp || !password) {
+      return apiError('MISSING_FIELDS', 'Email, password, and OTP code are required.')
     }
 
     const supabase = createAdminClient()
@@ -42,16 +42,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Decrypt password
-    const decryptedPassword = decrypt(temp.password_hash)
-    if (!decryptedPassword) {
-      return apiError('DECRYPTION_FAILED', 'Failed to retrieve temporary registration credentials.')
-    }
-
     // 3. Create Supabase Auth User
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email,
-      password: decryptedPassword,
+      password: password,
       email_confirm: true,
       user_metadata: {
         full_name: temp.name,
@@ -77,7 +71,7 @@ export async function POST(req: NextRequest) {
     const serverSupabase = await createServerClient()
     const { data: sessionData, error: signInError } = await serverSupabase.auth.signInWithPassword({
       email,
-      password: decryptedPassword,
+      password: password,
     })
 
     if (signInError) {

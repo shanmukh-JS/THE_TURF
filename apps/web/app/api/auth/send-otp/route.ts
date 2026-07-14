@@ -9,7 +9,7 @@ import { rateLimitGuard } from '@/lib/utils/rateLimiter'
 
 export async function POST(req: NextRequest) {
   try {
-    const limitResponse = rateLimitGuard(req, 'otp')
+    const limitResponse = await rateLimitGuard(req, 'otp')
     if (limitResponse) return limitResponse
 
     let { email, purpose } = await req.json()

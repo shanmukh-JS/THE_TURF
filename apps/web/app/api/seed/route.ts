@@ -4,12 +4,21 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const supabase = await createClient()
 
-  // 1. Get current user
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  // 1. Get current user and verify admin status
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: 'You must be logged in to seed data' }, { status: 401 })
+  }
+
+  const { data: dbUser } = await supabase.from('users').select('role').eq('id', user.id).single()
+  if (dbUser?.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 403 })
   }
 
   // 2. Ensure user has a customer profile

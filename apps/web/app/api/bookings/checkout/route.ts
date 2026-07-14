@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       RAZORPAY_SECRET: process.env.RAZORPAY_SECRET ? 'SET' : 'NOT SET',
     })
-    const limitResponse = rateLimitGuard(req, 'booking')
+    const limitResponse = await rateLimitGuard(req, 'booking')
     if (limitResponse) return limitResponse
 
     const supabase = await createClient()

@@ -9,7 +9,7 @@ import { rateLimitGuard } from '@/lib/utils/rateLimiter'
 
 export async function POST(req: NextRequest) {
   try {
-    const limitResponse = rateLimitGuard(req, 'register')
+    const limitResponse = await rateLimitGuard(req, 'register')
     if (limitResponse) return limitResponse
 
     const { name, email, phone, password, role } = await req.json()
@@ -57,17 +57,17 @@ export async function POST(req: NextRequest) {
       return apiError('RATE_LIMIT_EXCEEDED', rateLimit.reason || 'Too many requests.')
     }
 
-    // Encrypt the password for temporary storage (must be reversible for Supabase Auth)
-    const passwordHash = encrypt(password)
+    // Enforce role whitelist (prevent privilege escalation)
+    const safeRole = ['OWNER'].includes(role) ? 'OWNER' : 'CUSTOMER'
 
-    // Upsert temporary registration details
+    // Upsert temporary registration details (no password stored server-side)
     const { error: tempError } = await supabase.from('temp_registrations').upsert(
       {
         email,
         name,
         phone,
-        password_hash: passwordHash,
-        role,
+        password_hash: 'CLIENT_HELD', // Password is never stored on the server
+        role: safeRole,
       },
       { onConflict: 'email' }
     )

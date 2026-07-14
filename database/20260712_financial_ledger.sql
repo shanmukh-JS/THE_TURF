@@ -57,6 +57,8 @@ CREATE TABLE financial_ledger_entries (
     CHECK (NOT (debit > 0 AND credit > 0))
 );
 
+DROP TABLE IF EXISTS public.settlements CASCADE;
+
 CREATE TABLE settlements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id UUID NOT NULL REFERENCES users(id),
@@ -72,6 +74,32 @@ CREATE TABLE settlements (
     processed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Immutability protections for Settlements table
+CREATE OR REPLACE FUNCTION verify_settlement_immutability()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.amount != NEW.amount OR OLD.owner_id != NEW.owner_id OR OLD.journal_id != NEW.journal_id THEN
+        RAISE EXCEPTION 'Immutable fields (amount, owner_id, journal_id) cannot be updated in settlements.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER enforce_settlements_immutability
+BEFORE UPDATE ON settlements
+FOR EACH ROW EXECUTE FUNCTION verify_settlement_immutability();
+
+CREATE OR REPLACE FUNCTION prevent_settlement_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Settlement records are strictly append-only and cannot be deleted.';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER enforce_settlements_no_delete
+BEFORE DELETE ON settlements
+FOR EACH ROW EXECUTE FUNCTION prevent_settlement_delete();
 
 -- 3. Triggers for Immutability
 
@@ -91,9 +119,29 @@ BEFORE UPDATE OR DELETE ON financial_ledger_entries
 FOR EACH ROW EXECUTE FUNCTION prevent_modification();
 
 -- Note: In Phase 2.1, we'll keep financial_transactions slightly mutable if we need to update status (e.g. PENDING -> COMPLETED).
--- If we want absolute immutability on transactions too, we'd need a separate transaction_status_history table.
--- Let's leave transactions mutable for status updates, or we can make them immutable and handle status via journals.
--- Given the architect's note "Money is never edited", journals/ledger must be immutable.
+-- We track status history using a separate audit log table to preserve transaction state history.
+CREATE TABLE IF NOT EXISTS financial_transaction_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_id UUID NOT NULL REFERENCES financial_transactions(id) ON DELETE CASCADE,
+    old_status TEXT,
+    new_status TEXT NOT NULL,
+    changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION audit_transaction_status_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.status IS DISTINCT FROM NEW.status THEN
+        INSERT INTO financial_transaction_history (transaction_id, old_status, new_status)
+        VALUES (NEW.id, OLD.status, NEW.status);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_audit_transaction_status_change
+AFTER UPDATE ON financial_transactions
+FOR EACH ROW EXECUTE FUNCTION audit_transaction_status_change();
 
 -- 4. Triggers for Journal Balancing and Completeness
 
@@ -168,11 +216,21 @@ CREATE OR REPLACE FUNCTION post_journal(
     p_lines JSONB
 ) RETURNS UUID AS $$
 DECLARE
+    v_existing_journal_id UUID;
     v_journal_id UUID;
     v_journal_number TEXT;
     v_line JSONB;
     v_line_number INT := 1;
 BEGIN
+    -- 0. Check for existing journal via idempotency key
+    SELECT id INTO v_existing_journal_id 
+    FROM financial_journals 
+    WHERE idempotency_key = p_idempotency_key;
+
+    IF v_existing_journal_id IS NOT NULL THEN
+        RETURN v_existing_journal_id;
+    END IF;
+
     -- 1. Generate Journal Number (e.g. JRN-2026-XXXX)
     v_journal_number := 'JRN-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(CAST(nextval('financial_journals_seq'::regclass) AS TEXT), 6, '0');
 
@@ -186,6 +244,23 @@ BEGIN
     -- 3. Create Ledger Entries from JSON array
     FOR v_line IN SELECT * FROM jsonb_array_elements(p_lines)
     LOOP
+        DECLARE
+            v_code INT := (v_line->>'account_code')::INT;
+        BEGIN
+            -- Hardening: Validate that each business_event_type only posts to expected account codes
+            IF p_business_event = 'BOOKING_PAID' AND v_code NOT IN (1120, 2110) THEN
+                RAISE EXCEPTION 'Invalid account code % for event BOOKING_PAID. Expected: 1120 (Razorpay Clearing) or 2110 (Customer Escrow Liability)', v_code;
+            ELSIF p_business_event = 'BOOKING_COMPLETED' AND v_code NOT IN (2110, 2120, 3110) THEN
+                RAISE EXCEPTION 'Invalid account code % for event BOOKING_COMPLETED. Expected: 2110 (Customer Escrow Liability), 2120 (Owner Payables), or 3110 (Booking Commission)', v_code;
+            ELSIF p_business_event = 'BOOKING_CANCELLED' AND v_code NOT IN (2110, 2130, 3110) THEN
+                RAISE EXCEPTION 'Invalid account code % for event BOOKING_CANCELLED. Expected: 2110 (Customer Escrow Liability), 2130 (Refund Pending Liability), or 3110 (Booking Commission)', v_code;
+            ELSIF p_business_event = 'REFUND_COMPLETED' AND v_code NOT IN (2130, 2140, 1110) THEN
+                RAISE EXCEPTION 'Invalid account code % for event REFUND_COMPLETED.', v_code;
+            ELSIF p_business_event = 'SETTLEMENT_COMPLETED' AND v_code NOT IN (2120, 1110) THEN
+                RAISE EXCEPTION 'Invalid account code % for event SETTLEMENT_COMPLETED. Expected: 2120 (Owner Payables) or 1110 (Operating Bank)', v_code;
+            END IF;
+        END;
+
         INSERT INTO financial_ledger_entries (
             journal_id, line_number, account_code, debit, credit, currency
         ) VALUES (
@@ -216,4 +291,12 @@ ALTER TABLE financial_journals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE financial_ledger_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settlements ENABLE ROW LEVEL SECURITY;
 
--- Deny all by default to public. Only Service Role (backend) can modify these.
+-- Re-add constraint on commissions table if it exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'commissions') THEN
+        ALTER TABLE public.commissions DROP CONSTRAINT IF EXISTS fk_commissions_settlement;
+        ALTER TABLE public.commissions ADD CONSTRAINT fk_commissions_settlement FOREIGN KEY (settlement_id) REFERENCES settlements(id) ON DELETE SET NULL;
+    END IF;
+END
+$$;
