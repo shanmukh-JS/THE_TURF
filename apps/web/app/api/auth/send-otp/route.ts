@@ -119,6 +119,31 @@ export async function POST(req: NextRequest) {
       return apiError('RATE_LIMIT_EXCEEDED', rateLimit.reason || 'Too many requests.')
     }
 
+    if (purpose === 'login_verification') {
+      const { data, error } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email: email,
+        options: {
+          redirectTo: req.headers.get('origin') + '/owner/settings',
+        },
+      })
+      if (error || !data?.properties?.action_link) {
+        return apiError('MAGIC_LINK_FAILED', error?.message || 'Failed to generate secure link.')
+      }
+
+      const htmlContent = templates.login_magic_link(name, data.properties.action_link)
+      const mailSent = await sendEmail({
+        to: email,
+        subject: 'Your Two-Factor Authentication Link',
+        html: htmlContent,
+        templateName: 'login_magic_link',
+      })
+      if (!mailSent.success) {
+        return apiError('EMAIL_DELIVERY_FAILED', 'Failed to deliver magic link email.')
+      }
+      return apiSuccess('Verification link sent successfully.')
+    }
+
     const otp = generateOtp()
 
     const stored = await storeOtp({
@@ -139,9 +164,7 @@ export async function POST(req: NextRequest) {
         ? templates.registration_otp(name, otp)
         : purpose === 'email_change'
           ? templates.email_change_otp(name, otp)
-          : purpose === 'login_verification'
-            ? templates.login_verification_otp(name, otp)
-            : templates.forgot_password_otp(name, otp)
+          : templates.forgot_password_otp(name, otp)
 
     const mailSent = await sendEmail({
       to: email,
@@ -150,18 +173,14 @@ export async function POST(req: NextRequest) {
           ? 'Verify Your TRUF GAMING Account'
           : purpose === 'email_change'
             ? 'Verify Your New Email Address'
-            : purpose === 'login_verification'
-              ? 'Your Two-Factor Authentication Code'
-              : 'Reset Your Password',
+            : 'Reset Your Password',
       html: htmlContent,
       templateName:
         purpose === 'registration'
           ? 'registration_otp'
           : purpose === 'email_change'
             ? 'email_change_otp'
-            : purpose === 'login_verification'
-              ? 'login_verification_otp'
-              : 'forgot_password_otp',
+            : 'forgot_password_otp',
     })
 
     if (!mailSent.success) {

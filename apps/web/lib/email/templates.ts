@@ -370,4 +370,16 @@ export const templates = {
        <div class="otp-code">${otp}</div>
        <p>This code expires in 5 minutes. If you did not request this, please secure your account immediately.</p>`
     ),
+  login_magic_link: (name: string, link: string) =>
+    getBaseLayout(
+      'Two-Factor Authentication Link 🔐',
+      `<p>Hello ${name},</p>
+       <p>You requested a Two-Factor Authentication magic link. Click the button below to verify your identity:</p>
+       <div style="text-align: center; margin: 30px 0;">
+         <a href="${link}" style="background-color: #22c55e; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Verify Identity</a>
+       </div>
+       <p>If the button doesn't work, copy and paste this link into your browser:</p>
+       <p style="word-break: break-all; color: #888; font-size: 12px;">${link}</p>
+       <p>This link expires in 5 minutes. If you did not request this, please secure your account immediately.</p>`
+    ),
 }
