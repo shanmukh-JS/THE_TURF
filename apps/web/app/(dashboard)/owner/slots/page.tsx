@@ -193,8 +193,9 @@ export default function ManageSlotsPage() {
       .order('start_time', { ascending: true })
 
     if (error) {
-      console.error(error)
+      console.error('fetchSlots error:', error)
     } else if (slotsData) {
+      console.log('fetchSlots data:', slotsData)
       const now = new Date()
       const processedSlots = slotsData.map((s: any) => {
         if (!s.is_booked && new Date(s.end_time) < now && s.status !== 'Expired') {
@@ -776,13 +777,29 @@ export default function ManageSlotsPage() {
                 return (
                   <div
                     key={idx}
-                    className="space-y-3 bg-black/20 rounded-xl p-3 border border-white/5"
+                    className={`space-y-3 bg-black/20 rounded-xl p-3 border ${
+                      dateKey === todayStr
+                        ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.15)] ring-1 ring-green-500/50'
+                        : 'border-white/5'
+                    }`}
                   >
-                    <div className="text-center pb-2 border-b border-white/5">
-                      <p className="text-xs text-gray-500">
+                    <div
+                      className={`text-center pb-2 border-b ${
+                        dateKey === todayStr ? 'border-green-500/30' : 'border-white/5'
+                      }`}
+                    >
+                      <p
+                        className={`text-xs ${
+                          dateKey === todayStr ? 'text-green-400 font-medium' : 'text-gray-500'
+                        }`}
+                      >
                         {date.toLocaleDateString([], { weekday: 'short' })}
                       </p>
-                      <p className="text-sm font-bold text-white mt-0.5">
+                      <p
+                        className={`text-sm font-bold mt-0.5 ${
+                          dateKey === todayStr ? 'text-green-400' : 'text-white'
+                        }`}
+                      >
                         {date.toLocaleDateString([], { day: 'numeric' })}
                       </p>
                     </div>
