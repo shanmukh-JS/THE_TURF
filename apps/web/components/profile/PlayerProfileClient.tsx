@@ -242,7 +242,7 @@ export function PlayerProfileClient({
       setToast({ message: 'Please enter a new email address', type: 'error' })
       return
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,3}$/
     if (!emailRegex.test(emailTrimmed)) {
       setToast({
         message: 'Please enter a valid email address (e.g. name@domain.com)',
