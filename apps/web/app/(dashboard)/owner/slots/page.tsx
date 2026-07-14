@@ -779,29 +779,29 @@ export default function ManageSlotsPage() {
                     key={idx}
                     className={`space-y-3 rounded-xl p-3 border transition-all ${
                       dateKey === todayStr
-                        ? 'bg-green-500/10 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)] ring-1 ring-green-500/50 scale-105 z-10'
+                        ? 'bg-green-500/[0.03] border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.05)]'
                         : 'bg-black/20 border-white/5'
                     }`}
                   >
                     <div
                       className={`text-center pb-2 border-b ${
-                        dateKey === todayStr ? 'border-green-500/50' : 'border-white/5'
+                        dateKey === todayStr ? 'border-green-500/20' : 'border-white/5'
                       }`}
                     >
                       <p
                         className={`text-xs ${
                           dateKey === todayStr
-                            ? 'text-green-400 font-bold uppercase tracking-wider'
+                            ? 'text-green-400/90 font-semibold tracking-wider'
                             : 'text-gray-500'
                         }`}
                       >
                         {dateKey === todayStr
-                          ? 'TODAY'
+                          ? 'Today'
                           : date.toLocaleDateString([], { weekday: 'short' })}
                       </p>
                       <p
-                        className={`font-black mt-0.5 ${
-                          dateKey === todayStr ? 'text-xl text-green-400' : 'text-sm text-white'
+                        className={`font-bold mt-1 ${
+                          dateKey === todayStr ? 'text-lg text-green-400' : 'text-sm text-white'
                         }`}
                       >
                         {date.toLocaleDateString([], { day: 'numeric' })}
