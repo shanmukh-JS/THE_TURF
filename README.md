@@ -11,18 +11,16 @@
 
 | Layer            | Technology                                                    |
 | ---------------- | ------------------------------------------------------------- |
-| Monorepo         | Turborepo + npm workspaces                                    |
-| Frontend         | Next.js 14 (App Router), Tailwind CSS, Zustand, Framer Motion |
-| Backend          | Express.js + TypeScript                                       |
-| Database         | PostgreSQL + Prisma ORM                                       |
-| Cache / Locks    | Redis                                                         |
+| Monorepo         | Turborepo + pnpm workspaces                                   |
+| Frontend & API   | Next.js 16 (App Router), Tailwind CSS, Zustand, Framer Motion |
+| Database         | Supabase Postgres                                             |
+| Cache / Locks    | Redis (ioredis)                                               |
 | Background Jobs  | BullMQ                                                        |
 | Payments         | Razorpay                                                      |
-| Real-time        | Socket.IO                                                     |
-| Media            | Cloudinary                                                    |
-| SMS              | Twilio                                                        |
-| Auth             | JWT (Access + Refresh Tokens)                                 |
-| Containerization | Docker + Docker Compose                                       |
+| Media/Documents  | Supabase Storage                                              |
+| OTP / SMS        | Twilio (WhatsApp OTP)                                         |
+| Auth             | Supabase Auth (GoTrue)                                        |
+| Containerization | Docker + Docker Compose (for local Redis/Postgres services)   |
 
 ---
 
@@ -31,13 +29,14 @@
 ```
 truf-gaming/
 ├── apps/
-│   ├── web/          # Next.js customer + owner + admin UI
-│   └── api/          # Express REST API
+│   └── web/          # Next.js customer + owner + admin UI and API Handlers
 ├── packages/
-│   ├── database/     # Prisma schema & migrations
 │   ├── ui/           # Shared component library
 │   ├── eslint-config/
-│   └── typescript-config/
+│   ├── typescript-config/
+│   ├── types/        # Shared TypeScript types
+│   └── validation/   # Zod validation schemas
+├── supabase/         # Supabase local config & migrations
 ├── docker-compose.yml
 ├── turbo.json
 └── .env.example
@@ -50,51 +49,53 @@ truf-gaming/
 ### 1. Prerequisites
 
 - Node.js 18+
-- Docker Desktop (for PostgreSQL & Redis)
-- npm
+- Docker Desktop (for Redis / Supabase local)
+- pnpm (v9+)
+- Supabase CLI (optional, for local DB development)
 
 ### 2. Clone & Install
 
 ```bash
 git clone https://github.com/your-org/truf-gaming.git
 cd truf-gaming
-npm install
+pnpm install
 ```
 
 ### 3. Set Up Environment
 
 ```bash
-cp .env.example apps/api/.env
-# Edit apps/api/.env with your credentials
 cp .env.example apps/web/.env.local
-# Edit apps/web/.env.local with NEXT_PUBLIC_ keys only
+# Edit apps/web/.env.local with your Supabase credentials, Redis URL, Twilio, and Razorpay keys
 ```
 
 ### 4. Start Infrastructure (Docker)
 
 ```bash
 docker-compose up -d
-# Starts PostgreSQL on :5432 and Redis on :6379
+# Starts Redis on :6379 (used for BullMQ jobs and lock mechanism)
 ```
 
 ### 5. Run Database Migrations
 
+Use Supabase CLI to apply migrations to your local or remote database:
+
 ```bash
-npm run db:migrate -w @truf-gaming/database
+# To run local development database migrations:
+supabase migration up
 ```
 
 ### 6. Start Development Servers
 
 ```bash
-npm run dev
-# Starts both Next.js (:3000) and Express API (:3001) simultaneously
+pnpm dev
+# Starts Next.js development server on port 3000
 ```
 
 ---
 
 ## API Reference
 
-Base URL: `http://localhost:3001/api/v1`
+Base URL: `http://localhost:3000/api`
 
 All responses follow the contract:
 
@@ -103,18 +104,17 @@ All responses follow the contract:
 { "success": false, "error": { "code": "ERR_CODE", "message": "..." } }
 ```
 
-| Method | Endpoint             | Auth        | Description                 |
-| ------ | -------------------- | ----------- | --------------------------- |
-| POST   | `/auth/register`     | —           | Register customer or owner  |
-| POST   | `/auth/login`        | —           | Login, receive JWT          |
-| GET    | `/venues`            | —           | List approved venues        |
-| POST   | `/venues`            | OWNER       | Create venue draft          |
-| PATCH  | `/venues/:id/status` | SUPER_ADMIN | Approve / reject venue      |
-| GET    | `/slots/available`   | —           | Get available slots         |
-| POST   | `/bookings/lock`     | CUSTOMER    | Lock a slot (10 min TTL)    |
-| POST   | `/bookings`          | CUSTOMER    | Create booking (after lock) |
-| POST   | `/payments/verify`   | CUSTOMER    | Verify Razorpay payment     |
-| GET    | `/healthz`           | —           | API health check            |
+| Method | Endpoint                       | Auth        | Description                 |
+| ------ | ------------------------------ | ----------- | --------------------------- |
+| POST   | `/auth/register`               | —           | Register customer or owner  |
+| POST   | `/auth/login`                  | —           | Login, retrieve session     |
+| GET    | `/venues`                      | —           | List approved venues        |
+| POST   | `/venues`                      | OWNER       | Create venue draft          |
+| PATCH  | `/api/admin/venues/:id/status` | SUPER_ADMIN | Approve / reject venue      |
+| GET    | `/slots/available`             | —           | Get available slots         |
+| POST   | `/bookings/lock`               | CUSTOMER    | Lock a slot (10 min TTL)    |
+| POST   | `/bookings`                    | CUSTOMER    | Create booking (after lock) |
+| POST   | `/payments/verify`             | CUSTOMER    | Verify Razorpay payment     |
 
 ---
 
@@ -123,9 +123,9 @@ All responses follow the contract:
 ```
 Customer selects slot
        ↓
-POST /bookings/lock  →  Redis SETNX lock:slot:{id} (10 min TTL)
+POST /api/bookings/lock  →  Redis SETNX lock:slot:{id} (10 min TTL)
        ↓
-POST /bookings       →  Booking created (status: PENDING)
+POST /api/bookings       →  Booking created (status: PENDING)
        ↓
 Razorpay checkout in browser
        ↓

@@ -54,4 +54,19 @@ export const nextJsConfig = [
       "react/react-in-jsx-scope": "off",
     },
   },
+  {
+    files: [
+      "**/apps/web/lib/**/*.ts",
+      "**/apps/web/lib/**/*.tsx",
+      "**/apps/web/app/api/**/*.ts",
+      "**/apps/web/app/api/**/*.tsx",
+      "**/apps/web/services/**/*.ts",
+      "**/apps/web/services/**/*.tsx",
+      "**/packages/validation/**/*.ts",
+      "**/packages/types/**/*.ts"
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error"
+    }
+  }
 ];
