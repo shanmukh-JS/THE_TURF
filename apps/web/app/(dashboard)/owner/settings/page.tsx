@@ -217,11 +217,11 @@ export default function OwnerSettingsPage() {
         // Fetch current venue listing status
         const { data: firstVenue } = await supabase
           .from('venues')
-          .select('id, is_active')
+          .select('id, is_disabled')
           .eq('owner_id', profile.id)
           .maybeSingle()
         if (firstVenue) {
-          setIsListingDisabled(firstVenue.is_active === false)
+          setIsListingDisabled(!!firstVenue.is_disabled)
         }
       } catch (e) {
         console.error('Error loading settings:', e)
@@ -466,20 +466,20 @@ export default function OwnerSettingsPage() {
   const handleToggleListing = async () => {
     if (!ownerProfileIdForDanger) return
     setIsDangerLoading(true)
-    const newIsActive = isListingDisabled // toggling: if currently disabled, we enable
+    const newIsDisabled = !isListingDisabled
     const { error } = await supabase
       .from('venues')
-      .update({ is_active: newIsActive })
+      .update({ is_disabled: newIsDisabled })
       .eq('owner_id', ownerProfileIdForDanger)
     if (error) {
       setToast({ message: 'Failed to update listing status: ' + error.message, type: 'error' })
     } else {
-      setIsListingDisabled(!newIsActive)
+      setIsListingDisabled(newIsDisabled)
       setToast({
-        message: newIsActive
+        message: !newIsDisabled
           ? 'Your turf listing is now LIVE!'
           : 'Your turf listing has been hidden from customers.',
-        type: newIsActive ? 'success' : 'error',
+        type: !newIsDisabled ? 'success' : 'error',
       })
     }
     setIsDangerLoading(false)
