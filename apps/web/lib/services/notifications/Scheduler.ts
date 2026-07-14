@@ -10,6 +10,7 @@ export class NotificationScheduler {
     bookingId: string
     slotId: string
     recipientPhone: string
+    recipientEmail?: string
     customerName: string
     venueName: string
   }): Promise<void> {
@@ -46,6 +47,7 @@ export class NotificationScheduler {
           Venue: params.venueName,
           Time: matchStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           Address: slot.date, // Address is slot date for simple verification
+          Email: params.recipientEmail || '',
         },
         bookingId: params.bookingId,
       },

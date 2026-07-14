@@ -628,10 +628,12 @@ export default function AdminTurfManagementPage() {
                   <div className="space-y-2">
                     {venueSlots.map((slot) => {
                       const startTime = new Date(slot.start_time).toLocaleTimeString('en-US', {
+                        timeZone: 'Asia/Kolkata',
                         hour: '2-digit',
                         minute: '2-digit',
                       })
                       const endTime = new Date(slot.end_time).toLocaleTimeString('en-US', {
+                        timeZone: 'Asia/Kolkata',
                         hour: '2-digit',
                         minute: '2-digit',
                       })

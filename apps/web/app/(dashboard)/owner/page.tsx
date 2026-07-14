@@ -236,6 +236,7 @@ export default function OwnerDashboardPage() {
             dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
             if (slot.start_time) {
               timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
+                timeZone: 'Asia/Kolkata',
                 hour: 'numeric',
                 minute: '2-digit',
               })
@@ -283,6 +284,7 @@ export default function OwnerDashboardPage() {
       if (tSlots) {
         const formatted = tSlots.map((s) => {
           const time = new Date(s.start_time).toLocaleTimeString('en-US', {
+            timeZone: 'Asia/Kolkata',
             hour: '2-digit',
             minute: '2-digit',
           })

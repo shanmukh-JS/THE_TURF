@@ -235,7 +235,11 @@ export default function ManageSlotsPage() {
 
   // Time formatting helpers
   const formatTimeStr = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return new Date(dateStr).toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   }
 
   // Validate overlapping slot timings

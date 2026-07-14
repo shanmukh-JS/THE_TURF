@@ -788,7 +788,8 @@ export default function AdminSettingsPage() {
                           </span>
                         </td>
                         <td className="p-3 text-gray-500">
-                          {new Date(log.created_at).toLocaleTimeString([], {
+                          {new Date(log.created_at).toLocaleTimeString('en-US', {
+                            timeZone: 'Asia/Kolkata',
                             hour: '2-digit',
                             minute: '2-digit',
                           })}{' '}

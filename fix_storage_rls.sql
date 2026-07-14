@@ -12,6 +12,10 @@ DROP POLICY IF EXISTS "Auth Users can upload documents" ON storage.objects;
 DROP POLICY IF EXISTS "Auth Users can update their documents" ON storage.objects;
 
 -- 2. Create bulletproof policies allowing any logged-in user to upload to any bucket
+DROP POLICY IF EXISTS "Global Public Read" ON storage.objects;
+DROP POLICY IF EXISTS "Global Auth Insert" ON storage.objects;
+DROP POLICY IF EXISTS "Global Auth Update" ON storage.objects;
+DROP POLICY IF EXISTS "Global Auth Delete" ON storage.objects;
 CREATE POLICY "Global Public Read" 
 ON storage.objects FOR SELECT 
 USING (true);

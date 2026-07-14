@@ -286,6 +286,7 @@ export default function OwnerRevenuePage() {
               year: 'numeric',
             })
             const timeStr = new Date(b.created_at).toLocaleTimeString('en-US', {
+              timeZone: 'Asia/Kolkata',
               hour: 'numeric',
               minute: '2-digit',
             })

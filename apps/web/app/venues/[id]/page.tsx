@@ -464,7 +464,11 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
   // Time formatter
   const formatSlotTime = (timeStr: string) => {
-    return new Date(timeStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    return new Date(timeStr).toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      minute: '2-digit',
+    })
   }
 
   const formatTimeStr = (timeStr: string) => {

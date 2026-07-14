@@ -2,12 +2,14 @@ import { NotificationProvider, NotificationPayload, ProviderResponse } from './N
 import { WhatsAppProvider } from './WhatsAppProvider'
 import { TwilioProvider } from './TwilioProvider'
 import { InAppProvider } from './InAppProvider'
+import { EmailProvider } from './EmailProvider'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export class ProviderRouter implements NotificationProvider {
   private whatsappProvider = new WhatsAppProvider()
   private twilioProvider = new TwilioProvider()
   private inAppProvider = new InAppProvider()
+  private emailProvider = new EmailProvider()
 
   async send(payload: NotificationPayload): Promise<ProviderResponse> {
     const supabase = createAdminClient()
@@ -60,8 +62,22 @@ export class ProviderRouter implements NotificationProvider {
     }
 
     // 4. Fallback to Twilio SMS (if enabled or if WhatsApp failed)
-    const response = await this.twilioProvider.send(payload)
-    return response
+    let smsResponse
+    if (smsEnabled || (!whatsappEnabled && payload.recipient)) {
+      smsResponse = await this.twilioProvider.send(payload)
+    }
+
+    // 5. Always send Email if an email address is provided in variables
+    let emailResponse
+    if (payload.variables && payload.variables.Email) {
+      try {
+        emailResponse = await this.emailProvider.send(payload)
+      } catch (err: any) {
+        console.error('Email delivery failed:', err.message)
+      }
+    }
+
+    return smsResponse || emailResponse || { success: true, provider: 'none_sent' }
   }
 }
 

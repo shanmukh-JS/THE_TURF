@@ -41,6 +41,7 @@ export async function emitBookingConfirmedEvent(params: {
   duration: string
   amount: string
   qrToken: string
+  email: string
 }) {
   return globalEventBus.publish({
     eventType: 'booking.confirmed',
@@ -59,6 +60,7 @@ export async function emitBookingConfirmedEvent(params: {
         BookingId: params.bookingId.substring(0, 8).toUpperCase(),
         Amount: params.amount,
         QrToken: params.qrToken,
+        Email: params.email,
       },
     },
   })

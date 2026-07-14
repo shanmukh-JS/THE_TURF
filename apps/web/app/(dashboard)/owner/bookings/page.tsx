@@ -134,6 +134,7 @@ export default function OwnerBookingsPage() {
           })
           if (slot.start_time) {
             timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
+              timeZone: 'Asia/Kolkata',
               hour: 'numeric',
               minute: '2-digit',
             })

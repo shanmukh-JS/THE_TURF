@@ -59,7 +59,11 @@ export default async function CustomerBookingsPage({
     // Format Time (e.g. "7:00 PM - 8:00 PM")
     const formatTime = (timeStr: string) => {
       const t = new Date(timeStr)
-      return t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      return t.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
     }
     const formattedTime = `${formatTime(b.slots.start_time)} – ${formatTime(b.slots.end_time)}`
 

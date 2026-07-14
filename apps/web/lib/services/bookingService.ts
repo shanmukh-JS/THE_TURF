@@ -189,7 +189,7 @@ export class BookingService {
 
     const { data: userRecord } = await supabase
       .from('users')
-      .select('phone')
+      .select('phone, email')
       .eq('id', params.customerId)
       .single()
 
@@ -230,12 +230,14 @@ export class BookingService {
         duration: durationStr,
         amount: params.advancePaid.toString(),
         qrToken: qrToken,
+        email: userRecord?.email || '',
       })
 
       await notificationScheduler.scheduleBookingNotifications({
         bookingId,
         slotId: params.slotId,
         recipientPhone: userRecord?.phone || '',
+        recipientEmail: userRecord?.email || '',
         customerName: userProfile?.full_name || 'Player',
         venueName: venueRecord?.name || 'the Turf',
       })
