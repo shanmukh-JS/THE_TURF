@@ -208,7 +208,7 @@ export default function OwnerSettingsPage() {
         // Fetch registration details from public.users to use as defaults
         const { data: publicUser } = await supabase
           .from('users')
-          .select('full_name, phone')
+          .select('full_name, phone, email')
           .eq('id', user.id)
           .maybeSingle()
 
@@ -243,7 +243,7 @@ export default function OwnerSettingsPage() {
           business: {
             turfName: profile.business_name || '',
             ownerName: profile.full_name || publicUser?.full_name || user.fullName || '',
-            email: settings?.business_email || user.email || '',
+            email: settings?.business_email || publicUser?.email || user.email || '',
             phone: settings?.business_phone || authUser?.phone || publicUser?.phone || '',
             address: settings?.business_address || '',
             logoUrl: settings?.business_logo_url || '',
