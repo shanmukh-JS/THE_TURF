@@ -4,7 +4,20 @@ import { payoutBatchWorker } from './payoutBatchWorker'
 import { reconciliationWorker } from './reconciliationWorker'
 import { ownerPayableWorker } from './ownerPayableWorker'
 
+import * as http from 'http'
+
 console.log('🚀 Starting TRUF Gaming BullMQ Background Workers...')
+
+// Create a dummy HTTP server so Render.com Free Tier doesn't kill the worker
+const PORT = process.env.PORT || 8080
+http
+  .createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' })
+    res.end('Worker is running and healthy!\n')
+  })
+  .listen(PORT, () => {
+    console.log(`✅ Dummy HTTP server listening on port ${PORT} to keep Render happy`)
+  })
 
 const workers = [settlementWorker, payoutBatchWorker, reconciliationWorker, ownerPayableWorker]
 
