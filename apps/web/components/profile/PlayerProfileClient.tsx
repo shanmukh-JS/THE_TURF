@@ -254,8 +254,15 @@ export function PlayerProfileClient({
     }
     setEmailLoading(true)
     try {
-      const { error } = await supabase.auth.updateUser({ email: emailTrimmed })
-      if (error) throw error
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailTrimmed, purpose: 'email_change' }),
+      })
+      const result = await res.json()
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to request email change')
+      }
       setToast({ message: 'Verification code sent to your new email!', type: 'success' })
       setEmailStep('verify')
     } catch (err: any) {
@@ -274,12 +281,22 @@ export function PlayerProfileClient({
     }
     setEmailLoading(true)
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: newEmail.trim(),
-        token: tokenTrimmed,
-        type: 'email_change',
+      const res = await fetch('/api/auth/verify-email-change-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newEmail.trim(), otp: tokenTrimmed }),
       })
-      if (error) throw error
+      const result = await res.json()
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Verification failed')
+      }
+
+      // Sync auth state locally
+      const sessionRes = await fetch('/api/auth/session')
+      const { user } = await sessionRes.json()
+      if (user) {
+        useAuthStore.getState().setUser(user)
+      }
 
       setToast({ message: 'Email address updated successfully!', type: 'success' })
       setShowEmailModal(false)

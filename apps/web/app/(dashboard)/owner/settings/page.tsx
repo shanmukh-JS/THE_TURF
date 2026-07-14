@@ -112,6 +112,51 @@ export default function OwnerSettingsPage() {
   const [isListingDisabled, setIsListingDisabled] = useState(false)
   const [isDangerLoading, setIsDangerLoading] = useState(false)
   const [ownerProfileIdForDanger, setOwnerProfileIdForDanger] = useState<string | null>(null)
+  const [is2faSending, setIs2faSending] = useState(false)
+
+  const [passwordStrength, setPasswordStrength] = useState<'Weak' | 'Medium' | 'Strong'>('Weak')
+  const [passwordChecks, setPasswordChecks] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    number: false,
+    special: false,
+    notCommon: false,
+  })
+
+  // Live password strength validator for settings update
+  useEffect(() => {
+    const pwd = passwordFields.newPassword
+    const isLength = pwd.length >= 12
+    const isUpper = /[A-Z]/.test(pwd)
+    const isLower = /[a-z]/.test(pwd)
+    const isNumber = /[0-9]/.test(pwd)
+    const isSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pwd)
+
+    const weakDictionary = ['12345678', 'password123', 'qwerty', 'trufgaming123', 'welcome123']
+    const isNotCommon = !weakDictionary.some((weak) => pwd.toLowerCase().includes(weak))
+
+    setPasswordChecks({
+      length: isLength,
+      upper: isUpper,
+      lower: isLower,
+      number: isNumber,
+      special: isSpecial,
+      notCommon: isNotCommon,
+    })
+
+    const criteriaMet = [isLength, isUpper, isLower, isNumber, isSpecial, isNotCommon].filter(
+      Boolean
+    ).length
+
+    if (criteriaMet <= 3) {
+      setPasswordStrength('Weak')
+    } else if (criteriaMet <= 5) {
+      setPasswordStrength('Medium')
+    } else {
+      setPasswordStrength('Strong')
+    }
+  }, [passwordFields.newPassword])
 
   // Secure Email Change OTP states
   const [showEmailModal, setShowEmailModal] = useState(false)
@@ -449,8 +494,8 @@ export default function OwnerSettingsPage() {
   }
 
   const handleUpdatePassword = async () => {
-    if (passwordFields.newPassword.length < 6) {
-      setToast({ message: 'Password must be at least 6 characters long', type: 'error' })
+    if (passwordStrength !== 'Strong') {
+      setToast({ message: 'Password must meet all complexity requirements', type: 'error' })
       return
     }
     if (passwordFields.newPassword !== passwordFields.confirmPassword) {
@@ -468,6 +513,32 @@ export default function OwnerSettingsPage() {
       setToast({ message: e.message || 'Error updating password', type: 'error' })
     } finally {
       setIsPasswordSaving(false)
+    }
+  }
+
+  const handleSend2faOtp = async () => {
+    if (!user?.email) {
+      setToast({ message: 'No registered email found for this user', type: 'error' })
+      return
+    }
+    setIs2faSending(true)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: user.email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: window.location.origin + '/owner/settings',
+        },
+      })
+      if (error) throw error
+      setToast({
+        message: 'A secure verification magic link has been sent to your registered email!',
+        type: 'success',
+      })
+    } catch (e: any) {
+      setToast({ message: e.message || 'Failed to send verification link', type: 'error' })
+    } finally {
+      setIs2faSending(false)
     }
   }
 
@@ -510,8 +581,15 @@ export default function OwnerSettingsPage() {
     }
     setEmailLoading(true)
     try {
-      const { error } = await supabase.auth.updateUser({ email: emailTrimmed })
-      if (error) throw error
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailTrimmed, purpose: 'email_change' }),
+      })
+      const result = await res.json()
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to request email change')
+      }
       setToast({ message: 'Verification code sent to your new email!', type: 'success' })
       setEmailStep('verify')
     } catch (err: any) {
@@ -530,14 +608,17 @@ export default function OwnerSettingsPage() {
     }
     setEmailLoading(true)
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: newEmail.trim(),
-        token: tokenTrimmed,
-        type: 'email_change',
+      const res = await fetch('/api/auth/verify-email-change-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newEmail.trim(), otp: tokenTrimmed }),
       })
-      if (error) throw error
+      const result = await res.json()
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Verification failed')
+      }
 
-      const { error: dbError } = await supabase
+      await supabase
         .from('owner_settings')
         .update({ business_email: newEmail.trim() })
         .eq('owner_id', ownerProfileIdForDanger)
@@ -546,6 +627,13 @@ export default function OwnerSettingsPage() {
         ...d,
         business: { ...d.business, email: newEmail.trim() },
       }))
+
+      // Sync auth state locally
+      const sessionRes = await fetch('/api/auth/session')
+      const { user } = await sessionRes.json()
+      if (user) {
+        useAuthStore.getState().setUser(user)
+      }
 
       setToast({ message: 'Email address updated successfully!', type: 'success' })
       setShowEmailModal(false)
@@ -911,12 +999,12 @@ export default function OwnerSettingsPage() {
                   <div className="relative">
                     <input
                       type={showPw ? 'text' : 'password'}
-                      placeholder="New Password (min 6 chars)"
+                      placeholder="New Password (min 12 characters)"
                       value={passwordFields.newPassword}
                       onChange={(e) =>
                         setPasswordFields((p) => ({ ...p, newPassword: e.target.value }))
                       }
-                      className="w-full px-4 py-2.5 pr-10 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-teal-500/50 text-sm"
+                      className="w-full px-4 py-2.5 pr-10 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-teal-500/50 text-sm font-semibold"
                     />
                     <button
                       onClick={() => setShowPw((v) => !v)}
@@ -925,6 +1013,70 @@ export default function OwnerSettingsPage() {
                       {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+
+                  {/* Password Strength Indicator */}
+                  {passwordFields.newPassword && (
+                    <div className="space-y-1.5 px-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-gray-400">Password Strength:</span>
+                        <span
+                          className={`font-bold ${
+                            passwordStrength === 'Weak'
+                              ? 'text-red-400'
+                              : passwordStrength === 'Medium'
+                                ? 'text-yellow-400'
+                                : 'text-green-400'
+                          }`}
+                        >
+                          {passwordStrength}
+                        </span>
+                      </div>
+                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden flex gap-0.5">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            passwordStrength === 'Weak'
+                              ? 'w-1/3 bg-red-400'
+                              : passwordStrength === 'Medium'
+                                ? 'w-2/3 bg-yellow-400'
+                                : 'w-full bg-green-500'
+                          }`}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-gray-400 pt-1">
+                        <div
+                          className={`flex items-center gap-1 ${passwordChecks.length ? 'text-green-400 font-bold' : 'text-gray-500'}`}
+                        >
+                          <span>{passwordChecks.length ? '✓' : '•'}</span> At least 12 chars
+                        </div>
+                        <div
+                          className={`flex items-center gap-1 ${passwordChecks.upper ? 'text-green-400 font-bold' : 'text-gray-500'}`}
+                        >
+                          <span>{passwordChecks.upper ? '✓' : '•'}</span> One uppercase letter
+                        </div>
+                        <div
+                          className={`flex items-center gap-1 ${passwordChecks.lower ? 'text-green-400 font-bold' : 'text-gray-500'}`}
+                        >
+                          <span>{passwordChecks.lower ? '✓' : '•'}</span> One lowercase letter
+                        </div>
+                        <div
+                          className={`flex items-center gap-1 ${passwordChecks.number ? 'text-green-400 font-bold' : 'text-gray-500'}`}
+                        >
+                          <span>{passwordChecks.number ? '✓' : '•'}</span> One number
+                        </div>
+                        <div
+                          className={`flex items-center gap-1 ${passwordChecks.special ? 'text-green-400 font-bold' : 'text-gray-500'}`}
+                        >
+                          <span>{passwordChecks.special ? '✓' : '•'}</span> One special character
+                        </div>
+                        <div
+                          className={`flex items-center gap-1 ${passwordChecks.notCommon ? 'text-green-400 font-bold' : 'text-gray-500'}`}
+                        >
+                          <span>{passwordChecks.notCommon ? '✓' : '•'}</span> Not common password
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <input
                     type="password"
                     placeholder="Confirm New Password"
@@ -932,12 +1084,16 @@ export default function OwnerSettingsPage() {
                     onChange={(e) =>
                       setPasswordFields((p) => ({ ...p, confirmPassword: e.target.value }))
                     }
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-teal-500/50 text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-teal-500/50 text-sm font-semibold"
                   />
                   <button
                     onClick={handleUpdatePassword}
-                    disabled={isPasswordSaving}
-                    className="w-full py-2.5 rounded-xl bg-teal-500 text-black text-xs font-bold hover:bg-teal-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={
+                      isPasswordSaving ||
+                      passwordStrength !== 'Strong' ||
+                      passwordFields.newPassword !== passwordFields.confirmPassword
+                    }
+                    className="w-full py-2.5 rounded-xl bg-teal-500 text-black text-xs font-bold hover:bg-teal-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isPasswordSaving ? (
                       <>
@@ -959,16 +1115,11 @@ export default function OwnerSettingsPage() {
                 </p>
               </div>
               <button
-                onClick={() =>
-                  setToast({
-                    message:
-                      'A secure magic-link has been sent to your registered email. Click it to verify your identity!',
-                    type: 'success',
-                  })
-                }
-                className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all whitespace-nowrap"
+                onClick={handleSend2faOtp}
+                disabled={is2faSending}
+                className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all whitespace-nowrap disabled:opacity-50"
               >
-                Send Magic Link
+                {is2faSending ? 'Sending...' : 'Send Magic Link'}
               </button>
             </div>
           </div>

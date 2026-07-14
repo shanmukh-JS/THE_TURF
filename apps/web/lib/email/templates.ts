@@ -352,4 +352,13 @@ export const templates = {
       `<p>Hello ${name},</p>
        <p>Your account has been successfully unlocked and recovered. You can now log back in normally.</p>`
     ),
+
+  email_change_otp: (name: string, otp: string) =>
+    getBaseLayout(
+      'Verify Your New Email Address',
+      `<p>Hello ${name},</p>
+       <p>Please use the following 6-digit OTP verification code to confirm and change your email address:</p>
+       <div class="otp-code">${otp}</div>
+       <p>This code expires in 5 minutes. Protect this code; do not share it with anyone.</p>`
+    ),
 }

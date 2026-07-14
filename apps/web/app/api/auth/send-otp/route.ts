@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import { generateOtp, checkRateLimit, storeOtp } from '@/lib/email/otp'
 import { sendEmail } from '@/lib/email/mailer'
 import { templates } from '@/lib/email/templates'
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
       return apiError('MISSING_FIELDS', 'Email and purpose are required.')
     }
 
-    if (purpose !== 'registration' && purpose !== 'forgot_password') {
+    if (purpose !== 'registration' && purpose !== 'forgot_password' && purpose !== 'email_change') {
       return apiError('INVALID_PURPOSE', 'Invalid OTP purpose specified.')
     }
 
@@ -28,7 +29,40 @@ export async function POST(req: NextRequest) {
     let name = 'User'
     let userId: string | undefined
 
-    if (purpose === 'registration') {
+    if (purpose === 'email_change') {
+      const serverSupabase = await createServerClient()
+      const {
+        data: { session },
+      } = await serverSupabase.auth.getSession()
+      if (!session?.user) {
+        return apiError('UNAUTHORIZED', 'You must be logged in to change your email.')
+      }
+      userId = session.user.id
+
+      const { data: user } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (user) {
+        if (user.role === 'OWNER') {
+          const { data: profile } = await supabase
+            .from('owner_profiles')
+            .select('full_name')
+            .eq('user_id', userId)
+            .maybeSingle()
+          if (profile) name = profile.full_name
+        } else {
+          const { data: profile } = await supabase
+            .from('customer_profiles')
+            .select('full_name')
+            .eq('user_id', userId)
+            .maybeSingle()
+          if (profile) name = profile.full_name
+        }
+      }
+    } else if (purpose === 'registration') {
       const { data: temp } = await supabase
         .from('temp_registrations')
         .select('name')
@@ -95,21 +129,32 @@ export async function POST(req: NextRequest) {
     const htmlContent =
       purpose === 'registration'
         ? templates.registration_otp(name, otp)
-        : templates.forgot_password_otp(name, otp)
+        : purpose === 'email_change'
+          ? templates.email_change_otp(name, otp)
+          : templates.forgot_password_otp(name, otp)
 
     const mailSent = await sendEmail({
       to: email,
       subject:
-        purpose === 'registration' ? 'Verify Your TRUF GAMING Account' : 'Reset Your Password',
+        purpose === 'registration'
+          ? 'Verify Your TRUF GAMING Account'
+          : purpose === 'email_change'
+            ? 'Verify Your New Email Address'
+            : 'Reset Your Password',
       html: htmlContent,
-      templateName: purpose === 'registration' ? 'registration_otp' : 'forgot_password_otp',
+      templateName:
+        purpose === 'registration'
+          ? 'registration_otp'
+          : purpose === 'email_change'
+            ? 'email_change_otp'
+            : 'forgot_password_otp',
     })
 
     if (!mailSent.success) {
       return apiError('EMAIL_DELIVERY_FAILED', 'Failed to deliver verification code email.')
     }
 
-    return apiSuccess('Verification code resent successfully.')
+    return apiSuccess('Verification code sent successfully.')
   } catch (err: any) {
     console.error('Send OTP API Error:', err)
     return apiError('SERVER_ERROR', 'An unexpected server error occurred.')
