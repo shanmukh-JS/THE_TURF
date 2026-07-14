@@ -777,27 +777,31 @@ export default function ManageSlotsPage() {
                 return (
                   <div
                     key={idx}
-                    className={`space-y-3 bg-black/20 rounded-xl p-3 border ${
+                    className={`space-y-3 rounded-xl p-3 border transition-all ${
                       dateKey === todayStr
-                        ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.15)] ring-1 ring-green-500/50'
-                        : 'border-white/5'
+                        ? 'bg-green-500/10 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)] ring-1 ring-green-500/50 scale-105 z-10'
+                        : 'bg-black/20 border-white/5'
                     }`}
                   >
                     <div
                       className={`text-center pb-2 border-b ${
-                        dateKey === todayStr ? 'border-green-500/30' : 'border-white/5'
+                        dateKey === todayStr ? 'border-green-500/50' : 'border-white/5'
                       }`}
                     >
                       <p
                         className={`text-xs ${
-                          dateKey === todayStr ? 'text-green-400 font-medium' : 'text-gray-500'
+                          dateKey === todayStr
+                            ? 'text-green-400 font-bold uppercase tracking-wider'
+                            : 'text-gray-500'
                         }`}
                       >
-                        {date.toLocaleDateString([], { weekday: 'short' })}
+                        {dateKey === todayStr
+                          ? 'TODAY'
+                          : date.toLocaleDateString([], { weekday: 'short' })}
                       </p>
                       <p
-                        className={`text-sm font-bold mt-0.5 ${
-                          dateKey === todayStr ? 'text-green-400' : 'text-white'
+                        className={`font-black mt-0.5 ${
+                          dateKey === todayStr ? 'text-xl text-green-400' : 'text-sm text-white'
                         }`}
                       >
                         {date.toLocaleDateString([], { day: 'numeric' })}
