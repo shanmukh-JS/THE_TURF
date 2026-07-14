@@ -80,6 +80,8 @@ export function PlayerProfileClient({
   const [emailStep, setEmailStep] = useState<'request' | 'verify'>('request')
   const [emailLoading, setEmailLoading] = useState(false)
 
+  const currentEmailError = user.email && !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,3}$/.test(user.email)
+
   // Leveling engine parameters
   const totalXp = bookings.length * 250
   const level = Math.min(50, 1 + Math.floor(totalXp / 1000))
@@ -662,7 +664,11 @@ export function PlayerProfileClient({
                         type="email"
                         value={user.email}
                         disabled
-                        className="flex-1 px-4 py-3 rounded-xl bg-black/20 border border-white/5 text-gray-500 text-sm font-semibold select-none cursor-not-allowed"
+                        className={`flex-1 px-4 py-3 rounded-xl bg-black/20 border text-sm font-semibold select-none cursor-not-allowed ${
+                          currentEmailError
+                            ? 'border-red-500/50 text-red-400 bg-red-500/[0.02]'
+                            : 'border-white/5 text-gray-500'
+                        }`}
                       />
                       <button
                         type="button"
@@ -672,11 +678,16 @@ export function PlayerProfileClient({
                           setEmailStep('request')
                           setShowEmailModal(true)
                         }}
-                        className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold border border-white/8 text-xs transition-all active:scale-98"
+                        className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold border border-white/8 text-xs transition-all active:scale-98 shrink-0"
                       >
                         Change
                       </button>
                     </div>
+                    {currentEmailError && (
+                      <p className="text-[10px] text-red-400 pl-1 font-medium">
+                        This email is invalid. Click 'Change' to verify a valid email address.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-4">
@@ -690,8 +701,8 @@ export function PlayerProfileClient({
                     </button>
                     <button
                       type="submit"
-                      disabled={loading}
-                      className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-98"
+                      disabled={loading || currentEmailError}
+                      className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
                         <>

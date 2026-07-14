@@ -708,7 +708,11 @@ export default function OwnerSettingsPage() {
                     type="email"
                     value={formData.business.email}
                     disabled
-                    className="flex-1 px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-gray-500 text-sm font-semibold select-none cursor-not-allowed"
+                    className={`flex-1 px-4 py-3 rounded-xl bg-black/40 border text-sm font-semibold select-none cursor-not-allowed ${
+                      emailError
+                        ? 'border-red-500/50 text-red-400 bg-red-500/[0.02]'
+                        : 'border-white/10 text-gray-500'
+                    }`}
                   />
                   <button
                     type="button"
@@ -718,11 +722,17 @@ export default function OwnerSettingsPage() {
                       setEmailStep('request')
                       setShowEmailModal(true)
                     }}
-                    className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold border border-white/8 text-xs transition-all active:scale-98"
+                    className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold border border-white/8 text-xs transition-all active:scale-98 shrink-0"
                   >
                     Change Email
                   </button>
                 </div>
+                {emailError && (
+                  <p className="text-[11px] font-medium text-red-400 pl-1">
+                    This email is invalid. Please click 'Change Email' to verify a valid email
+                    address.
+                  </p>
+                )}
               </div>
               <InputField
                 label="Phone Number"
