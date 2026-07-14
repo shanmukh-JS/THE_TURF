@@ -195,7 +195,6 @@ export default function OwnerSettingsPage() {
 
       setIsLoading(true)
       try {
-        await supabase.auth.refreshSession()
         const {
           data: { user: authUser },
         } = await supabase.auth.getUser()
