@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { supabase } from '../fixtures/setup'
 
 describe('Pillar 5 - RBAC & Tenant Isolation', () => {
   it("should prevent an owner from accessing another owner's financial data via RPC or query", async () => {
@@ -44,7 +45,7 @@ describe('Pillar 5 - RBAC & Tenant Isolation', () => {
 
       // Cleanup
       const { data: authUser } = await supabase.auth.admin.listUsers()
-      const targetUser = authUser?.users.find((u) => u.email === email)
+      const targetUser = authUser?.users.find((u: any) => u.email === email)
       if (targetUser) {
         await supabase.auth.admin.deleteUser(targetUser.id)
       }
