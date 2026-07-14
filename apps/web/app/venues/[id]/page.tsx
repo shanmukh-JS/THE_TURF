@@ -710,7 +710,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Rules */}
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
-          <h2 className="text-lg font-semibold mb-4 text-amber-300">Venue Rules & Policy</h2>
+          <h2 className="text-lg font-semibold mb-4 text-amber-300">Rules & Regulations</h2>
           <ul className="space-y-2">
             {defaultRules.map((r) => (
               <li key={r} className="flex items-start gap-2 text-sm text-gray-300">
