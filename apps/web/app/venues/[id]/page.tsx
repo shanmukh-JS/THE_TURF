@@ -26,7 +26,11 @@ import {
 
 // Default values for fields not stored in DB
 const defaultAmenities = ['Parking', 'WiFi', 'Floodlights', 'Changing Rooms', 'Water Dispenser']
-const defaultRules = ['No metal spikes allowed', 'Booking must be cancelled 2 hrs before slot']
+const defaultRules = [
+  'No metal spikes allowed',
+  'Booking must be cancelled 2 hrs before slot',
+  'Please arrive 10-15 minutes prior to your scheduled booking time',
+]
 
 export default function VenueDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -710,17 +714,13 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Rules */}
         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
-          <h2 className="text-lg font-semibold mb-4 text-amber-300">Rules & Regulations</h2>
+          <h2 className="text-lg font-semibold mb-4 text-amber-300">Venue Rules & Policy</h2>
           <ul className="space-y-2">
             {defaultRules.map((r) => (
               <li key={r} className="flex items-start gap-2 text-sm text-gray-300">
                 <span className="text-amber-400 mt-0.5">•</span> {r}
               </li>
             ))}
-            <li className="flex items-start gap-2 text-sm text-gray-300">
-              <span className="text-amber-400 mt-0.5">•</span> Maximum{' '}
-              {ownerSettings?.max_players_per_booking || 12} players per booking
-            </li>
             {ownerSettings?.cancellation_policy && (
               <li className="flex items-start gap-2 text-sm text-gray-300 mt-4 pt-4 border-t border-amber-500/20">
                 <span className="text-amber-400 mt-0.5">•</span>
