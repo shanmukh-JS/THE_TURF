@@ -112,7 +112,6 @@ export default function OwnerSettingsPage() {
   const [isListingDisabled, setIsListingDisabled] = useState(false)
   const [isDangerLoading, setIsDangerLoading] = useState(false)
   const [ownerProfileIdForDanger, setOwnerProfileIdForDanger] = useState<string | null>(null)
-  const [is2faSending, setIs2faSending] = useState(false)
 
   const [passwordStrength, setPasswordStrength] = useState<'Weak' | 'Medium' | 'Strong'>('Weak')
   const [passwordChecks, setPasswordChecks] = useState({
@@ -196,6 +195,7 @@ export default function OwnerSettingsPage() {
 
       setIsLoading(true)
       try {
+        await supabase.auth.refreshSession()
         const {
           data: { user: authUser },
         } = await supabase.auth.getUser()
@@ -513,33 +513,6 @@ export default function OwnerSettingsPage() {
       setToast({ message: e.message || 'Error updating password', type: 'error' })
     } finally {
       setIsPasswordSaving(false)
-    }
-  }
-
-  const handleSend2faOtp = async () => {
-    if (!user?.email) {
-      setToast({ message: 'No registered email found for this user', type: 'error' })
-      return
-    }
-    setIs2faSending(true)
-    try {
-      const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, purpose: 'login_verification' }),
-      })
-      const result = await res.json()
-      if (!result.success) {
-        throw new Error(result.error?.message || 'Failed to send verification code')
-      }
-      setToast({
-        message: 'A 2FA verification code has been sent to your registered email!',
-        type: 'success',
-      })
-    } catch (e: any) {
-      setToast({ message: e.message || 'Failed to send verification code', type: 'error' })
-    } finally {
-      setIs2faSending(false)
     }
   }
 
@@ -1082,22 +1055,6 @@ export default function OwnerSettingsPage() {
                   </button>
                 </div>
               )}
-            </div>
-            {/* 2FA Row */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-              <div>
-                <p className="text-sm font-medium text-white">Two-Factor Authentication (2FA)</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Add an extra layer of security via email OTP.
-                </p>
-              </div>
-              <button
-                onClick={handleSend2faOtp}
-                disabled={is2faSending}
-                className="px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-all whitespace-nowrap disabled:opacity-50"
-              >
-                {is2faSending ? 'Sending...' : 'Send Magic Link'}
-              </button>
             </div>
           </div>
         </section>
