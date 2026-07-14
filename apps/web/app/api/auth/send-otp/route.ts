@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const limitResponse = rateLimitGuard(req, 'otp')
     if (limitResponse) return limitResponse
 
-    const { email, purpose } = await req.json()
+    let { email, purpose } = await req.json()
     const ip = req.headers.get('x-forwarded-for') || '127.0.0.1'
     const userAgent = req.headers.get('user-agent') || 'Unknown'
 
@@ -34,15 +34,18 @@ export async function POST(req: NextRequest) {
     let name = 'User'
     let userId: string | undefined
 
-    if (purpose === 'email_change') {
+    if (purpose === 'email_change' || purpose === 'login_verification') {
       const serverSupabase = await createServerClient()
       const {
         data: { session },
       } = await serverSupabase.auth.getSession()
       if (!session?.user) {
-        return apiError('UNAUTHORIZED', 'You must be logged in to change your email.')
+        return apiError('UNAUTHORIZED', 'You must be logged in to request this verification code.')
       }
       userId = session.user.id
+      if (purpose === 'login_verification' && session.user.email) {
+        email = session.user.email
+      }
 
       const { data: user } = await supabase
         .from('users')
