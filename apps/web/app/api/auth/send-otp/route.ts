@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
         type: 'magiclink',
         email: email,
         options: {
-          redirectTo: req.headers.get('origin') + '/owner/settings',
+          redirectTo: `${req.nextUrl.origin}/owner/settings`,
         },
       })
       if (error || !data?.properties?.action_link) {
