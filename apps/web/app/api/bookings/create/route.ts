@@ -62,26 +62,26 @@ export async function POST(req: Request) {
     const bookingStatus = ownerSettings?.auto_accept_bookings === false ? 'PENDING' : 'CONFIRMED'
     const advanceAmount = Math.round(slot.price * 0.5)
 
-    // 3. Create the booking entry securely
-    const { data: booking, error: bookingError } = await adminClient
-      .from('bookings')
-      .insert({
-        slot_id: slot.id,
-        venue_id: slot.venue_id,
-        customer_id: user.id,
-        total_amount: slot.price,
-        advance_paid: advanceAmount,
-        status: bookingStatus,
-      })
-      .select()
-      .single()
+    // 3. Create booking atomically to prevent concurrent double-booking
+    const { data: bookingId, error: bookingError } = await adminClient.rpc('rpc_book_slot', {
+      p_slot_id: slot.id,
+      p_venue_id: slot.venue_id,
+      p_customer_id: user.id,
+      p_total_amount: slot.price,
+      p_advance_paid: advanceAmount,
+      p_payment_id: null,
+    })
 
     if (bookingError) {
       return NextResponse.json({ error: bookingError.message }, { status: 500 })
     }
 
-    // 4. Update the slot status securely
-    await adminClient.from('slots').update({ status: 'Booked', is_booked: true }).eq('id', slot.id)
+    // Fetch the created booking for the response
+    const { data: booking } = await adminClient
+      .from('bookings')
+      .select()
+      .eq('id', bookingId)
+      .single()
 
     // 5. Securely send notifications
     if (ownerSettings?.notify_bookings) {

@@ -55,7 +55,7 @@ export const slotRepository = {
     if (error) throw error
   },
   async lockSlot(id: string, lockExpiresAt: string): Promise<boolean> {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('slots')
       .update({
         is_locked: true,
@@ -65,7 +65,8 @@ export const slotRepository = {
       .eq('id', id)
       .eq('is_booked', false)
       .eq('is_locked', false)
-    return !error
+      .select('id')
+    return !error && data && data.length > 0
   },
 
   async unlockExpiredSlots(): Promise<void> {

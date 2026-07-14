@@ -30,7 +30,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing payment details' }, { status: 400 })
     }
 
+    // Fetch slot to verify price and prevent payment amount manipulation
     const adminClient = createAdminClient()
+    const { data: slot } = await adminClient.from('slots').select('price').eq('id', slotId).single()
+
+    if (!slot) {
+      return NextResponse.json({ error: 'Slot not found.' }, { status: 404 })
+    }
+
+    const expectedTotal = Number(slot.price)
+    if (Math.abs(Number(totalAmount) - expectedTotal) > 0.01) {
+      return NextResponse.json({ error: 'Price verification failed.' }, { status: 400 })
+    }
+
+    const expectedAdvance = Math.round(expectedTotal * 0.5)
+    if (Math.abs(Number(advancePaid) - expectedAdvance) > 1) {
+      return NextResponse.json({ error: 'Advance payment verification failed.' }, { status: 400 })
+    }
 
     // Log payment success in audit trail
     await adminClient.from('payment_audit').insert({

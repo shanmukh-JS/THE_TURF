@@ -30,6 +30,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Fetch slot to verify price and prevent client-side manipulation
+    const adminClient = createAdminClient()
+    const { data: slot } = await adminClient.from('slots').select('price').eq('id', slotId).single()
+
+    if (!slot) {
+      return NextResponse.json({ error: 'Slot not found.' }, { status: 404 })
+    }
+
+    const expectedTotal = Number(slot.price)
+    if (Math.abs(Number(totalAmount) - expectedTotal) > 0.01) {
+      return NextResponse.json(
+        { error: 'Price mismatch. Please refresh and try again.' },
+        { status: 400 }
+      )
+    }
+
+    const expectedAdvance = Math.round(expectedTotal * 0.5)
+    if (Math.abs(Number(advancePaid) - expectedAdvance) > 1) {
+      return NextResponse.json({ error: 'Advance payment amount mismatch.' }, { status: 400 })
+    }
+
     // Idempotency: generate a deterministic checkout ID from user + slot + timestamp window
     // This prevents double-click creating two Razorpay orders
     const timeWindow = Math.floor(Date.now() / 30000) // 30-second window
@@ -40,7 +61,6 @@ export async function POST(req: Request) {
       .substring(0, 24)
 
     // Check if a checkout was already initiated for this exact combination
-    const adminClient = createAdminClient()
     const { data: existingAudit } = await adminClient
       .from('payment_audit')
       .select('razorpay_order_id, status')
