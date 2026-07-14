@@ -20,8 +20,9 @@ ON public.bookings FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM public.venues v
+    JOIN public.owner_profiles op ON v.owner_id = op.id
     WHERE v.id = bookings.venue_id
-    AND v.owner_id = auth.uid()
+    AND op.user_id = auth.uid()
   )
 );
 
@@ -31,7 +32,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users
     WHERE users.id = auth.uid()
-    AND users.role = 'SUPER_ADMIN'
+    AND users.role IN ('ADMIN', 'SUPER_ADMIN')
   )
 );
 
@@ -54,8 +55,9 @@ ON public.bookings FOR UPDATE
 USING (
   EXISTS (
     SELECT 1 FROM public.venues v
+    JOIN public.owner_profiles op ON v.owner_id = op.id
     WHERE v.id = bookings.venue_id
-    AND v.owner_id = auth.uid()
+    AND op.user_id = auth.uid()
   )
 );
 
@@ -65,7 +67,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users
     WHERE users.id = auth.uid()
-    AND users.role = 'SUPER_ADMIN'
+    AND users.role IN ('ADMIN', 'SUPER_ADMIN')
   )
 );
 
