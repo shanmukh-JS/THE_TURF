@@ -41,6 +41,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
   const [reviews, setReviews] = useState<any[]>([])
   const [slots, setSlots] = useState<any[]>([])
   const [ownerSettings, setOwnerSettings] = useState<any>(null)
+  const [ownerProfile, setOwnerProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<any | null>(null)
@@ -183,9 +184,11 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
     const { data: ownerProfileData } = await supabase
       .from('owner_profiles')
-      .select('user_id')
+      .select('user_id, full_name, business_name')
       .eq('id', venueData.owner_id)
       .maybeSingle()
+
+    setOwnerProfile(ownerProfileData)
 
     const isOwner = session?.user?.id === ownerProfileData?.user_id
 
@@ -236,7 +239,8 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         id,
         rating,
         comment,
-        created_at
+        created_at,
+        customer_profiles(full_name, profile_image_url)
       `
       )
       .eq('venue_id', id)
@@ -254,7 +258,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     const { data: ownerSettingsData } = await supabase
       .from('owner_settings')
       .select(
-        'auto_accept_bookings, booking_buffer_time, cancellation_policy, notify_bookings, notify_email, max_players_per_booking'
+        'auto_accept_bookings, booking_buffer_time, cancellation_policy, notify_bookings, notify_email, max_players_per_booking, business_logo_url, business_email, business_phone'
       )
       .eq('owner_id', venueData.owner_id)
       .maybeSingle()
@@ -603,10 +607,55 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Description */}
-        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
-          <h2 className="text-lg font-semibold mb-3 text-white">About this venue</h2>
-          <p className="text-gray-300 leading-relaxed">{venue.description}</p>
+        {/* Description & Host Card */}
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="md:col-span-2 rounded-2xl border border-white/8 bg-white/[0.03] p-6">
+            <h2 className="text-lg font-semibold mb-3 text-white">About this venue</h2>
+            <p className="text-gray-300 leading-relaxed">{venue.description}</p>
+          </div>
+
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-6 flex flex-col justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">
+                Venue Host
+              </h2>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 overflow-hidden flex items-center justify-center text-green-400 font-bold shrink-0">
+                  {ownerSettings?.business_logo_url ? (
+                    <img
+                      src={ownerSettings.business_logo_url}
+                      alt="Host Logo"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    (ownerProfile?.full_name || venue.name).charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-white truncate">
+                    {ownerProfile?.full_name || 'Turf Owner'}
+                  </h4>
+                  <p className="text-xs text-gray-500 truncate">
+                    Business: {ownerProfile?.business_name || 'Host'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {(ownerSettings?.business_email || ownerSettings?.business_phone) && (
+              <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+                {ownerSettings.business_email && (
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5 truncate">
+                    <span>✉</span> {ownerSettings.business_email}
+                  </p>
+                )}
+                {ownerSettings.business_phone && (
+                  <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                    <span>📞</span> {ownerSettings.business_phone}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* AVAILABLE SLOTS SECTION */}
@@ -754,8 +803,16 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                 <div key={r.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400/30 to-emerald-600/30 flex items-center justify-center text-sm font-bold text-green-300">
-                        {(r.customer_profiles?.full_name || 'G').charAt(0)}
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400/30 to-emerald-600/30 flex items-center justify-center text-sm font-bold text-green-300 overflow-hidden">
+                        {r.customer_profiles?.profile_image_url ? (
+                          <img
+                            src={r.customer_profiles.profile_image_url}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          (r.customer_profiles?.full_name || 'G').charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-white">

@@ -76,7 +76,14 @@ export default function VenuesPage() {
           venue_pricing(price),
           venue_images(url, is_cover),
           slots(status),
-          reviews(rating)
+          reviews(rating),
+          owner_profiles (
+            id,
+            full_name,
+            owner_settings (
+              business_logo_url
+            )
+          )
         `
         )
         .eq('verification_status', 'APPROVED')
@@ -137,6 +144,8 @@ export default function VenuesPage() {
             friendPlayed: false,
             timings,
             isOpen: openStatus,
+            ownerLogo: v.owner_profiles?.owner_settings?.business_logo_url || null,
+            ownerName: v.owner_profiles?.full_name || 'Owner',
           }
         })
         setAllVenues(mappedVenues)
@@ -252,6 +261,16 @@ export default function VenuesPage() {
                   className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+
+                {/* Host Logo Overlay */}
+                {v.ownerLogo && (
+                  <div
+                    className="absolute bottom-3 right-3 w-8 h-8 rounded-lg overflow-hidden border border-white/10 shadow-lg bg-black/50 backdrop-blur-sm z-10 hover:scale-105 transition-transform"
+                    title={`Hosted by ${v.ownerName}`}
+                  >
+                    <img src={v.ownerLogo} alt="Host Logo" className="w-full h-full object-cover" />
+                  </div>
+                )}
 
                 {/* Left Badges */}
                 <div className="absolute top-4 left-4 flex flex-col gap-2">

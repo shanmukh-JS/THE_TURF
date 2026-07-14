@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
@@ -111,6 +112,13 @@ export default function OwnerSettingsPage() {
   const [isListingDisabled, setIsListingDisabled] = useState(false)
   const [isDangerLoading, setIsDangerLoading] = useState(false)
   const [ownerProfileIdForDanger, setOwnerProfileIdForDanger] = useState<string | null>(null)
+
+  // Secure Email Change OTP states
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [otpToken, setOtpToken] = useState('')
+  const [emailStep, setEmailStep] = useState<'request' | 'verify'>('request')
+  const [emailLoading, setEmailLoading] = useState(false)
 
   const supabase = createClient()
 
@@ -485,6 +493,76 @@ export default function OwnerSettingsPage() {
     setIsDangerLoading(false)
   }
 
+  const handleRequestEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const emailTrimmed = newEmail.trim()
+    if (!emailTrimmed) {
+      setToast({ message: 'Please enter a new email address', type: 'error' })
+      return
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,4}$/
+    if (!emailRegex.test(emailTrimmed)) {
+      setToast({
+        message: 'Please enter a valid email address (e.g. name@domain.com)',
+        type: 'error',
+      })
+      return
+    }
+    setEmailLoading(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ email: emailTrimmed })
+      if (error) throw error
+      setToast({ message: 'Verification code sent to your new email!', type: 'success' })
+      setEmailStep('verify')
+    } catch (err: any) {
+      setToast({ message: err.message || 'Failed to request email change', type: 'error' })
+    } finally {
+      setEmailLoading(false)
+    }
+  }
+
+  const handleVerifyEmailOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const tokenTrimmed = otpToken.trim()
+    if (!tokenTrimmed) {
+      setToast({ message: 'Please enter the 6-digit OTP code', type: 'error' })
+      return
+    }
+    setEmailLoading(true)
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: newEmail.trim(),
+        token: tokenTrimmed,
+        type: 'email_change',
+      })
+      if (error) throw error
+
+      const { error: dbError } = await supabase
+        .from('owner_settings')
+        .update({ business_email: newEmail.trim() })
+        .eq('owner_id', ownerProfileIdForDanger)
+
+      setFormData((d) => ({
+        ...d,
+        business: { ...d.business, email: newEmail.trim() },
+      }))
+
+      setToast({ message: 'Email address updated successfully!', type: 'success' })
+      setShowEmailModal(false)
+      setNewEmail('')
+      setOtpToken('')
+      setEmailStep('request')
+      router.refresh()
+    } catch (err: any) {
+      setToast({
+        message: err.message || 'Verification failed. Please check the code and try again.',
+        type: 'error',
+      })
+    } finally {
+      setEmailLoading(false)
+    }
+  }
+
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm(
       'Are you absolutely sure? This will permanently delete your account, all venues, bookings, and data. This cannot be undone.'
@@ -621,13 +699,31 @@ export default function OwnerSettingsPage() {
                 value={formData.business.ownerName}
                 onChange={(v: any) => updateSection('business', 'ownerName', v)}
               />
-              <InputField
-                label="Email Address"
-                type="email"
-                value={formData.business.email}
-                onChange={(v: any) => updateSection('business', 'email', v)}
-                error={emailError}
-              />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
+                  Email Address
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={formData.business.email}
+                    disabled
+                    className="flex-1 px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-gray-500 text-sm font-semibold select-none cursor-not-allowed"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewEmail('')
+                      setOtpToken('')
+                      setEmailStep('request')
+                      setShowEmailModal(true)
+                    }}
+                    className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold border border-white/8 text-xs transition-all active:scale-98"
+                  >
+                    Change Email
+                  </button>
+                </div>
+              </div>
               <InputField
                 label="Phone Number"
                 value={formData.business.phone}
@@ -1001,6 +1097,125 @@ export default function OwnerSettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Email Change Modal */}
+      {showEmailModal &&
+        typeof window !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setShowEmailModal(false)}
+          >
+            <div
+              className="w-full max-w-md bg-[#0a0f0a] border border-white/10 rounded-3xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Change Email Address</h3>
+                  <p className="text-xs text-gray-500">
+                    {emailStep === 'request'
+                      ? 'Enter your new email address to receive a verification OTP code.'
+                      : `Enter the 6-digit OTP code sent to your new email: ${newEmail}`}
+                  </p>
+                </div>
+
+                {emailStep === 'request' ? (
+                  <form onSubmit={handleRequestEmailChange} className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
+                        New Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        disabled={emailLoading}
+                        placeholder="new-email@domain.com"
+                        className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all font-semibold"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowEmailModal(false)}
+                        disabled={emailLoading}
+                        className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all active:scale-98"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={emailLoading}
+                        className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-98"
+                      >
+                        {emailLoading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" /> Sending...
+                          </>
+                        ) : (
+                          'Send OTP'
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyEmailOtp} className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
+                        Enter 6-Digit OTP
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={otpToken}
+                        onChange={(e) => setOtpToken(e.target.value.replace(/\D/g, ''))}
+                        disabled={emailLoading}
+                        placeholder="123456"
+                        className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all font-semibold text-center tracking-widest font-mono text-lg"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setEmailStep('request')}
+                        disabled={emailLoading}
+                        className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all active:scale-98"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={emailLoading}
+                        className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-98"
+                      >
+                        {emailLoading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" /> Verifying...
+                          </>
+                        ) : (
+                          'Confirm Email'
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Custom Toast Notification */}
       {toast && (
