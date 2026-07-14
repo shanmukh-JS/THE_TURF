@@ -791,36 +791,12 @@ export default function OwnerSettingsPage() {
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
                   Email Address
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={formData.business.email}
-                    disabled
-                    className={`flex-1 px-4 py-3 rounded-xl bg-black/40 border text-sm font-semibold select-none cursor-not-allowed ${
-                      emailError
-                        ? 'border-red-500/50 text-red-400 bg-red-500/[0.02]'
-                        : 'border-white/10 text-gray-500'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewEmail('')
-                      setOtpToken('')
-                      setEmailStep('request')
-                      setShowEmailModal(true)
-                    }}
-                    className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold border border-white/8 text-xs transition-all active:scale-98 shrink-0"
-                  >
-                    Change Email
-                  </button>
-                </div>
-                {emailError && (
-                  <p className="text-[11px] font-medium text-red-400 pl-1">
-                    This email is invalid. Please click 'Change Email' to verify a valid email
-                    address.
-                  </p>
-                )}
+                <input
+                  type="email"
+                  value={formData.business.email}
+                  disabled
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-gray-500 text-sm font-semibold select-none cursor-not-allowed"
+                />
               </div>
               <InputField
                 label="Phone Number"
@@ -1205,7 +1181,7 @@ export default function OwnerSettingsPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={isSaving || !!emailError || !!phoneError}
+                disabled={isSaving || !!phoneError}
                 className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-green-500 shadow-lg shadow-green-900/20 w-full sm:w-auto"
               >
                 {isSaving ? (
@@ -1230,9 +1206,7 @@ export default function OwnerSettingsPage() {
         }`}
       >
         <p className="text-sm font-medium text-gray-300 ml-4 hidden sm:block">
-          {emailError || phoneError
-            ? 'Resolve validation errors before saving'
-            : 'You have unsaved changes'}
+          {phoneError ? 'Resolve validation errors before saving' : 'You have unsaved changes'}
         </p>
         <div className="flex gap-3 ml-auto mr-4">
           <button
@@ -1243,7 +1217,7 @@ export default function OwnerSettingsPage() {
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || !!emailError || !!phoneError}
+            disabled={isSaving || !!phoneError}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-green-500 text-black text-sm font-bold hover:bg-green-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-green-500 shadow-lg shadow-green-900/20"
           >
             {isSaving ? (
@@ -1258,125 +1232,6 @@ export default function OwnerSettingsPage() {
           </button>
         </div>
       </div>
-
-      {/* Email Change Modal */}
-      {showEmailModal &&
-        typeof window !== 'undefined' &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
-            onClick={() => setShowEmailModal(false)}
-          >
-            <div
-              className="w-full max-w-md bg-[#0a0f0a] border border-white/10 rounded-3xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Change Email Address</h3>
-                  <p className="text-xs text-gray-500">
-                    {emailStep === 'request'
-                      ? 'Enter your new email address to receive a verification OTP code.'
-                      : `Enter the 6-digit OTP code sent to your new email: ${newEmail}`}
-                  </p>
-                </div>
-
-                {emailStep === 'request' ? (
-                  <form onSubmit={handleRequestEmailChange} className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                        New Email Address
-                      </label>
-                      <input
-                        type="email"
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        disabled={emailLoading}
-                        placeholder="new-email@domain.com"
-                        className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all font-semibold"
-                        required
-                      />
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShowEmailModal(false)}
-                        disabled={emailLoading}
-                        className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all active:scale-98"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={emailLoading}
-                        className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-98"
-                      >
-                        {emailLoading ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" /> Sending...
-                          </>
-                        ) : (
-                          'Send OTP'
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <form onSubmit={handleVerifyEmailOtp} className="space-y-4 pt-2">
-                    <div className="space-y-2">
-                      <label className="text-[10px] text-gray-400 uppercase tracking-widest block font-semibold">
-                        Enter 6-Digit OTP
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={otpToken}
-                        onChange={(e) => setOtpToken(e.target.value.replace(/\D/g, ''))}
-                        disabled={emailLoading}
-                        placeholder="123456"
-                        className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all font-semibold text-center tracking-widest font-mono text-lg"
-                        required
-                      />
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setEmailStep('request')}
-                        disabled={emailLoading}
-                        className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all active:scale-98"
-                      >
-                        Back
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={emailLoading}
-                        className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-98"
-                      >
-                        {emailLoading ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" /> Verifying...
-                          </>
-                        ) : (
-                          'Confirm Email'
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
 
       {/* Custom Toast Notification */}
       {toast && (
