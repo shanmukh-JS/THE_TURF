@@ -361,4 +361,13 @@ export const templates = {
        <div class="otp-code">${otp}</div>
        <p>This code expires in 5 minutes. Protect this code; do not share it with anyone.</p>`
     ),
+
+  login_verification_otp: (name: string, otp: string) =>
+    getBaseLayout(
+      'Two-Factor Authentication Code 🔐',
+      `<p>Hello ${name},</p>
+       <p>You requested a Two-Factor Authentication verification code. Use the OTP below to verify your identity:</p>
+       <div class="otp-code">${otp}</div>
+       <p>This code expires in 5 minutes. If you did not request this, please secure your account immediately.</p>`
+    ),
 }

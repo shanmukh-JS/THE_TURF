@@ -20,7 +20,12 @@ export async function POST(req: NextRequest) {
       return apiError('MISSING_FIELDS', 'Email and purpose are required.')
     }
 
-    if (purpose !== 'registration' && purpose !== 'forgot_password' && purpose !== 'email_change') {
+    if (
+      purpose !== 'registration' &&
+      purpose !== 'forgot_password' &&
+      purpose !== 'email_change' &&
+      purpose !== 'login_verification'
+    ) {
       return apiError('INVALID_PURPOSE', 'Invalid OTP purpose specified.')
     }
 
@@ -131,7 +136,9 @@ export async function POST(req: NextRequest) {
         ? templates.registration_otp(name, otp)
         : purpose === 'email_change'
           ? templates.email_change_otp(name, otp)
-          : templates.forgot_password_otp(name, otp)
+          : purpose === 'login_verification'
+            ? templates.login_verification_otp(name, otp)
+            : templates.forgot_password_otp(name, otp)
 
     const mailSent = await sendEmail({
       to: email,
@@ -140,14 +147,18 @@ export async function POST(req: NextRequest) {
           ? 'Verify Your TRUF GAMING Account'
           : purpose === 'email_change'
             ? 'Verify Your New Email Address'
-            : 'Reset Your Password',
+            : purpose === 'login_verification'
+              ? 'Your Two-Factor Authentication Code'
+              : 'Reset Your Password',
       html: htmlContent,
       templateName:
         purpose === 'registration'
           ? 'registration_otp'
           : purpose === 'email_change'
             ? 'email_change_otp'
-            : 'forgot_password_otp',
+            : purpose === 'login_verification'
+              ? 'login_verification_otp'
+              : 'forgot_password_otp',
     })
 
     if (!mailSent.success) {

@@ -523,20 +523,21 @@ export default function OwnerSettingsPage() {
     }
     setIs2faSending(true)
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: user.email,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: window.location.origin + '/owner/settings',
-        },
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, purpose: 'login_verification' }),
       })
-      if (error) throw error
+      const result = await res.json()
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to send verification code')
+      }
       setToast({
-        message: 'A secure verification magic link has been sent to your registered email!',
+        message: 'A 2FA verification code has been sent to your registered email!',
         type: 'success',
       })
     } catch (e: any) {
-      setToast({ message: e.message || 'Failed to send verification link', type: 'error' })
+      setToast({ message: e.message || 'Failed to send verification code', type: 'error' })
     } finally {
       setIs2faSending(false)
     }
