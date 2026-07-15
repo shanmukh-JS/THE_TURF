@@ -11,7 +11,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:certify": "vitest run -c vitest.cert.config.ts",
-    "worker": "tsx --env-file=.env.local workers/index.ts",
+    "worker": "tsx workers/index.ts",
     "scheduler": "tsx scheduler/index.ts"
   },
   "dependencies": {

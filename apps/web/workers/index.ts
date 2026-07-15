@@ -1,3 +1,5 @@
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env.local' })
 import { connection } from './queues'
 import { settlementWorker } from './settlementWorker'
 import { payoutBatchWorker } from './payoutBatchWorker'
