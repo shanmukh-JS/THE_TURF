@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/useAuthStore'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -38,6 +39,7 @@ export function OwnerSidebar() {
   const router = useRouter()
   const { user, logout } = useAuthStore()
   const [isOpen, setIsOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const displayName = user?.fullName || user?.email?.split('@')[0] || 'Owner'
   const email = user?.email || ''
@@ -47,6 +49,38 @@ export function OwnerSidebar() {
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
+
+  // Fetch initial unread count and subscribe to real-time changes
+  useEffect(() => {
+    if (!user?.id) return
+
+    const supabase = createClient()
+
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+
+      if (count !== null) setUnreadCount(count)
+    }
+
+    fetchUnread()
+
+    const channel = supabase
+      .channel(`sidebar-notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => fetchUnread()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id])
 
   return (
     <>
@@ -106,7 +140,13 @@ export function OwnerSidebar() {
                   )}
                 />
                 <span>{label}</span>
-                {active && <ChevronRight className="ml-auto w-4 h-4 text-green-500/60" />}
+                {href === '/owner/notifications' && unreadCount > 0 ? (
+                  <span className="ml-auto bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.4)]">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                ) : (
+                  active && <ChevronRight className="ml-auto w-4 h-4 text-green-500/60" />
+                )}
               </Link>
             )
           })}
