@@ -39,7 +39,7 @@ cron.schedule('* * * * *', async () => {
         status,
         users ( name, phone, email ),
         venues ( name ),
-        slots!inner ( date, start_time, end_time, grounds ( name ) )
+        slots!inner ( date, start_time, end_time )
       `
       )
       .eq('status', 'CONFIRMED')
@@ -63,7 +63,6 @@ cron.schedule('* * * * *', async () => {
 
       const user = Array.isArray(booking.users) ? booking.users[0] : booking.users
       const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues
-      const ground = Array.isArray(slot.grounds) ? slot.grounds[0] : slot.grounds
 
       // If it starts in exactly 9, 10, or 11 minutes (giving a 3 min buffer for cron drift)
       if (diffMinutes >= 9 && diffMinutes <= 11) {
@@ -75,7 +74,6 @@ cron.schedule('* * * * *', async () => {
           email: user?.email,
           playerName: user?.name || 'Player',
           venueName: venue?.name || 'Truf Venue',
-          groundName: ground?.name || 'Ground',
           date: slot.date,
           timeSlot: `${slot.start_time} - ${slot.end_time}`,
           mapsUrl: `https://maps.google.com/?q=${encodeURIComponent(venue?.name || '')}`,
