@@ -142,7 +142,8 @@ export default function OwnerRevenuePage() {
         }
 
         const now = new Date()
-        const todayStr = now.toISOString().split('T')[0]
+        // Use IST (Asia/Kolkata) for date comparisons to avoid UTC midnight issues
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
         const weekAgo = new Date(now)
         weekAgo.setDate(weekAgo.getDate() - 7)
         const monthAgo = new Date(now)
@@ -176,12 +177,15 @@ export default function OwnerRevenuePage() {
             const currentVenueRev = venueRevMap.get(b.venue_id) || 0
             venueRevMap.set(b.venue_id, currentVenueRev + amount)
 
-            // Today
+            // Today — use created_at date (IST) as primary, slot.date as fallback
+            const createdDate = new Date(b.created_at)
+            const createdDateStr = createdDate.toLocaleDateString('en-CA', {
+              timeZone: 'Asia/Kolkata',
+            })
             const slotDate = slot?.date || ''
-            if (slotDate === todayStr) tRev += amount
+            if (createdDateStr === todayStr || slotDate === todayStr) tRev += amount
 
             // Weekly & Monthly
-            const createdDate = new Date(b.created_at)
             if (createdDate >= weekAgo) wRev += amount
             if (createdDate >= monthAgo) mRev += amount
 
@@ -199,7 +203,7 @@ export default function OwnerRevenuePage() {
 
             // Daily revenue (last 7 days)
             if (createdDate >= weekAgo) {
-              const dateKey = createdDate.toISOString().split('T')[0] as string
+              const dateKey = createdDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
               dailyRevMap.set(dateKey, (dailyRevMap.get(dateKey) || 0) + amount)
             }
           } else if (b.status === 'PENDING') {
@@ -268,7 +272,7 @@ export default function OwnerRevenuePage() {
         for (let i = 6; i >= 0; i--) {
           const d = new Date(now)
           d.setDate(d.getDate() - i)
-          const key = d.toISOString().split('T')[0] as string
+          const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
           spark.push(dailyRevMap.get(key) || 0)
         }
         setDailyRevenue(spark)

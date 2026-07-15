@@ -181,10 +181,11 @@ export default function OwnerDashboardPage() {
 
       // Compute stats
       const now = new Date()
-      const todayStr = now.toISOString().split('T')[0]
+      // Use IST (Asia/Kolkata) for date comparisons to avoid UTC midnight issues
+      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
       const yesterday = new Date(now)
       yesterday.setDate(yesterday.getDate() - 1)
-      const yesterdayStr = yesterday.toISOString().split('T')[0]
+      const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 
       let revSum = 0
       let yRevSum = 0
@@ -205,9 +206,15 @@ export default function OwnerDashboardPage() {
 
         const slot = b.slot && !Array.isArray(b.slot) ? b.slot : null
         const slotDate = slot?.date || ''
+        const createdDateStr = new Date(b.created_at).toLocaleDateString('en-CA', {
+          timeZone: 'Asia/Kolkata',
+        })
 
-        // Today's stats
-        if (slotDate === todayStr && (b.status === 'CONFIRMED' || b.status === 'COMPLETED')) {
+        // Today's stats — match by created_at date (IST) or slot date
+        if (
+          (createdDateStr === todayStr || slotDate === todayStr) &&
+          (b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+        ) {
           tBookCount++
           tRevSum += Number(b.total_amount)
 
@@ -222,7 +229,10 @@ export default function OwnerDashboardPage() {
         }
 
         // Yesterday's stats
-        if (slotDate === yesterdayStr && (b.status === 'CONFIRMED' || b.status === 'COMPLETED')) {
+        if (
+          (createdDateStr === yesterdayStr || slotDate === yesterdayStr) &&
+          (b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+        ) {
           yBookCount++
           yRevSum += Number(b.total_amount)
         }

@@ -126,7 +126,8 @@ export default function AdminDashboardPage() {
     setLoading(true)
 
     const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
+    // Use IST (Asia/Kolkata) for date comparisons to avoid UTC midnight issues
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
     const weekAgo = new Date(now)
     weekAgo.setDate(weekAgo.getDate() - 7)
     const monthAgo = new Date(now)
@@ -167,7 +168,9 @@ export default function AdminDashboardPage() {
       const ownerRegMap = new Map<string, number>()
 
       users.forEach((u) => {
-        const key = u.created_at?.split('T')[0] || ''
+        const key = u.created_at
+          ? new Date(u.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+          : ''
         if (u.role === 'CUSTOMER') playerRegMap.set(key, (playerRegMap.get(key) || 0) + 1)
         if (u.role === 'OWNER') ownerRegMap.set(key, (ownerRegMap.get(key) || 0) + 1)
       })
@@ -177,7 +180,7 @@ export default function AdminDashboardPage() {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now)
         d.setDate(d.getDate() - i)
-        const k = d.toISOString().split('T')[0] as string
+        const k = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
         pSpark.push(playerRegMap.get(k) || 0)
         oSpark.push(ownerRegMap.get(k) || 0)
       }
@@ -258,7 +261,10 @@ export default function AdminDashboardPage() {
 
           // Revenue timelines
           const createdDate = new Date(b.created_at)
-          if (dateStr === todayStr) {
+          const createdDateStr = createdDate.toLocaleDateString('en-CA', {
+            timeZone: 'Asia/Kolkata',
+          })
+          if (createdDateStr === todayStr || dateStr === todayStr) {
             tRev += amount
             todayB++
           }
@@ -267,7 +273,7 @@ export default function AdminDashboardPage() {
 
           // Sparklines
           if (createdDate >= weekAgo) {
-            const dateKey = createdDate.toISOString().split('T')[0] as string
+            const dateKey = createdDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
             dailyRevMap.set(dateKey, (dailyRevMap.get(dateKey) || 0) + amount)
             dailyBookMap.set(dateKey, (dailyBookMap.get(dateKey) || 0) + 1)
           }
@@ -290,7 +296,7 @@ export default function AdminDashboardPage() {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now)
         d.setDate(d.getDate() - i)
-        const k = d.toISOString().split('T')[0] as string
+        const k = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
         revSpark.push(dailyRevMap.get(k) || 0)
         bookSpark.push(dailyBookMap.get(k) || 0)
       }
