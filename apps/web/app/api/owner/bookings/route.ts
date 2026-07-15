@@ -73,8 +73,10 @@ export async function GET(request: NextRequest) {
 
     // Sort by slots date descending
     enhancedBookings.sort((a, b) => {
-      const dateA = a.slots && !Array.isArray(a.slots) ? new Date(a.slots.date).getTime() : 0
-      const dateB = b.slots && !Array.isArray(b.slots) ? new Date(b.slots.date).getTime() : 0
+      const dateA =
+        a.slots && !Array.isArray(a.slots) ? new Date((a.slots as any).date).getTime() : 0
+      const dateB =
+        b.slots && !Array.isArray(b.slots) ? new Date((b.slots as any).date).getTime() : 0
       return dateB - dateA
     })
 
