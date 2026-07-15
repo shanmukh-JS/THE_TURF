@@ -31,7 +31,7 @@ export default function AdminBookingsPage() {
   const [commissionPct, setCommissionPct] = useState(10)
 
   // Sorting
-  const [sortField, setSortField] = useState('created_at')
+  const [sortField, setSortField] = useState('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // Pagination
@@ -57,17 +57,14 @@ export default function AdminBookingsPage() {
 
   async function fetchBookings() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(
-        `
+    const { data, error } = await supabase.from('bookings').select(
+      `
         *,
         users(email),
         venues(name, owner_profiles(full_name)),
         slots(date, start_time, end_time)
       `
-      )
-      .order('created_at', { ascending: false })
+    )
 
     if (data) setBookings(data)
     setLoading(false)
@@ -158,9 +155,9 @@ export default function AdminBookingsPage() {
       let aVal = a[sortField]
       let bVal = b[sortField]
 
-      if (sortField === 'created_at') {
-        aVal = new Date(a.created_at).getTime()
-        bVal = new Date(b.created_at).getTime()
+      if (sortField === 'date') {
+        aVal = new Date(a.slots?.date || 0).getTime()
+        bVal = new Date(b.slots?.date || 0).getTime()
       }
 
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
@@ -357,9 +354,9 @@ export default function AdminBookingsPage() {
                   <th className="px-6 py-4">Turf Name</th>
                   <th
                     className="px-6 py-4 cursor-pointer select-none"
-                    onClick={() => handleSort('created_at')}
+                    onClick={() => handleSort('date')}
                   >
-                    Date {sortField === 'created_at' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                    Date {sortField === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
                   </th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Amount</th>
@@ -383,14 +380,9 @@ export default function AdminBookingsPage() {
                     </td>
                     <td className="px-6 py-4 text-gray-400 text-xs">
                       {b.slots?.date ? (
-                        <>
-                          <p className="text-white font-medium">{b.slots.date}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">
-                            Created: {new Date(b.created_at).toLocaleDateString()}
-                          </p>
-                        </>
+                        <p className="text-white font-medium">{b.slots.date}</p>
                       ) : (
-                        new Date(b.created_at).toLocaleDateString()
+                        'N/A'
                       )}
                     </td>
                     <td className="px-6 py-4">
