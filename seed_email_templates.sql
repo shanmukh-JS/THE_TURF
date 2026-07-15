@@ -38,8 +38,7 @@ INSERT INTO public.unified_notification_templates (event, subject, html_body, en
         <div class="row"><span class="label">Venue</span><span class="value">{{ venueName }}</span></div>
         <div class="row"><span class="label">Date</span><span class="value">{{ date }}</span></div>
         <div class="row"><span class="label">Time</span><span class="value">{{ timeSlot }}</span></div>
-        <div class="row"><span class="label">Duration</span><span class="value">{{ duration }}</span></div>
-        <div class="row"><span class="label">Amount Paid</span><span class="value" style="color:#10b981;">₹{{ paidAmount }}</span></div>
+        <div class="row"><span class="label">Amount Paid</span><span class="value" style="color:#10b981;">₹{{ amount }}</span></div>
       </div>
       
       <a href="{{ mapsUrl }}" class="btn">Navigate to Venue</a>
