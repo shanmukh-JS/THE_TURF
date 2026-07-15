@@ -146,6 +146,15 @@ export default function OwnerDashboardPage() {
         venuesData.filter((v) => v.verification_status === 'APPROVED').length || venuesData.length
       )
 
+      // Fetch platform commission percentage
+      const { data: settingsData } = await supabase
+        .from('admin_settings')
+        .select('commission_percentage')
+        .limit(1)
+        .maybeSingle()
+      const cPct = settingsData ? Number(settingsData.commission_percentage) : 10
+      const commissionMultiplier = 1 - cPct / 100 // e.g. 0.9 for 10%
+
       // 3. Get all bookings
       const { data: bookings } = await supabase
         .from('bookings')
@@ -201,7 +210,7 @@ export default function OwnerDashboardPage() {
         customers.add(b.customer_id)
 
         if (b.status === 'CONFIRMED' || b.status === 'COMPLETED') {
-          revSum += Number(b.total_amount)
+          revSum += Math.round(Number(b.total_amount) * commissionMultiplier * 100) / 100
         }
 
         const slot = b.slot && !Array.isArray(b.slot) ? b.slot : null
@@ -216,7 +225,7 @@ export default function OwnerDashboardPage() {
           (b.status === 'CONFIRMED' || b.status === 'COMPLETED')
         ) {
           tBookCount++
-          tRevSum += Number(b.total_amount)
+          tRevSum += Math.round(Number(b.total_amount) * commissionMultiplier * 100) / 100
 
           // Next booking
           if (slot?.start_time) {
@@ -234,7 +243,7 @@ export default function OwnerDashboardPage() {
           (b.status === 'CONFIRMED' || b.status === 'COMPLETED')
         ) {
           yBookCount++
-          yRevSum += Number(b.total_amount)
+          yRevSum += Math.round(Number(b.total_amount) * commissionMultiplier * 100) / 100
         }
 
         // Recent bookings (top 5)
@@ -258,7 +267,7 @@ export default function OwnerDashboardPage() {
             venue: b.venue && !Array.isArray(b.venue) ? b.venue.name : 'Unknown Venue',
             date: dateStr,
             time: timeStr,
-            amount: Number(b.total_amount),
+            amount: Math.round(Number(b.total_amount) * commissionMultiplier * 100) / 100,
             status: b.status || 'PENDING',
           })
         }

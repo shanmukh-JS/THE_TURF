@@ -36,6 +36,7 @@ export default function OwnerRevenuePage() {
   const [dailyRevenue, setDailyRevenue] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [venueIds, setVenueIds] = useState<string[]>([])
+  const [commissionPct, setCommissionPct] = useState(10) // default 10%
 
   useEffect(() => {
     async function fetchRevenue() {
@@ -48,6 +49,16 @@ export default function OwnerRevenuePage() {
         setLoading(false)
         return
       }
+
+      // Fetch platform commission percentage
+      const { data: settingsData } = await supabase
+        .from('admin_settings')
+        .select('commission_percentage')
+        .limit(1)
+        .maybeSingle()
+      const cPct = settingsData ? Number(settingsData.commission_percentage) : 10
+      setCommissionPct(cPct)
+      const commissionMultiplier = 1 - cPct / 100 // e.g. 0.9 for 10%
 
       const { data: userData } = await supabase
         .from('users')
@@ -170,12 +181,13 @@ export default function OwnerRevenuePage() {
           const amount = Number(b.total_amount)
 
           if (b.status === 'CONFIRMED' || b.status === 'COMPLETED') {
-            totalRev += amount
+            const netAmount = Math.round(amount * commissionMultiplier * 100) / 100
+            totalRev += netAmount
             confirmedCount++
 
             // Per venue
             const currentVenueRev = venueRevMap.get(b.venue_id) || 0
-            venueRevMap.set(b.venue_id, currentVenueRev + amount)
+            venueRevMap.set(b.venue_id, currentVenueRev + netAmount)
 
             // Today — use created_at date (IST) as primary, slot.date as fallback
             const createdDate = new Date(b.created_at)
@@ -183,11 +195,11 @@ export default function OwnerRevenuePage() {
               timeZone: 'Asia/Kolkata',
             })
             const slotDate = slot?.date || ''
-            if (createdDateStr === todayStr || slotDate === todayStr) tRev += amount
+            if (createdDateStr === todayStr || slotDate === todayStr) tRev += netAmount
 
             // Weekly & Monthly
-            if (createdDate >= weekAgo) wRev += amount
-            if (createdDate >= monthAgo) mRev += amount
+            if (createdDate >= weekAgo) wRev += netAmount
+            if (createdDate >= monthAgo) mRev += netAmount
 
             // Peak hour
             if (slot?.start_time) {
@@ -204,10 +216,10 @@ export default function OwnerRevenuePage() {
             // Daily revenue (last 7 days)
             if (createdDate >= weekAgo) {
               const dateKey = createdDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-              dailyRevMap.set(dateKey, (dailyRevMap.get(dateKey) || 0) + amount)
+              dailyRevMap.set(dateKey, (dailyRevMap.get(dateKey) || 0) + netAmount)
             }
           } else if (b.status === 'PENDING') {
-            pendingRev += amount
+            pendingRev += Math.round(amount * commissionMultiplier * 100) / 100
           }
         })
 
@@ -301,7 +313,7 @@ export default function OwnerRevenuePage() {
               venueName: venueMap.get(b.venue_id) || 'Unknown Venue',
               date: dateStr,
               time: timeStr,
-              amount: b.total_amount,
+              amount: Math.round(Number(b.total_amount) * commissionMultiplier * 100) / 100,
               status: b.status,
               type: b.status === 'PENDING' ? 'pending' : 'received',
             }
