@@ -3,6 +3,7 @@ import { emailQueue, inAppQueue, reminderQueue } from '../../../workers/queues'
 
 export type NotificationEvent =
   | 'BOOKING_CONFIRMED'
+  | 'NEW_BOOKING'
   | 'BOOKING_CANCELLED'
   | 'PAYMENT_SUCCESSFUL'
   | 'PAYMENT_FAILED'

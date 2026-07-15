@@ -219,6 +219,15 @@ export class BookingService {
         : ''
       const durationStr = slotRecord ? `${slotRecord.duration || 60} mins` : '60 mins'
 
+      const ownerProfile: any = Array.isArray(venueRecord?.owner_profiles)
+        ? venueRecord?.owner_profiles[0]
+        : venueRecord?.owner_profiles
+      const ownerUser: any = ownerProfile?.users
+        ? Array.isArray(ownerProfile.users)
+          ? ownerProfile.users[0]
+          : ownerProfile.users
+        : null
+
       await emitBookingConfirmedEvent({
         bookingId,
         userId: params.customerId,
@@ -231,8 +240,8 @@ export class BookingService {
         amount: params.advancePaid.toString(),
         qrToken: qrToken,
         email: userRecord?.email || '',
-        ownerId: venueRecord?.owner_profiles?.user_id || undefined,
-        ownerEmail: venueRecord?.owner_profiles?.users?.email || undefined,
+        ownerId: ownerProfile?.user_id,
+        ownerEmail: ownerUser?.email,
       })
 
       await notificationScheduler.scheduleBookingNotifications({
