@@ -38,304 +38,306 @@ export default function OwnerRevenuePage() {
   const [venueIds, setVenueIds] = useState<string[]>([])
   const [commissionPct, setCommissionPct] = useState(10) // default 10%
 
-  useEffect(() => {
-    async function fetchRevenue() {
-      setLoading(true)
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+  const fetchRevenue = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-      if (!user) {
-        setLoading(false)
-        return
-      }
-
-      // Fetch platform commission percentage
-      const { data: settingsData } = await supabase
-        .from('admin_settings')
-        .select('commission_percentage')
-        .limit(1)
-        .maybeSingle()
-      const cPct = settingsData ? Number(settingsData.commission_percentage) : 10
-      setCommissionPct(cPct)
-      const commissionMultiplier = 1 - cPct / 100 // e.g. 0.9 for 10%
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      const isAdmin = userData?.role === 'ADMIN'
-
-      let venues: any[] = []
-      if (isAdmin) {
-        const { data: allVenues } = await supabase.from('venues').select('id, name')
-        venues = allVenues || []
-      } else {
-        const { data: profile } = await supabase
-          .from('owner_profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single()
-
-        if (!profile) {
-          setLoading(false)
-          return
-        }
-
-        const { data: ownerVenues } = await supabase
-          .from('venues')
-          .select('id, name')
-          .eq('owner_id', profile.id)
-
-        venues = ownerVenues || []
-      }
-
-      if (venues.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      const vIds = venues.map((v) => v.id)
-      setVenueIds(vIds)
-      const venueMap = new Map(venues.map((v) => [v.id, v.name]))
-
-      const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select(
-          `
-          id, 
-          total_amount, 
-          status, 
-          customer_id,
-          venue_id,
-          created_at,
-          slots(date, start_time)
-        `
-        )
-        .in('venue_id', vIds)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching revenue data:', error)
-        setLoading(false)
-        return
-      }
-
-      if (bookings && bookings.length > 0) {
-        const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id)))
-
-        let customerMap = new Map<string, string>()
-        if (isAdmin) {
-          const { data: users } = await supabase
-            .from('users')
-            .select('id, email')
-            .in('id', customerIds as string[])
-          if (users) {
-            users.forEach((u) => customerMap.set(u.id, u.email.split('@')[0]))
-          }
-          const { data: cp } = await supabase
-            .from('customer_profiles')
-            .select('user_id, full_name')
-            .in('user_id', customerIds as string[])
-          if (cp) {
-            cp.forEach((p) => customerMap.set(p.user_id, p.full_name))
-          }
-        } else {
-          const { data: customerProfiles } = await supabase
-            .from('customer_profiles')
-            .select('user_id, full_name')
-            .in('user_id', customerIds as string[])
-          if (customerProfiles) {
-            customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
-          }
-        }
-
-        const now = new Date()
-        // Use IST (Asia/Kolkata) for date comparisons to avoid UTC midnight issues
-        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-        const weekAgo = new Date(now)
-        weekAgo.setDate(weekAgo.getDate() - 7)
-        const monthAgo = new Date(now)
-        monthAgo.setDate(monthAgo.getDate() - 30)
-
-        let totalRev = 0
-        let pendingRev = 0
-        let tRev = 0
-        let wRev = 0
-        let mRev = 0
-        let confirmedCount = 0
-
-        // Venue revenue tracker
-        const venueRevMap = new Map<string, number>()
-        // Hour tracker
-        const hourMap = new Map<number, number>()
-        // Day tracker
-        const dayMap = new Map<number, number>()
-        // Daily revenue for sparkline (last 7 days)
-        const dailyRevMap = new Map<string, number>()
-
-        bookings.forEach((b: any) => {
-          const slot = b.slots && !Array.isArray(b.slots) ? b.slots : null
-          const amount = Number(b.total_amount)
-
-          if (b.status === 'CONFIRMED' || b.status === 'COMPLETED') {
-            const netAmount = Math.round(amount * commissionMultiplier * 100) / 100
-            totalRev += netAmount
-            confirmedCount++
-
-            // Per venue
-            const currentVenueRev = venueRevMap.get(b.venue_id) || 0
-            venueRevMap.set(b.venue_id, currentVenueRev + netAmount)
-
-            // Today — use created_at date (IST) as primary, slot.date as fallback
-            const createdDate = new Date(b.created_at)
-            const createdDateStr = createdDate.toLocaleDateString('en-CA', {
-              timeZone: 'Asia/Kolkata',
-            })
-            const slotDate = slot?.date || ''
-            if (createdDateStr === todayStr || slotDate === todayStr) tRev += netAmount
-
-            // Weekly & Monthly
-            if (createdDate >= weekAgo) wRev += netAmount
-            if (createdDate >= monthAgo) mRev += netAmount
-
-            // Peak hour
-            if (slot?.start_time) {
-              const hour = new Date(slot.start_time).getHours()
-              hourMap.set(hour, (hourMap.get(hour) || 0) + 1)
-            }
-
-            // Peak day
-            if (slotDate) {
-              const dayOfWeek = new Date(slotDate).getDay()
-              dayMap.set(dayOfWeek, (dayMap.get(dayOfWeek) || 0) + 1)
-            }
-
-            // Daily revenue (last 7 days)
-            if (createdDate >= weekAgo) {
-              const dateKey = createdDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-              dailyRevMap.set(dateKey, (dailyRevMap.get(dateKey) || 0) + netAmount)
-            }
-          } else if (b.status === 'PENDING') {
-            pendingRev += Math.round(amount * commissionMultiplier * 100) / 100
-          }
-        })
-
-        setTotalRevenue(totalRev)
-        setPendingRevenue(pendingRev)
-        setTodayRevenue(tRev)
-        setWeeklyRevenue(wRev)
-        setMonthlyRevenue(mRev)
-        setAvgBookingValue(confirmedCount > 0 ? Math.round(totalRev / confirmedCount) : 0)
-
-        // Top venue
-        let maxRev = 0
-        let topVenueId = ''
-        venueRevMap.forEach((rev, vid) => {
-          if (rev > maxRev) {
-            maxRev = rev
-            topVenueId = vid
-          }
-        })
-        if (topVenueId) {
-          setTopVenue(venueMap.get(topVenueId) || null)
-          setTopVenueRevenue(maxRev)
-        }
-
-        // Peak hour
-        let maxHourCount = 0
-        let peakH = -1
-        hourMap.forEach((count, hour) => {
-          if (count > maxHourCount) {
-            maxHourCount = count
-            peakH = hour
-          }
-        })
-        if (peakH >= 0) {
-          const ampm = peakH >= 12 ? 'PM' : 'AM'
-          const h12 = peakH > 12 ? peakH - 12 : peakH === 0 ? 12 : peakH
-          setPeakHour(`${h12}:00 ${ampm}`)
-        }
-
-        // Peak day
-        const dayNames = [
-          'Sunday',
-          'Monday',
-          'Tuesday',
-          'Wednesday',
-          'Thursday',
-          'Friday',
-          'Saturday',
-        ]
-        let maxDayCount = 0
-        let peakD = -1
-        dayMap.forEach((count, day) => {
-          if (count > maxDayCount) {
-            maxDayCount = count
-            peakD = day
-          }
-        })
-        if (peakD >= 0) setPeakDay(dayNames[peakD] || null)
-
-        // Sparkline data (last 7 days)
-        const spark: number[] = []
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(now)
-          d.setDate(d.getDate() - i)
-          const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-          spark.push(dailyRevMap.get(key) || 0)
-        }
-        setDailyRevenue(spark)
-
-        // Transactions
-        const formattedTx = bookings
-          .filter(
-            (b) => b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'COMPLETED'
-          )
-          .slice(0, 15)
-          .map((b: any) => {
-            const dateStr = new Date(b.created_at).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
-            const timeStr = new Date(b.created_at).toLocaleTimeString('en-US', {
-              timeZone: 'Asia/Kolkata',
-              hour: 'numeric',
-              minute: '2-digit',
-            })
-
-            return {
-              id: b.id,
-              customerName: customerMap.get(b.customer_id) || 'Unknown Customer',
-              venueName: venueMap.get(b.venue_id) || 'Unknown Venue',
-              date: dateStr,
-              time: timeStr,
-              amount: Math.round(Number(b.total_amount) * commissionMultiplier * 100) / 100,
-              status: b.status,
-              type: b.status === 'PENDING' ? 'pending' : 'received',
-            }
-          })
-
-        setTransactions(formattedTx)
-      }
-
+    if (!user) {
       setLoading(false)
+      return
     }
 
+    // Fetch platform commission percentage
+    const { data: settingsData } = await supabase
+      .from('admin_settings')
+      .select('commission_percentage')
+      .limit(1)
+      .maybeSingle()
+    const cPct = settingsData ? Number(settingsData.commission_percentage) : 10
+    setCommissionPct(cPct)
+    const commissionMultiplier = 1 - cPct / 100 // e.g. 0.9 for 10%
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const isAdmin = userData?.role === 'ADMIN'
+
+    let venues: any[] = []
+    if (isAdmin) {
+      const { data: allVenues } = await supabase.from('venues').select('id, name')
+      venues = allVenues || []
+    } else {
+      const { data: profile } = await supabase
+        .from('owner_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!profile) {
+        setLoading(false)
+        return
+      }
+
+      const { data: ownerVenues } = await supabase
+        .from('venues')
+        .select('id, name')
+        .eq('owner_id', profile.id)
+
+      venues = ownerVenues || []
+    }
+
+    if (venues.length === 0) {
+      setLoading(false)
+      return
+    }
+
+    const vIds = venues.map((v) => v.id)
+    setVenueIds(vIds)
+    const venueMap = new Map(venues.map((v) => [v.id, v.name]))
+
+    const { data: bookings, error } = await supabase
+      .from('bookings')
+      .select(
+        `
+        id, 
+        total_amount, 
+        status, 
+        customer_id,
+        venue_id,
+        created_at,
+        slots(date, start_time)
+      `
+      )
+      .in('venue_id', vIds)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching revenue data:', error)
+      setLoading(false)
+      return
+    }
+
+    if (bookings && bookings.length > 0) {
+      const customerIds = Array.from(new Set(bookings.map((b) => b.customer_id)))
+
+      let customerMap = new Map<string, string>()
+      if (isAdmin) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, email')
+          .in('id', customerIds as string[])
+        if (users) {
+          users.forEach((u) => customerMap.set(u.id, u.email.split('@')[0]))
+        }
+        const { data: cp } = await supabase
+          .from('customer_profiles')
+          .select('user_id, full_name')
+          .in('user_id', customerIds as string[])
+        if (cp) {
+          cp.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        }
+      } else {
+        const { data: customerProfiles } = await supabase
+          .from('customer_profiles')
+          .select('user_id, full_name')
+          .in('user_id', customerIds as string[])
+        if (customerProfiles) {
+          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+        }
+      }
+
+      const now = new Date()
+      // Use IST (Asia/Kolkata) for date comparisons to avoid UTC midnight issues
+      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      const weekAgo = new Date(now)
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      const monthAgo = new Date(now)
+      monthAgo.setDate(monthAgo.getDate() - 30)
+
+      let totalRev = 0
+      let pendingRev = 0
+      let tRev = 0
+      let wRev = 0
+      let mRev = 0
+      let confirmedCount = 0
+
+      // Venue revenue tracker
+      const venueRevMap = new Map<string, number>()
+      // Hour tracker
+      const hourMap = new Map<number, number>()
+      // Day tracker
+      const dayMap = new Map<number, number>()
+      // Daily revenue for sparkline (last 7 days)
+      const dailyRevMap = new Map<string, number>()
+
+      bookings.forEach((b: any) => {
+        const slot = b.slots && !Array.isArray(b.slots) ? b.slots : null
+        const amount = Number(b.total_amount)
+
+        if (b.status === 'CONFIRMED' || b.status === 'COMPLETED') {
+          const netAmount = Math.round(amount * commissionMultiplier * 100) / 100
+          totalRev += netAmount
+          confirmedCount++
+
+          // Per venue
+          const currentVenueRev = venueRevMap.get(b.venue_id) || 0
+          venueRevMap.set(b.venue_id, currentVenueRev + netAmount)
+
+          // Today — use created_at date (IST) as primary, slot.date as fallback
+          const createdDate = new Date(b.created_at)
+          const createdDateStr = createdDate.toLocaleDateString('en-CA', {
+            timeZone: 'Asia/Kolkata',
+          })
+          const slotDate = slot?.date || ''
+          if (createdDateStr === todayStr || slotDate === todayStr) tRev += netAmount
+
+          // Weekly & Monthly
+          if (createdDate >= weekAgo) wRev += netAmount
+          if (createdDate >= monthAgo) mRev += netAmount
+
+          // Peak hour
+          if (slot?.start_time) {
+            const hour = new Date(slot.start_time).getHours()
+            hourMap.set(hour, (hourMap.get(hour) || 0) + 1)
+          }
+
+          // Peak day
+          if (slotDate) {
+            const dayOfWeek = new Date(slotDate).getDay()
+            dayMap.set(dayOfWeek, (dayMap.get(dayOfWeek) || 0) + 1)
+          }
+
+          // Daily revenue (last 7 days)
+          if (createdDate >= weekAgo) {
+            const dateKey = createdDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+            dailyRevMap.set(dateKey, (dailyRevMap.get(dateKey) || 0) + netAmount)
+          }
+        } else if (b.status === 'PENDING') {
+          pendingRev += Math.round(amount * commissionMultiplier * 100) / 100
+        }
+      })
+
+      setTotalRevenue(totalRev)
+      setPendingRevenue(pendingRev)
+      setTodayRevenue(tRev)
+      setWeeklyRevenue(wRev)
+      setMonthlyRevenue(mRev)
+      setAvgBookingValue(confirmedCount > 0 ? Math.round(totalRev / confirmedCount) : 0)
+
+      // Top venue
+      let maxRev = 0
+      let topVenueId = ''
+      venueRevMap.forEach((rev, vid) => {
+        if (rev > maxRev) {
+          maxRev = rev
+          topVenueId = vid
+        }
+      })
+      if (topVenueId) {
+        setTopVenue(venueMap.get(topVenueId) || null)
+        setTopVenueRevenue(maxRev)
+      }
+
+      // Peak hour
+      let maxHourCount = 0
+      let peakH = -1
+      hourMap.forEach((count, hour) => {
+        if (count > maxHourCount) {
+          maxHourCount = count
+          peakH = hour
+        }
+      })
+      if (peakH >= 0) {
+        const ampm = peakH >= 12 ? 'PM' : 'AM'
+        const h12 = peakH > 12 ? peakH - 12 : peakH === 0 ? 12 : peakH
+        setPeakHour(`${h12}:00 ${ampm}`)
+      }
+
+      // Peak day
+      const dayNames = [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ]
+      let maxDayCount = 0
+      let peakD = -1
+      dayMap.forEach((count, day) => {
+        if (count > maxDayCount) {
+          maxDayCount = count
+          peakD = day
+        }
+      })
+      if (peakD >= 0) setPeakDay(dayNames[peakD] || null)
+
+      // Sparkline data (last 7 days)
+      const spark: number[] = []
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now)
+        d.setDate(d.getDate() - i)
+        const key = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+        spark.push(dailyRevMap.get(key) || 0)
+      }
+      setDailyRevenue(spark)
+
+      // Transactions
+      const formattedTx = bookings
+        .filter(
+          (b) => b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'COMPLETED'
+        )
+        .slice(0, 15)
+        .map((b: any) => {
+          const dateStr = new Date(b.created_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+          const timeStr = new Date(b.created_at).toLocaleTimeString('en-US', {
+            timeZone: 'Asia/Kolkata',
+            hour: 'numeric',
+            minute: '2-digit',
+          })
+
+          return {
+            id: b.id,
+            customerName: customerMap.get(b.customer_id) || 'Unknown Customer',
+            venueName: venueMap.get(b.venue_id) || 'Unknown Venue',
+            date: dateStr,
+            time: timeStr,
+            amount: Math.round(Number(b.total_amount) * commissionMultiplier * 100) / 100,
+            status: b.status,
+            type: b.status === 'PENDING' ? 'pending' : 'received',
+          }
+        })
+
+      setTransactions(formattedTx)
+    }
+
+    setLoading(false)
+  }
+
+  useEffect(() => {
     fetchRevenue()
   }, [])
 
-  // Real-time
+  // Real-time — smooth re-fetch without page reload
   useEffect(() => {
     if (venueIds.length === 0) return
     const channel = supabase
       .channel('owner-revenue-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-        // Re-fetch on changes
-        window.location.reload()
+        fetchRevenue()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => {
+        fetchRevenue()
       })
       .subscribe()
     return () => {
