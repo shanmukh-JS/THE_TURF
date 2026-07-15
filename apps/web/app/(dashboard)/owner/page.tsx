@@ -361,10 +361,8 @@ export default function OwnerDashboardPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () =>
         fetchDashboardData()
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'slots', filter: `owner_id=eq.${ownerProfileId}` },
-        () => fetchDashboardData()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () =>
+        fetchDashboardData()
       )
       .subscribe()
 

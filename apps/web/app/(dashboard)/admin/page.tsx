@@ -122,8 +122,8 @@ export default function AdminDashboardPage() {
   // Reports
   const [pendingReportsCount, setPendingReportsCount] = useState(0)
 
-  const fetchAdminStats = async () => {
-    setLoading(true)
+  const fetchAdminStats = async (isRealtimeUpdate = false) => {
+    if (!isRealtimeUpdate) setLoading(true)
 
     const now = new Date()
     // Use IST (Asia/Kolkata) for date comparisons to avoid UTC midnight issues
@@ -368,13 +368,13 @@ export default function AdminDashboardPage() {
     const channel = supabase
       .channel('admin-dashboard-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () =>
-        fetchAdminStats()
+        fetchAdminStats(true)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () =>
-        fetchAdminStats()
+        fetchAdminStats(true)
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'venues' }, () =>
-        fetchAdminStats()
+        fetchAdminStats(true)
       )
       .subscribe()
 

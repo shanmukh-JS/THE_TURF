@@ -38,8 +38,8 @@ export default function OwnerRevenuePage() {
   const [venueIds, setVenueIds] = useState<string[]>([])
   const [commissionPct, setCommissionPct] = useState(10) // default 10%
 
-  const fetchRevenue = async () => {
-    setLoading(true)
+  const fetchRevenue = async (isRealtimeUpdate = false) => {
+    if (!isRealtimeUpdate) setLoading(true)
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -334,10 +334,10 @@ export default function OwnerRevenuePage() {
     const channel = supabase
       .channel('owner-revenue-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-        fetchRevenue()
+        fetchRevenue(true)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => {
-        fetchRevenue()
+        fetchRevenue(true)
       })
       .subscribe()
     return () => {
