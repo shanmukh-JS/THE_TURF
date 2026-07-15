@@ -7,6 +7,7 @@ import { reconciliationWorker } from './reconciliationWorker'
 import { ownerPayableWorker } from './ownerPayableWorker'
 
 import * as http from 'http'
+import './cron'
 
 console.log('🚀 Starting TRUF Gaming BullMQ Background Workers...')
 
@@ -21,7 +22,19 @@ http
     console.log(`✅ Dummy HTTP server listening on port ${PORT} to keep Render happy`)
   })
 
-const workers = [settlementWorker, payoutBatchWorker, reconciliationWorker, ownerPayableWorker]
+import { emailWorker } from './emailWorker'
+import { inAppWorker } from './inAppWorker'
+import { reminderWorker } from './reminderWorker'
+
+const workers = [
+  settlementWorker,
+  payoutBatchWorker,
+  reconciliationWorker,
+  ownerPayableWorker,
+  emailWorker,
+  inAppWorker,
+  reminderWorker,
+]
 
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`)

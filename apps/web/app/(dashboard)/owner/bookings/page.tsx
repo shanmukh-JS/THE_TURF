@@ -90,72 +90,58 @@ export default function OwnerBookingsPage() {
     profile = existingProfile
     setOwnerProfileId(profile.id)
 
-    // Fetch bookings joined with customer_profiles and venues
-    const { data: bookingsData, error } = await supabase
-      .from('bookings')
-      .select(
-        `
-        id, 
-        total_amount, 
-        status, 
-        customer_id,
-        venue_id,
-        created_at,
-        slot_id,
-        slots(date, start_time),
-        venues!inner(name, owner_id),
-        customer_profiles(full_name)
-      `
-      )
-      .eq('venues.owner_id', profile.id)
-      .order('created_at', { ascending: false })
+    // Fetch bookings using our API route to bypass RLS issues
+    try {
+      const res = await fetch('/api/owner/bookings')
+      if (!res.ok) throw new Error('Failed to fetch bookings')
+      const data = await res.json()
 
-    if (error) {
-      console.error('Error fetching bookings:', error)
-      setLoading(false)
-      return
-    }
+      const bookingsData = data.bookings
 
-    if (bookingsData && bookingsData.length > 0) {
-      const vIds = Array.from(new Set(bookingsData.map((b: any) => b.venue_id)))
-      setVenueIds(vIds)
+      if (bookingsData && bookingsData.length > 0) {
+        const vIds = Array.from(new Set(bookingsData.map((b: any) => b.venue_id))) as string[]
+        setVenueIds(vIds)
 
-      const formatted = bookingsData.map((b: any) => {
-        const slot = b.slots && !Array.isArray(b.slots) ? b.slots : null
-        let dateStr = 'N/A'
-        let timeStr = 'N/A'
+        const formatted = bookingsData.map((b: any) => {
+          const slot = b.slots && !Array.isArray(b.slots) ? b.slots : null
+          let dateStr = 'N/A'
+          let timeStr = 'N/A'
 
-        if (slot) {
-          const d = new Date(slot.date)
-          dateStr = d.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-          })
-          if (slot.start_time) {
-            timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
-              timeZone: 'Asia/Kolkata',
-              hour: 'numeric',
-              minute: '2-digit',
+          if (slot) {
+            const d = new Date(slot.date)
+            dateStr = d.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
             })
+            if (slot.start_time) {
+              timeStr = new Date(slot.start_time).toLocaleTimeString('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour: 'numeric',
+                minute: '2-digit',
+              })
+            }
           }
-        }
 
-        return {
-          id: b.id,
-          customerName: b.customer_profiles?.full_name || 'Unknown Customer',
-          customerId: b.customer_id,
-          venueName: b.venues?.name || 'Unknown Venue',
-          venueId: b.venue_id,
-          date: dateStr,
-          time: timeStr,
-          amount: b.total_amount,
-          status: b.status || 'PENDING',
-          createdAt: b.created_at,
-        }
-      })
+          return {
+            id: b.id,
+            customerName: b.customer_profiles?.full_name || 'Unknown Customer',
+            customerId: b.customer_id,
+            venueName: b.venues?.name || 'Unknown Venue',
+            venueId: b.venue_id,
+            date: dateStr,
+            time: timeStr,
+            amount: b.total_amount,
+            status: b.status || 'PENDING',
+            createdAt: b.created_at,
+          }
+        })
 
-      setBookings(formatted)
+        setBookings(formatted)
+      }
+    } catch (err: any) {
+      console.error('Error fetching bookings:', err)
+      setToast({ message: 'Failed to load bookings', type: 'error' })
     }
 
     setLoading(false)

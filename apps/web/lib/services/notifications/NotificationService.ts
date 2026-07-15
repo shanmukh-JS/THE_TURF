@@ -1,89 +1,61 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { providerRouter } from './providers/ProviderRouter'
-import { NotificationPayload } from './providers/NotificationProvider'
+import { emailQueue, inAppQueue, reminderQueue } from '../../../workers/queues'
+
+export type NotificationEvent =
+  | 'BOOKING_CONFIRMED'
+  | 'BOOKING_CANCELLED'
+  | 'PAYMENT_SUCCESSFUL'
+  | 'PAYMENT_FAILED'
+  | 'BOOKING_EXPIRED'
+  | 'BOOKING_REMINDER_10_MIN'
+
+export interface EventPayload {
+  bookingId?: string
+  userId?: string
+  ownerId?: string
+  venueId?: string
+  [key: string]: any
+}
 
 export class NotificationService {
   /**
-   * Dispatches a notification payload by routing it through active providers,
-   * logging the attempt, verifying signature constraints, and tracking retry events.
+   * Publishes a domain event. The service decides which channels to route to
+   * based on preferences, and pushes jobs to the appropriate BullMQ queues.
    */
-  async dispatch(payload: NotificationPayload): Promise<{ success: boolean; error?: string }> {
+  async publishEvent(event: NotificationEvent, payload: EventPayload): Promise<void> {
     const supabase = createAdminClient()
-    const startTime = Date.now()
 
-    // 1. Create a notification record in public.notifications
-    const { data: record, error: createError } = await supabase
-      .from('notifications')
-      .insert({
-        user_id: payload.userId || null,
-        booking_id: payload.bookingId || null,
-        type: payload.type,
-        status: 'QUEUED',
-        recipient: payload.recipient,
-        payload: payload,
-        retry_count: 0,
-      })
-      .select('id')
-      .single()
+    // Default channels for Phase 1 MVP
+    const channels: ('EMAIL' | 'IN_APP')[] = ['EMAIL', 'IN_APP']
 
-    if (createError || !record) {
-      console.error('Failed to create database notification audit record:', createError?.message)
-      return { success: false, error: createError?.message || 'Database insert failed' }
-    }
-
-    const notificationId = record.id
-
-    try {
-      // 2. Mark state as SENDING
-      await supabase.from('notifications').update({ status: 'SENDING' }).eq('id', notificationId)
-
-      // 3. Dispatch to Router (which handles failovers)
-      const result = await providerRouter.send(payload)
-
-      const executionTime = Date.now() - startTime
-
-      // 4. Log provider response
-      await supabase.from('notification_logs').insert({
-        notification_id: notificationId,
-        action: 'SEND_ATTEMPT_COMPLETE',
-        request_payload: payload,
-        response_payload: result,
-        http_status: result.success ? 200 : 500,
-        execution_time_ms: executionTime,
-      })
-
-      // 5. Update parent record status
-      await supabase
-        .from('notifications')
-        .update({
-          status: result.success ? 'SENT' : 'FAILED',
-          provider: result.provider,
-          sent_at: result.success ? new Date().toISOString() : null,
-          error_message: result.success ? null : result.error || 'Delivery failed',
+    for (const channel of channels) {
+      // 1. Create the central truth record in notification_events
+      const { data: record, error } = await supabase
+        .from('notification_events')
+        .insert({
+          event,
+          channel,
+          booking_id: payload.bookingId || null,
+          user_id: payload.userId || null,
+          payload,
+          status: 'QUEUED',
         })
-        .eq('id', notificationId)
+        .select('id')
+        .single()
 
-      return { success: result.success, error: result.error }
-    } catch (e: any) {
-      const executionTime = Date.now() - startTime
+      if (error || !record) {
+        console.error(`[NotificationService] Failed to create event record:`, error)
+        continue
+      }
 
-      await supabase.from('notification_logs').insert({
-        notification_id: notificationId,
-        action: 'SEND_ATTEMPT_CRASH',
-        error_stack: e.stack || e.message,
-        http_status: 500,
-        execution_time_ms: executionTime,
-      })
+      const jobId = record.id
 
-      await supabase
-        .from('notifications')
-        .update({
-          status: 'FAILED',
-          error_message: e.message || 'Fatal execution error',
-        })
-        .eq('id', notificationId)
-
-      return { success: false, error: e.message }
+      // 2. Push to the correct BullMQ Queue
+      if (channel === 'EMAIL') {
+        await emailQueue.add(event, { notificationId: jobId, payload }, { jobId })
+      } else if (channel === 'IN_APP') {
+        await inAppQueue.add(event, { notificationId: jobId, payload }, { jobId })
+      }
     }
   }
 }

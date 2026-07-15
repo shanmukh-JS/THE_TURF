@@ -55,24 +55,24 @@ export class OutboxProcessor {
           // Dev Fallback Mode: process synchronously
           console.log(`[OutboxProcessor] Fallback: processing event ${event.id} synchronously.`)
 
-          const result = await notificationService.dispatch({
-            recipient: payload.recipient || payload.phone || '',
-            type: event.event_type.split('.')[0],
-            templateName: payload.templateName || event.event_type.split('.')[0],
-            variables: payload.variables || {},
-            bookingId: payload.bookingId,
-            userId: payload.userId,
-            idempotencyKey: event.idempotency_key,
-          })
+          /* LEGACY SYNC DISPATCH REMOVED - Outbox is deprecated for direct EventBus */
+          // const result = await notificationService.publishEvent({
+          //   recipient: payload.recipient || payload.phone || '',
+          //   type: event.event_type.split('.')[0],
+          //   templateName: payload.templateName || event.event_type.split('.')[0],
+          //   variables: payload.variables || {},
+          //   bookingId: payload.bookingId,
+          //   userId: payload.userId,
+          //   idempotencyKey: event.idempotency_key,
+          // })
 
-          if (!result.success) {
-            // Rollback status to PENDING or mark as FAILED
-            await supabase
-              .from('notification_outbox')
-              .update({ status: 'FAILED' })
-              .eq('id', event.id)
-            console.error(`[OutboxProcessor] Fallback processing failed:`, result.error)
-          }
+          // if (!result.success) {
+          //   await supabase
+          //     .from('notification_outbox')
+          //     .update({ status: 'FAILED' })
+          //     .eq('id', event.id)
+          //   console.error(`[OutboxProcessor] Fallback processing failed:`, result.error)
+          // }
         }
       } catch (e: any) {
         console.error(`[OutboxProcessor] Crash on outbox record ${event.id}:`, e.message)

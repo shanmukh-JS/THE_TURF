@@ -43,27 +43,26 @@ export async function emitBookingConfirmedEvent(params: {
   qrToken: string
   email: string
 }) {
-  return globalEventBus.publish({
-    eventType: 'booking.confirmed',
-    version: 1,
+  // Use the new Unified Notification Service directly (bypassing legacy outbox)
+  const { notificationService } = await import('@/lib/services/notifications/NotificationService')
+
+  await notificationService.publishEvent('BOOKING_CONFIRMED', {
     bookingId: params.bookingId,
     userId: params.userId,
-    payload: {
-      recipient: params.phone,
-      templateName: 'booking_confirm',
-      variables: {
-        Player: params.fullName,
-        Venue: params.venueName,
-        Date: params.date,
-        Time: params.time,
-        Duration: params.duration,
-        BookingId: params.bookingId.substring(0, 8).toUpperCase(),
-        Amount: params.amount,
-        QrToken: params.qrToken,
-        Email: params.email,
-      },
-    },
+    recipient: params.phone,
+    email: params.email,
+    playerName: params.fullName,
+    venueName: params.venueName,
+    date: params.date,
+    timeSlot: `${params.time} (${params.duration})`,
+    amount: params.amount,
+    qrToken: params.qrToken,
+    mapsUrl: `https://maps.google.com/?q=${encodeURIComponent(params.venueName)}`,
   })
+
+  // Optionally keep publishing to globalEventBus for other non-notification systems if needed,
+  // but Notifications are now fully handled directly via BullMQ queue.
+  return { success: true }
 }
 
 /**
@@ -78,22 +77,20 @@ export async function emitBookingCancelledEvent(params: {
   amount: string
   reason: string
 }) {
-  return globalEventBus.publish({
-    eventType: 'booking.cancelled',
-    version: 1,
+  // Use the new Unified Notification Service directly
+  const { notificationService } = await import('@/lib/services/notifications/NotificationService')
+
+  await notificationService.publishEvent('BOOKING_CANCELLED', {
     bookingId: params.bookingId,
     userId: params.userId,
-    payload: {
-      recipient: params.phone,
-      templateName: 'booking_cancel',
-      variables: {
-        Player: params.fullName,
-        Venue: params.venueName,
-        Amount: params.amount,
-        Reason: params.reason,
-      },
-    },
+    recipient: params.phone,
+    playerName: params.fullName,
+    venueName: params.venueName,
+    amount: params.amount,
+    reason: params.reason,
   })
+
+  return { success: true }
 }
 
 /**

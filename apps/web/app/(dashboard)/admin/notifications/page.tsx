@@ -38,7 +38,7 @@ export default function AdminNotificationsPage() {
     try {
       // 1. Fetch parent notification audit records
       const { data, error } = await supabase
-        .from('notifications')
+        .from('notification_events')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100)
@@ -52,9 +52,8 @@ export default function AdminNotificationsPage() {
         const stats = { queued: 0, sending: 0, sent: 0, failed: 0 }
         data.forEach((item) => {
           if (item.status === 'QUEUED') stats.queued++
-          else if (item.status === 'SENDING') stats.sending++
-          else if (item.status === 'SENT' || item.status === 'DELIVERED' || item.status === 'READ')
-            stats.sent++
+          else if (item.status === 'PROCESSING') stats.sending++
+          else if (item.status === 'DELIVERED' || item.status === 'READ') stats.sent++
           else if (item.status === 'FAILED') stats.failed++
         })
         setSummary(stats)
@@ -70,12 +69,14 @@ export default function AdminNotificationsPage() {
     fetchLogs()
   }, [])
 
-  const filteredLogs = logs.filter(
-    (log) =>
-      log.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredLogs = logs.filter((log) => {
+    const recipient = log.payload?.email || log.payload?.phone || 'N/A'
+    return (
+      recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.event.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.provider && log.provider.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+    )
+  })
 
   return (
     <DashboardAnimationWrapper className="p-8 space-y-8 bg-[#060d06] min-h-screen text-white">
@@ -83,8 +84,7 @@ export default function AdminNotificationsPage() {
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Notification Logs & Audits</h1>
           <p className="text-gray-400 text-xs mt-1">
-            Monitor real-time delivery status, meta callbacks, Twilio SMS fallbacks, and queue
-            diagnostics.
+            Monitor real-time delivery status, queue diagnostics, and in-app event history.
           </p>
         </div>
         <button
@@ -105,19 +105,19 @@ export default function AdminNotificationsPage() {
         </div>
         <div className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-4 flex flex-col justify-between">
           <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-bold">
-            Sending
+            Processing
           </span>
           <span className="text-2xl font-extrabold text-yellow-400 mt-2">{summary.sending}</span>
         </div>
         <div className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-4 flex flex-col justify-between">
           <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-bold">
-            Successfully Sent
+            Delivered
           </span>
           <span className="text-2xl font-extrabold text-green-400 mt-2">{summary.sent}</span>
         </div>
         <div className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-4 flex flex-col justify-between">
           <span className="text-[10px] text-gray-500 block uppercase tracking-wider font-bold">
-            Failed / DLQ Alerts
+            Failed
           </span>
           <span className="text-2xl font-extrabold text-red-400 mt-2">{summary.failed}</span>
         </div>
@@ -131,7 +131,7 @@ export default function AdminNotificationsPage() {
             <Search className="w-4 h-4 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by recipient phone, channel type, or provider..."
+              placeholder="Search by recipient, event type, or provider..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white/5 border border-white/8 rounded-xl pl-11 pr-4 py-2.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-green-500/40"
@@ -156,12 +156,12 @@ export default function AdminNotificationsPage() {
                   <th className="pb-3 font-semibold uppercase tracking-wider text-[10px]">
                     Recipient
                   </th>
-                  <th className="pb-3 font-semibold uppercase tracking-wider text-[10px]">Type</th>
+                  <th className="pb-3 font-semibold uppercase tracking-wider text-[10px]">
+                    Channel
+                  </th>
+                  <th className="pb-3 font-semibold uppercase tracking-wider text-[10px]">Event</th>
                   <th className="pb-3 font-semibold uppercase tracking-wider text-[10px]">
                     Status
-                  </th>
-                  <th className="pb-3 font-semibold uppercase tracking-wider text-[10px]">
-                    Provider
                   </th>
                   <th className="pb-3 font-semibold uppercase tracking-wider text-[10px] text-right">
                     Details
@@ -174,14 +174,15 @@ export default function AdminNotificationsPage() {
                     <td className="py-4 text-gray-400 font-mono text-[10px]">
                       {new Date(log.created_at).toLocaleString()}
                     </td>
-                    <td className="py-4 font-mono font-medium text-white">{log.recipient}</td>
-                    <td className="py-4 text-gray-300 font-medium">{log.type}</td>
+                    <td className="py-4 font-mono font-medium text-white">
+                      {log.payload?.email || log.payload?.phone || 'N/A'}
+                    </td>
+                    <td className="py-4 text-gray-300 font-medium">{log.channel}</td>
+                    <td className="py-4 text-gray-400">{log.event}</td>
                     <td className="py-4">
                       <span
                         className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                          log.status === 'SENT' ||
-                          log.status === 'DELIVERED' ||
-                          log.status === 'READ'
+                          log.status === 'DELIVERED' || log.status === 'READ'
                             ? 'bg-green-500/10 text-green-400'
                             : log.status === 'FAILED'
                               ? 'bg-red-500/10 text-red-400 font-bold'
@@ -190,9 +191,6 @@ export default function AdminNotificationsPage() {
                       >
                         {log.status}
                       </span>
-                    </td>
-                    <td className="py-4 text-gray-400 uppercase text-[10px]">
-                      {log.provider || 'None'}
                     </td>
                     <td className="py-4 text-right">
                       <button
@@ -218,7 +216,7 @@ export default function AdminNotificationsPage() {
               <div>
                 <h3 className="font-extrabold text-base">Payload Inspector</h3>
                 <span className="text-[10px] text-gray-500 font-mono">
-                  Job ID: {selectedLog.id}
+                  Log ID: {selectedLog.id}
                 </span>
               </div>
               <button
@@ -233,10 +231,10 @@ export default function AdminNotificationsPage() {
               <div className="grid grid-cols-2 gap-4 border-b border-white/5 pb-4">
                 <div>
                   <span className="text-gray-500 uppercase tracking-wider text-[9px] block">
-                    Attempt Count
+                    Message ID
                   </span>
                   <span className="text-white font-medium">
-                    {selectedLog.retry_count || 0} attempts
+                    {selectedLog.provider_message_id || 'N/A'}
                   </span>
                 </div>
                 <div>
@@ -244,7 +242,7 @@ export default function AdminNotificationsPage() {
                     Error Message
                   </span>
                   <span className="text-red-400 font-mono text-[10px]">
-                    {selectedLog.error_message || 'None'}
+                    {selectedLog.error_text || 'None'}
                   </span>
                 </div>
               </div>

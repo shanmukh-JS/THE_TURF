@@ -27,6 +27,9 @@ export const QUEUES = {
   RECONCILIATION: 'reconciliation.queue',
   OWNER_PAYABLE: 'owner-payable.queue',
   DEAD_LETTER: 'dead-letter.queue',
+  EMAIL: 'email.queue',
+  IN_APP: 'in-app.queue',
+  REMINDER: 'reminder.queue',
 }
 
 // Initialize Queues
@@ -38,12 +41,18 @@ export const reconciliationQueue = new Queue(QUEUES.RECONCILIATION, {
 })
 export const ownerPayableQueue = new Queue(QUEUES.OWNER_PAYABLE, { connection, defaultJobOptions })
 export const deadLetterQueue = new Queue(QUEUES.DEAD_LETTER, { connection })
+export const emailQueue = new Queue(QUEUES.EMAIL, { connection, defaultJobOptions })
+export const inAppQueue = new Queue(QUEUES.IN_APP, { connection, defaultJobOptions })
+export const reminderQueue = new Queue(QUEUES.REMINDER, { connection, defaultJobOptions })
 
 // 4. Queue Events for Observability
 export const settlementQueueEvents = new QueueEvents(QUEUES.SETTLEMENT, { connection })
 export const payoutQueueEvents = new QueueEvents(QUEUES.PAYOUT, { connection })
 export const reconciliationQueueEvents = new QueueEvents(QUEUES.RECONCILIATION, { connection })
 export const ownerPayableQueueEvents = new QueueEvents(QUEUES.OWNER_PAYABLE, { connection })
+export const emailQueueEvents = new QueueEvents(QUEUES.EMAIL, { connection })
+export const inAppQueueEvents = new QueueEvents(QUEUES.IN_APP, { connection })
+export const reminderQueueEvents = new QueueEvents(QUEUES.REMINDER, { connection })
 
 // Example logger attachment (Can be extended into a real logger)
 ;[
@@ -51,6 +60,9 @@ export const ownerPayableQueueEvents = new QueueEvents(QUEUES.OWNER_PAYABLE, { c
   payoutQueueEvents,
   reconciliationQueueEvents,
   ownerPayableQueueEvents,
+  emailQueueEvents,
+  inAppQueueEvents,
+  reminderQueueEvents,
 ].forEach((events) => {
   events.on('completed', ({ jobId, returnvalue }) => {
     console.log(`[BullMQ] Job ${jobId} completed in ${events.name}`, returnvalue)

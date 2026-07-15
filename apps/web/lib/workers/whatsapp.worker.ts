@@ -23,11 +23,12 @@ export function startWorkers() {
         const payload = job.data
         console.log(`[Worker] Processing job ${job.id} on queue ${queueName}`)
 
-        const result = await notificationService.dispatch(payload)
+        // Legacy setup deprecated by EventBus architecture
+        // const result = await notificationService.dispatch(payload)
 
-        if (!result.success) {
-          throw new Error(result.error || 'Notification delivery failed')
-        }
+        // if (!result.success) {
+        //   throw new Error(result.error || 'Notification delivery failed')
+        // }
       },
       {
         connection: config as any,
