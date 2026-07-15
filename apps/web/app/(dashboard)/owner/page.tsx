@@ -48,7 +48,7 @@ const statusConfig: Record<string, { icon: any; color: string; bg: string; label
 }
 
 // Animated counter hook
-function useAnimatedCounter(target: number, duration = 1200) {
+function useAnimatedCounter(target: number, duration = 1200, decimals = 0) {
   const [count, setCount] = useState(0)
   useEffect(() => {
     if (target === 0) {
@@ -60,11 +60,19 @@ function useAnimatedCounter(target: number, duration = 1200) {
       const elapsed = now - startTime
       const progress = Math.min(elapsed / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 3) // ease-out cubic
-      setCount(Math.round(eased * target))
+
+      if (progress >= 1) {
+        setCount(target)
+      } else {
+        const current = eased * target
+        const factor = Math.pow(10, decimals)
+        setCount(Math.round(current * factor) / factor)
+      }
+
       if (progress < 1) requestAnimationFrame(step)
     }
     requestAnimationFrame(step)
-  }, [target, duration])
+  }, [target, duration, decimals])
   return count
 }
 
@@ -105,10 +113,10 @@ export default function OwnerDashboardPage() {
   const firstName = user?.fullName?.split(' ')[0] || user?.email?.split('@')[0] || 'Owner'
 
   // Animated counters
-  const animRevenue = useAnimatedCounter(revenue)
+  const animRevenue = useAnimatedCounter(revenue, 1200, 2)
   const animBookings = useAnimatedCounter(totalBookings)
   const animCustomers = useAnimatedCounter(uniqueCustomers)
-  const animTodayRev = useAnimatedCounter(todayRevenue)
+  const animTodayRev = useAnimatedCounter(todayRevenue, 1200, 2)
 
   // Fetch all dashboard data
   const fetchDashboardData = async () => {
