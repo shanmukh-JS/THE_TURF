@@ -38,22 +38,47 @@ export async function GET(request: NextRequest) {
         status, 
         customer_id,
         venue_id,
-        created_at,
         slot_id,
         slots(date, start_time),
-        venues!inner(name, owner_id),
-        customer_profiles(full_name)
+        venues!inner(name, owner_id)
       `
       )
       .eq('venues.owner_id', profile.id)
-      .order('created_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching owner bookings:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ bookings: bookingsData || [] })
+    if (!bookingsData || bookingsData.length === 0) {
+      return NextResponse.json({ bookings: [] })
+    }
+
+    // 4. Fetch customer profiles for these bookings
+    const customerIds = Array.from(new Set(bookingsData.map((b) => b.customer_id)))
+    const { data: customerProfiles } = await adminClient
+      .from('customer_profiles')
+      .select('user_id, full_name')
+      .in('user_id', customerIds)
+
+    const profileMap = new Map()
+    if (customerProfiles) {
+      customerProfiles.forEach((p) => profileMap.set(p.user_id, p))
+    }
+
+    let enhancedBookings = bookingsData.map((b) => ({
+      ...b,
+      customer_profiles: profileMap.get(b.customer_id) || null,
+    }))
+
+    // Sort by slots date descending
+    enhancedBookings.sort((a, b) => {
+      const dateA = a.slots && !Array.isArray(a.slots) ? new Date(a.slots.date).getTime() : 0
+      const dateB = b.slots && !Array.isArray(b.slots) ? new Date(b.slots.date).getTime() : 0
+      return dateB - dateA
+    })
+
+    return NextResponse.json({ bookings: enhancedBookings })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
