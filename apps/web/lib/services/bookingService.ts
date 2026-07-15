@@ -195,7 +195,7 @@ export class BookingService {
 
     const { data: venueRecord } = await supabase
       .from('venues')
-      .select('name')
+      .select('name, owner_profiles(user_id, full_name, users(email))')
       .eq('id', params.venueId)
       .single()
 
@@ -231,6 +231,8 @@ export class BookingService {
         amount: params.advancePaid.toString(),
         qrToken: qrToken,
         email: userRecord?.email || '',
+        ownerId: venueRecord?.owner_profiles?.user_id || undefined,
+        ownerEmail: venueRecord?.owner_profiles?.users?.email || undefined,
       })
 
       await notificationScheduler.scheduleBookingNotifications({

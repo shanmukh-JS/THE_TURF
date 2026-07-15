@@ -42,10 +42,13 @@ export async function emitBookingConfirmedEvent(params: {
   amount: string
   qrToken: string
   email: string
+  ownerId?: string
+  ownerEmail?: string
 }) {
   // Use the new Unified Notification Service directly (bypassing legacy outbox)
   const { notificationService } = await import('@/lib/services/notifications/NotificationService')
 
+  // Dispatch to Player
   await notificationService.publishEvent('BOOKING_CONFIRMED', {
     bookingId: params.bookingId,
     userId: params.userId,
@@ -59,6 +62,21 @@ export async function emitBookingConfirmedEvent(params: {
     qrToken: params.qrToken,
     mapsUrl: `https://maps.google.com/?q=${encodeURIComponent(params.venueName)}`,
   })
+
+  // Dispatch to Owner
+  if (params.ownerId) {
+    await notificationService.publishEvent('NEW_BOOKING', {
+      bookingId: params.bookingId,
+      userId: params.ownerId,
+      recipient: '',
+      email: params.ownerEmail || '',
+      playerName: params.fullName,
+      venueName: params.venueName,
+      date: params.date,
+      timeSlot: `${params.time} (${params.duration})`,
+      amount: params.amount,
+    })
+  }
 
   // Optionally keep publishing to globalEventBus for other non-notification systems if needed,
   // but Notifications are now fully handled directly via BullMQ queue.
