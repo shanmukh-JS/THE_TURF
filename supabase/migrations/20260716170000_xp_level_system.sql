@@ -129,3 +129,56 @@ CREATE TRIGGER trg_booking_xp_progression
 AFTER INSERT OR UPDATE ON public.bookings
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_booking_xp_progression();
+
+-- 4. Seed XP and Level for all existing confirmed/completed bookings retrospectively
+DO $$
+DECLARE
+    r RECORD;
+    v_xp_award INTEGER := 250;
+    v_xp_before INTEGER;
+    v_xp_after INTEGER;
+    v_level_before INTEGER;
+    v_level_after INTEGER;
+BEGIN
+    -- Loop through all existing confirmed or completed bookings
+    FOR r IN 
+        SELECT id, customer_id, created_at 
+        FROM public.bookings 
+        WHERE status IN ('CONFIRMED', 'COMPLETED')
+        ORDER BY created_at ASC
+    LOOP
+        -- Ensure customer profile exists
+        IF NOT EXISTS (SELECT 1 FROM public.customer_profiles WHERE user_id = r.customer_id) THEN
+            INSERT INTO public.customer_profiles (user_id, full_name, xp, level, last_celebrated_level)
+            VALUES (r.customer_id, 'Player', 0, 1, 1);
+        END IF;
+
+        -- Check if we already logged this booking
+        IF NOT EXISTS (
+            SELECT 1 FROM public.xp_audit_logs 
+            WHERE user_id = r.customer_id AND booking_id = r.id AND action = 'BOOKED'
+        ) THEN
+            -- Get current XP and level
+            SELECT xp, level INTO v_xp_before, v_level_before
+            FROM public.customer_profiles
+            WHERE user_id = r.customer_id;
+
+            -- Calculate new XP and level
+            v_xp_after := v_xp_before + v_xp_award;
+            v_level_after := LEAST(50, GREATEST(1, 1 + FLOOR(v_xp_after / 1000)));
+
+            -- Update customer profile
+            UPDATE public.customer_profiles
+            SET xp = v_xp_after,
+                level = v_level_after
+            WHERE user_id = r.customer_id;
+
+            -- Insert audit log
+            INSERT INTO public.xp_audit_logs (
+                user_id, booking_id, action, xp_before, xp_change, xp_after, level_before, level_after, created_at
+            ) VALUES (
+                r.customer_id, r.id, 'BOOKED', v_xp_before, v_xp_award, v_xp_after, v_level_before, v_level_after, r.created_at
+            );
+        END IF;
+    END LOOP;
+END $$;
