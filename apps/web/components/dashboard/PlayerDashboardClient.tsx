@@ -22,6 +22,7 @@ import {
   Wifi,
   Zap,
   X,
+  Trophy,
 } from 'lucide-react'
 
 import { StatCard } from '@/components/ui/StatCard'
@@ -73,6 +74,71 @@ function AnimatedNumber({ value }: { value: number }) {
   return <span>{count}</span>
 }
 
+function playLevelUpSound() {
+  if (typeof window === 'undefined') return
+  const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+  if (!AudioContextClass) return
+  try {
+    const ctx = new AudioContextClass()
+    const now = ctx.currentTime
+    const notes = [261.63, 329.63, 392.0, 523.25]
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, now + idx * 0.1)
+      gain.gain.setValueAtTime(0, now + idx * 0.1)
+      gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.1 + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.1 + 0.4)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(now + idx * 0.1)
+      osc.stop(now + idx * 0.1 + 0.5)
+    })
+  } catch (err) {
+    console.warn('Audio context playback failed:', err)
+  }
+}
+
+function ConfettiEffect() {
+  const colors = ['#22c55e', '#10b981', '#f59e0b', '#3b82f6', '#ec4899', '#a855f7']
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-50">
+      {Array.from({ length: 60 }).map((_, i) => {
+        const left = Math.random() * 100
+        const delay = Math.random() * 1.5
+        const duration = 2 + Math.random() * 2.5
+        const size = 5 + Math.random() * 8
+        const color = colors[Math.floor(Math.random() * colors.length)]
+        return (
+          <motion.div
+            key={i}
+            initial={{ y: -20, x: `${left}vw`, rotate: 0, opacity: 1 }}
+            animate={{
+              y: '100vh',
+              x: `${left + (Math.random() * 16 - 8)}vw`,
+              rotate: 360 * (Math.random() > 0.5 ? 1 : -1),
+              opacity: 0,
+            }}
+            transition={{
+              duration: duration,
+              delay: delay,
+              ease: 'easeOut',
+              repeat: Infinity,
+            }}
+            className="absolute rounded-sm"
+            style={{
+              width: size,
+              height: size * (Math.random() > 0.5 ? 1.4 : 1),
+              backgroundColor: color,
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 interface PlayerDashboardClientProps {
   displayName: string
   profileImageUrl?: string
@@ -84,6 +150,9 @@ interface PlayerDashboardClientProps {
   upcomingList: any[]
   pastList: any[]
   venues: any[]
+  xp: number
+  level: number
+  lastCelebratedLevel: number
 }
 
 export function PlayerDashboardClient({
@@ -97,6 +166,9 @@ export function PlayerDashboardClient({
   upcomingList,
   pastList,
   venues,
+  xp: initialXp,
+  level: initialLevel,
+  lastCelebratedLevel,
 }: PlayerDashboardClientProps) {
   const [greeting, setGreeting] = useState('Good evening')
   const [draftBooking, setDraftBooking] = useState<any | null>(null)
@@ -152,9 +224,38 @@ export function PlayerDashboardClient({
     }
   }, [])
 
-  // Dynamic gamification mock parameters (based on actual user bookings to make it live)
-  const totalXp = totalBookings * 250
-  const level = Math.min(50, 1 + Math.floor(totalXp / 1000))
+  // Dynamic gamification parameters
+  const [currentXp, setCurrentXp] = useState(initialXp)
+  const [currentLevel, setCurrentLevel] = useState(initialLevel)
+  const [currentLastCelebratedLevel, setCurrentLastCelebratedLevel] = useState(lastCelebratedLevel)
+  const [showCelebration, setShowCelebration] = useState(false)
+
+  useEffect(() => {
+    setCurrentXp(initialXp)
+    setCurrentLevel(initialLevel)
+    setCurrentLastCelebratedLevel(lastCelebratedLevel)
+  }, [initialXp, initialLevel, lastCelebratedLevel])
+
+  useEffect(() => {
+    if (currentLevel > currentLastCelebratedLevel) {
+      setShowCelebration(true)
+      // Call API to persist this celebration state in background
+      fetch('/api/player/celebrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ celebratedLevel: currentLevel }),
+      })
+        .then((res) => {
+          if (res.ok) {
+            setCurrentLastCelebratedLevel(currentLevel)
+          }
+        })
+        .catch(console.error)
+    }
+  }, [currentLevel, currentLastCelebratedLevel])
+
+  const totalXp = currentXp
+  const level = currentLevel
   const league =
     level >= 41
       ? 'Legendary League'
@@ -743,6 +844,121 @@ export function PlayerDashboardClient({
           </div>
         </div>
       </div>
+
+      {/* 9. PREMIUM LEVEL UP CELEBRATION MODAL */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md overflow-hidden"
+          >
+            {/* Ambient visual confetti and glowing backdrop */}
+            <ConfettiEffect />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,197,94,0.15),transparent_60%)] pointer-events-none" />
+
+            {/* Modal Body Container */}
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.85, opacity: 0, y: 30 }}
+              transition={{ type: 'spring', damping: 15, stiffness: 100 }}
+              className="relative max-w-md w-full mx-4 rounded-3xl border border-green-500/30 bg-gradient-to-b from-[#0a1e0a] via-black to-[#050b05] p-8 text-center shadow-[0_0_50px_rgba(34,197,94,0.2)] overflow-hidden"
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-green-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+
+              {/* Audio Play Trigger */}
+              <audio
+                autoPlay
+                ref={(el) => {
+                  if (el) {
+                    playLevelUpSound()
+                  }
+                }}
+              />
+
+              {/* Trophy/Badge */}
+              <motion.div
+                initial={{ rotate: -15, scale: 0.5 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                className="mx-auto w-24 h-24 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/5 border border-green-500/30 flex items-center justify-center mb-6 relative group"
+              >
+                <div className="absolute inset-0 bg-green-500/20 rounded-2xl blur-lg group-hover:opacity-100 transition-opacity pointer-events-none" />
+                <Trophy className="w-12 h-12 text-yellow-400 drop-shadow-[0_0_15px_rgba(234,179,8,0.4)] animate-bounce" />
+              </motion.div>
+
+              {/* Congratulations message */}
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-300 to-yellow-300 tracking-tight"
+              >
+                🎉 Congratulations!
+              </motion.h2>
+
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.4, type: 'spring' }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 font-bold text-lg mt-4 shadow-sm"
+              >
+                <span>You reached</span>
+                <span className="text-white bg-green-500 px-3 py-0.5 rounded-full text-base font-black tracking-wide">
+                  Level {level}
+                </span>
+              </motion.div>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-gray-300 text-sm mt-6 leading-relaxed max-w-sm mx-auto"
+              >
+                Keep booking matches to unlock even more achievements, rewards, and exclusive
+                milestones.
+              </motion.p>
+
+              {/* Progress Detail */}
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: '100%', opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between"
+              >
+                <div className="text-left">
+                  <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                    Current Tier
+                  </span>
+                  <p className="text-xs font-bold text-green-400">{league}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
+                    XP Rate
+                  </span>
+                  <p className="text-xs font-bold text-white">250 XP / Match</p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="mt-8"
+              >
+                <button
+                  onClick={() => setShowCelebration(false)}
+                  className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-400 text-black font-extrabold text-sm transition-all shadow-[0_4px_20px_rgba(34,197,94,0.3)] hover:shadow-[0_4px_25px_rgba(34,197,94,0.4)] active:scale-98"
+                >
+                  Continue
+                </button>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

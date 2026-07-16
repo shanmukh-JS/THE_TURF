@@ -31,6 +31,15 @@ export const BOOKING = {
   maxCancellationsPerMonth: 5,
 } as const
 
+export const XP = {
+  /** XP awarded on successful booking */
+  bookingAward: 250,
+  /** XP threshold per level */
+  xpPerLevel: 1000,
+  /** Max level player can reach */
+  maxLevel: 50,
+} as const
+
 export const AUTH = {
   /** OTP expiry in minutes */
   otpExpiryMinutes: 10,

@@ -37,6 +37,8 @@ interface PlayerProfileClientProps {
   favoriteTurf: string
   memberSince: string
   role: string
+  xp?: number
+  level?: number
 }
 
 export function PlayerProfileClient({
@@ -46,6 +48,8 @@ export function PlayerProfileClient({
   favoriteTurf,
   memberSince,
   role,
+  xp: xpProp,
+  level: levelProp,
 }: PlayerProfileClientProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -83,8 +87,8 @@ export function PlayerProfileClient({
   const currentEmailError = user.email && !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,3}$/.test(user.email)
 
   // Leveling engine parameters
-  const totalXp = bookings.length * 250
-  const level = Math.min(50, 1 + Math.floor(totalXp / 1000))
+  const totalXp = xpProp !== undefined ? xpProp : bookings.length * 250
+  const level = levelProp !== undefined ? levelProp : Math.min(50, 1 + Math.floor(totalXp / 1000))
   const xp = totalXp % 1000
   const xpTarget = 1000
 

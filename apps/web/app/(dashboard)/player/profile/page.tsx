@@ -33,7 +33,7 @@ export default async function CustomerProfilePage() {
       supabase.from('favorites').select('venue_id').eq('user_id', user.id).limit(1),
       supabase
         .from('customer_profiles')
-        .select('profile_image_url, banner_image_url, full_name')
+        .select('profile_image_url, banner_image_url, full_name, xp, level')
         .eq('user_id', user.id)
         .maybeSingle(),
     ])
@@ -73,6 +73,8 @@ export default async function CustomerProfilePage() {
       favoriteTurf={favoriteTurf}
       memberSince={memberSince}
       role={role}
+      xp={profileData?.xp ?? 0}
+      level={profileData?.level ?? 1}
     />
   )
 }

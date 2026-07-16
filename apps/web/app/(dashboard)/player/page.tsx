@@ -54,7 +54,7 @@ export default async function PlayerDashboard() {
   ] = await Promise.all([
     supabase
       .from('customer_profiles')
-      .select('full_name, profile_image_url')
+      .select('full_name, profile_image_url, xp, level, last_celebrated_level')
       .eq('user_id', user.id)
       .maybeSingle(),
     supabase
@@ -199,6 +199,9 @@ export default async function PlayerDashboard() {
       upcomingList={upcomingList}
       pastList={formattedPastList}
       venues={mappedVenues}
+      xp={profile?.xp ?? 0}
+      level={profile?.level ?? 1}
+      lastCelebratedLevel={profile?.last_celebrated_level ?? 1}
     />
   )
 }

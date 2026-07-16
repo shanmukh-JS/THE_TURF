@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"next dev --port 3000\" \"npm run worker\"",
     "dev:next": "next dev --port 3000",
-    "build": "NODE_OPTIONS='--no-deprecation' next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "next typegen && tsc --noEmit",
