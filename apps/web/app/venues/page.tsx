@@ -75,7 +75,7 @@ export default function VenuesPage() {
           area:areas(name),
           venue_pricing(price),
           venue_images(url, is_cover),
-          slots(status),
+          slots(status, date, start_time),
           reviews(rating),
           owner_profiles (
             id,
@@ -90,12 +90,23 @@ export default function VenuesPage() {
         .eq('is_disabled', false)
 
       if (!error && data) {
+        const todayStr = new Date().toISOString().split('T')[0]
+        const now = new Date()
+
         const mappedVenues = data.map((v) => {
           const isTrending = v.id.charCodeAt(0) % 3 === 0
 
-          // Live available slots count
+          // Live available slots count (today only, in the future)
           const availableSlots = v.slots || []
-          const slotsCount = availableSlots.filter((s: any) => s.status === 'Available').length
+          const slotsCount = availableSlots.filter((s: any) => {
+            if (s.status !== 'Available') return false
+            if (s.date !== todayStr) return false
+
+            const slotStart = s.start_time.includes('T')
+              ? new Date(s.start_time)
+              : new Date(`${s.date}T${s.start_time}`)
+            return slotStart.getTime() > now.getTime()
+          }).length
 
           // Live ratings calculation from reviews table
           const venueReviews = v.reviews || []
