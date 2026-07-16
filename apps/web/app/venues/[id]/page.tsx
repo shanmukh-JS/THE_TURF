@@ -279,24 +279,24 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     if (slotsData) {
       let activeSlots = slotsData
 
-      // Apply buffer time
-      if (ownerSettingsData?.booking_buffer_time && ownerSettingsData.booking_buffer_time !== '0') {
-        const now = new Date()
-        let bufferMs = 0
+      // Apply buffer time and filter out past slots
+      const now = new Date()
+      let bufferMs = 0
+      if (ownerSettingsData?.booking_buffer_time) {
         if (ownerSettingsData.booking_buffer_time === '15_mins') bufferMs = 15 * 60 * 1000
         else if (ownerSettingsData.booking_buffer_time === '30_mins') bufferMs = 30 * 60 * 1000
         else if (ownerSettingsData.booking_buffer_time === '1_hour') bufferMs = 60 * 60 * 1000
-
-        const thresholdTime = now.getTime() + bufferMs
-
-        activeSlots = activeSlots.filter((slot: any) => {
-          // Create date obj supporting both full ISO timestamps and legacy timezone-less time strings
-          const slotStart = slot.start_time.includes('T')
-            ? new Date(slot.start_time)
-            : new Date(`${slot.date}T${slot.start_time}`)
-          return slotStart.getTime() >= thresholdTime
-        })
       }
+
+      const thresholdTime = now.getTime() + bufferMs
+
+      activeSlots = activeSlots.filter((slot: any) => {
+        // Create date obj supporting both full ISO timestamps and legacy timezone-less time strings
+        const slotStart = slot.start_time.includes('T')
+          ? new Date(slot.start_time)
+          : new Date(`${slot.date}T${slot.start_time}`)
+        return slotStart.getTime() >= thresholdTime
+      })
 
       setSlots(activeSlots)
     }
