@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  Bell,
 } from 'lucide-react'
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/admin/bookings', icon: CalendarDays, label: 'Bookings' },
   { href: '/admin/payments', icon: CreditCard, label: 'Payments' },
   { href: '/admin/reports', icon: Flag, label: 'Reports' },
+  { href: '/admin/notifications', icon: Bell, label: 'Notifications' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 
