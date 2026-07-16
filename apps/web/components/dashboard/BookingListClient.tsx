@@ -177,21 +177,44 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
       setReviewLoading(false)
       return
     }
-    const { error } = await supabase.from('reviews').insert({
+    // 1. Save to public.reviews (frontend Turf average displays)
+    const { error: reviewsErr } = await supabase.from('reviews').insert({
       venue_id: reviewBooking.venueId,
       customer_id: user.id,
       rating: reviewRating,
       comment: reviewComment.trim() || null,
     })
-    if (error) {
-      setToast({ message: error.message, type: 'error' })
-    } else {
-      setReviewedIds((prev) => new Set([...prev, reviewBooking.id]))
-      setToast({ message: 'Review submitted! Thank you.', type: 'success' })
-      setReviewBooking(null)
-      setReviewComment('')
-      setReviewRating(5)
+
+    if (reviewsErr) {
+      setToast({ message: reviewsErr.message, type: 'error' })
+      setReviewLoading(false)
+      return
     }
+
+    // 2. Sync to public.venue_ratings (owner analytics and detailed breakdown)
+    const { error: ratingsErr } = await supabase.from('venue_ratings').insert({
+      booking_id: reviewBooking.id,
+      user_id: user.id,
+      overall_rating: reviewRating,
+      ground_quality: reviewRating,
+      lighting: reviewRating,
+      staff_behaviour: reviewRating,
+      cleanliness: reviewRating,
+      value_for_money: reviewRating,
+      comments: reviewComment.trim() || null,
+      sentiment: reviewRating >= 4 ? 'POSITIVE' : reviewRating <= 2 ? 'NEGATIVE' : 'NEUTRAL',
+      moderation_status: 'APPROVED',
+    })
+
+    if (ratingsErr) {
+      console.error('Failed to sync to venue_ratings table:', ratingsErr)
+    }
+
+    setReviewedIds((prev) => new Set([...prev, reviewBooking.id]))
+    setToast({ message: 'Review submitted! Thank you.', type: 'success' })
+    setReviewBooking(null)
+    setReviewComment('')
+    setReviewRating(5)
     setReviewLoading(false)
   }
 

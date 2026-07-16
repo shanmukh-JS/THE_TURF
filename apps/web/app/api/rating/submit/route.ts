@@ -105,6 +105,17 @@ export async function POST(req: Request) {
 
     if (reviewError) throw reviewError
 
+    // Sync to public.reviews table so rating aggregates are updated across all Turf list views
+    const { error: reviewsSyncError } = await supabase.from('reviews').insert({
+      venue_id: booking.venue_id,
+      customer_id: booking.customer_id,
+      rating: overallRating,
+      comment: reviewText || null,
+    })
+    if (reviewsSyncError) {
+      console.error('Failed to sync review to public.reviews table:', reviewsSyncError)
+    }
+
     // 5. Update Rating Token to used
     await supabase.from('rating_tokens').update({ used: true }).eq('token', token)
 
