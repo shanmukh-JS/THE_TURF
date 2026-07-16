@@ -290,10 +290,10 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                 layout
                 key={b.id}
                 whileHover={{ y: -4 }}
-                className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden flex flex-col justify-between hover:border-white/15 transition-all group"
+                className="rounded-2xl border border-white/8 bg-white/[0.02] flex flex-col justify-between hover:border-white/15 transition-all group"
               >
                 {/* Header Image Strip */}
-                <div className="h-32 relative overflow-hidden bg-black/40">
+                <div className="h-32 relative overflow-hidden bg-black/40 rounded-t-2xl">
                   <img
                     src={b.image}
                     alt={b.venue}
