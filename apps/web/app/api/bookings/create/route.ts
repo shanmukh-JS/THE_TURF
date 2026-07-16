@@ -92,10 +92,19 @@ export async function POST(req: Request) {
         .eq('id', slot.venues.owner_id)
         .maybeSingle()
       if (ownerProfile) {
+        const slotDate = new Date(slot.start_time).toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        })
+        const slotTime = new Date(slot.start_time).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+        })
         await adminClient.from('notifications').insert({
           user_id: ownerProfile.user_id,
           title: 'New Booking!',
-          message: `${user.email} booked a slot at ${slot.venues.name} for ₹${slot.price}.`,
+          message: `${user.email} booked a slot at ${slot.venues.name} on ${slotDate} at ${slotTime} for ₹${slot.price}.`,
           type: 'BOOKING',
         })
       }

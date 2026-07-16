@@ -41,7 +41,7 @@ export const inAppWorker = new Worker(
           break
         case 'NEW_BOOKING':
           title = 'New Booking!'
-          message = `${payload.email || payload.playerName || 'A user'} booked a slot at ${payload.venueName || 'your venue'} for ₹${payload.amount || '0'}.`
+          message = `${payload.email || payload.playerName || 'A user'} booked a slot at ${payload.venueName || 'your venue'} on ${payload.date || ''} for ${payload.timeSlot || ''}. Amount: ₹${payload.amount || '0'}.`
           break
         case 'BOOKING_CANCELLED':
           message = `Your booking at ${payload.venueName || 'the venue'} has been cancelled. Reason: ${payload.reason || 'N/A'}`
