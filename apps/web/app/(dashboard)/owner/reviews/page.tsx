@@ -92,14 +92,27 @@ export default function OwnerReviewsPage() {
 
         // Resolve Player Profile Names
         const customerIds = Array.from(new Set(filtered.map((r: any) => r.user_id)))
+
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, email')
+          .in('id', customerIds)
+
         const { data: customerProfiles } = await supabase
           .from('customer_profiles')
           .select('user_id, full_name')
           .in('user_id', customerIds)
 
         const customerMap = new Map()
+        if (usersData) {
+          usersData.forEach((u) => {
+            customerMap.set(u.id, u.email ? u.email.split('@')[0] : 'Anonymous')
+          })
+        }
         if (customerProfiles) {
-          customerProfiles.forEach((p) => customerMap.set(p.user_id, p.full_name))
+          customerProfiles.forEach((p) => {
+            if (p.full_name) customerMap.set(p.user_id, p.full_name)
+          })
         }
 
         let totalOverall = 0
@@ -125,7 +138,7 @@ export default function OwnerReviewsPage() {
 
           return {
             id: r.id,
-            customerName: customerMap.get(r.user_id) || 'Gamer',
+            customerName: customerMap.get(r.user_id) || 'Anonymous',
             venueName: r.bookings?.venues?.name || 'My Turf',
             date: dateStr,
             overall: r.overall_rating,

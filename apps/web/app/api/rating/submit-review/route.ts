@@ -230,18 +230,26 @@ export async function POST(req: Request) {
 
       // Notify Turf Owner via in-app notification + logs (non-blocking)
       const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues
-      const ownerId = venue?.owner_id
+      const ownerProfileId = venue?.owner_id
       try {
         // Insert in-app notification for the owner
-        if (ownerId) {
-          await supabase.from('notifications').insert({
-            user_id: ownerId,
-            title: `⭐ New ${rating}-Star Review!`,
-            message: `A player rated your turf "${venue?.name || 'Truf'}" ${rating}/5 stars. "${feedback.substring(0, 80)}${feedback.length > 80 ? '...' : ''}"`,
-            type: 'BOOKING',
-            link: '/owner/reviews',
-            is_read: false,
-          })
+        if (ownerProfileId) {
+          const { data: ownerProfile } = await supabase
+            .from('owner_profiles')
+            .select('user_id')
+            .eq('id', ownerProfileId)
+            .single()
+
+          if (ownerProfile?.user_id) {
+            await supabase.from('notifications').insert({
+              user_id: ownerProfile.user_id,
+              title: `⭐ New ${rating}-Star Review!`,
+              message: `A player rated your turf "${venue?.name || 'Truf'}" ${rating}/5 stars. "${feedback.substring(0, 80)}${feedback.length > 80 ? '...' : ''}"`,
+              type: 'BOOKING',
+              link: '/owner/reviews',
+              is_read: false,
+            })
+          }
         }
       } catch (e: any) {
         console.error('Owner notification error:', e.message)
