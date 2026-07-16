@@ -129,34 +129,46 @@ export async function POST(req: Request) {
         value_for_money: valueForMoney || null,
       })
 
-      if (insertErr) throw insertErr
+      if (insertErr) {
+        console.error('booking_reviews insert error:', insertErr)
+        return NextResponse.json(
+          { error: insertErr.message || 'Failed to save review.' },
+          { status: 500 }
+        )
+      }
 
-      // Sync with public.reviews table
-      const { error: reviewsSyncError } = await supabase.from('reviews').insert({
-        venue_id: booking.venue_id,
-        customer_id: booking.customer_id,
-        rating,
-        comment: feedback,
-      })
-      if (reviewsSyncError) console.error('Reviews sync error:', reviewsSyncError)
+      // Sync with public.reviews table (non-blocking)
+      try {
+        await supabase.from('reviews').insert({
+          venue_id: booking.venue_id,
+          customer_id: booking.customer_id,
+          rating,
+          comment: feedback,
+        })
+      } catch (e: any) {
+        console.error('Reviews sync error:', e.message)
+      }
 
-      // Sync with legacy venue_ratings table
-      const { error: ratingsSyncError } = await supabase.from('venue_ratings').insert({
-        booking_id: bookingId,
-        user_id: booking.customer_id,
-        overall_rating: rating,
-        ground_quality: groundQuality || rating,
-        lighting: lighting || rating,
-        staff_behaviour: staffBehaviour || rating,
-        cleanliness: cleanliness || rating,
-        value_for_money: valueForMoney || rating,
-        comments: feedback,
-        sentiment,
-        sentiment_breakdown: breakdown,
-        ai_summary: aiSummary,
-        moderation_status: 'APPROVED',
-      })
-      if (ratingsSyncError) console.error('Venue ratings sync error:', ratingsSyncError)
+      // Sync with legacy venue_ratings table (non-blocking)
+      try {
+        await supabase.from('venue_ratings').insert({
+          booking_id: bookingId,
+          user_id: booking.customer_id,
+          overall_rating: rating,
+          ground_quality: groundQuality || rating,
+          lighting: lighting || rating,
+          staff_behaviour: staffBehaviour || rating,
+          cleanliness: cleanliness || rating,
+          value_for_money: valueForMoney || rating,
+          comments: feedback,
+          sentiment,
+          sentiment_breakdown: breakdown,
+          ai_summary: aiSummary,
+          moderation_status: 'APPROVED',
+        })
+      } catch (e: any) {
+        console.error('Venue ratings sync error:', e.message)
+      }
 
       // Set booking status to COMPLETED and review_status to SUBMITTED
       await supabase
@@ -196,26 +208,34 @@ export async function POST(req: Request) {
           })
           .eq('user_id', booking.customer_id)
 
-        // Write progression log
-        await supabase.from('xp_audit_logs').insert({
-          user_id: booking.customer_id,
-          booking_id: bookingId,
-          action: 'BOOKED', // Reusing action constraint or default to log reviews
-          xp_before: xpBefore,
-          xp_change: xpAwarded,
-          xp_after: xpAfter,
-          level_before: profile.level ?? 1,
-          level_after: levelAfter,
-        })
+        // Write progression log (non-blocking)
+        try {
+          await supabase.from('xp_audit_logs').insert({
+            user_id: booking.customer_id,
+            booking_id: bookingId,
+            action: 'BOOKED',
+            xp_before: xpBefore,
+            xp_change: xpAwarded,
+            xp_after: xpAfter,
+            level_before: profile.level ?? 1,
+            level_after: levelAfter,
+          })
+        } catch (e: any) {
+          console.error('XP audit log error:', e.message)
+        }
       }
 
-      // Notify Turf Owner in logs table
+      // Notify Turf Owner in logs table (non-blocking)
       const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues
-      await supabase.from('notification_logs').insert({
-        action: 'NEW_REVIEW_RECEIVED',
-        error_stack: `New ${rating}-star review received for ${venue?.name || 'Truf'}. Feedback: "${feedback}"`,
-        request_payload: { bookingId, rating, feedback },
-      })
+      try {
+        await supabase.from('notification_logs').insert({
+          action: 'NEW_REVIEW_RECEIVED',
+          error_stack: `New ${rating}-star review received for ${venue?.name || 'Truf'}. Feedback: "${feedback}"`,
+          request_payload: { bookingId, rating, feedback },
+        })
+      } catch (e: any) {
+        console.error('Notification log error:', e.message)
+      }
     } else if (existingReview) {
       // Update existing review (EDIT window is open)
       const { error: updateErr } = await supabase
@@ -235,7 +255,13 @@ export async function POST(req: Request) {
         })
         .eq('booking_id', bookingId)
 
-      if (updateErr) throw updateErr
+      if (updateErr) {
+        console.error('booking_reviews update error:', updateErr)
+        return NextResponse.json(
+          { error: updateErr.message || 'Failed to update review.' },
+          { status: 500 }
+        )
+      }
 
       // Update legacy reviews (match by customer and venue and update rating/comment)
       await supabase

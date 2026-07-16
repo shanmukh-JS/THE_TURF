@@ -20,43 +20,58 @@ export default async function CustomerNotificationsPage() {
     redirect('/auth/login')
   }
 
-  // Auto-complete bookings on loading notifications page
+  // Auto-complete bookings and ensure "Match Completed" notifications exist
   const now = new Date()
-  const { data: rawBookings } = await supabase
+
+  // 1. Transition CONFIRMED → COMPLETED for past bookings
+  const { data: confirmedBookings } = await supabase
     .from('bookings')
     .select('id, status, slots!inner(end_time, start_time, date), venues(name)')
     .eq('customer_id', user.id)
     .eq('status', 'CONFIRMED')
 
-  if (rawBookings && rawBookings.length > 0) {
-    for (const b of rawBookings) {
+  if (confirmedBookings && confirmedBookings.length > 0) {
+    for (const b of confirmedBookings) {
       const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
       if (slot && new Date(slot.end_time) < now) {
-        // Persist update in DB
         await supabase
           .from('bookings')
           .update({ status: 'COMPLETED', review_status: 'PENDING' })
           .eq('id', b.id)
+      }
+    }
+  }
 
-        const venue = Array.isArray(b.venues) ? b.venues[0] : b.venues
-        // Insert in-app notification
-        const { count } = await supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('title', 'Match Completed')
-          .like('message', `%${venue?.name || 'Truf'}%`)
+  // 2. Ensure "Match Completed" notification exists for ALL completed-pending bookings
+  const { data: completedBookings } = await supabase
+    .from('bookings')
+    .select('id, venues(name)')
+    .eq('customer_id', user.id)
+    .eq('status', 'COMPLETED')
+    .eq('review_status', 'PENDING')
 
-        if (count === 0) {
-          await supabase.from('notifications').insert({
-            user_id: user.id,
-            title: 'Match Completed',
-            message: `Your game at ${venue?.name || 'Truf'} has ended. Rate your experience and earn +20 XP.`,
-            type: 'BOOKING',
-            link: '/player/bookings',
-            is_read: false,
-          })
-        }
+  if (completedBookings && completedBookings.length > 0) {
+    for (const b of completedBookings) {
+      const venue = Array.isArray(b.venues) ? b.venues[0] : b.venues
+      const venueName = venue?.name || 'Truf'
+
+      // Check if notification already exists
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('title', 'Match Completed')
+        .like('message', `%${venueName}%`)
+
+      if (count === 0) {
+        await supabase.from('notifications').insert({
+          user_id: user.id,
+          title: '🎉 Match Completed!',
+          message: `Your game at ${venueName} has ended. Rate your experience and earn +20 XP!`,
+          type: 'BOOKING',
+          link: '/player/bookings',
+          is_read: false,
+        })
       }
     }
   }
