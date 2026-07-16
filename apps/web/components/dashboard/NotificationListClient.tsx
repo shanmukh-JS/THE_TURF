@@ -211,7 +211,7 @@ export function NotificationListClient({
     <div className="space-y-6">
       {/* Category Tabs and Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4">
-        <div className="flex gap-1.5 bg-white/5 rounded-xl p-1 border border-white/8 w-fit">
+        <div className="flex flex-wrap gap-1.5 bg-white/5 rounded-xl p-1 border border-white/8 w-full sm:w-fit">
           {['All', 'Bookings', 'Offers', 'Updates'].map((c) => (
             <button
               key={c}

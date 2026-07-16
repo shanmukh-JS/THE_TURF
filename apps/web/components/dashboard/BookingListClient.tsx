@@ -246,7 +246,7 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
       </AnimatePresence>
 
       {/* Tabs */}
-      <div className="flex gap-2 bg-white/5 rounded-xl p-1 border border-white/8 w-fit">
+      <div className="flex flex-wrap gap-2 bg-white/5 rounded-xl p-1 border border-white/8 w-full sm:w-fit">
         {['All', 'Upcoming', 'Completed', 'Archived', 'Cancelled'].map((t) => (
           <button
             key={t}
@@ -343,7 +343,7 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
 
                   {/* Pricing and Actions */}
                   <div className="flex justify-between items-end gap-3 flex-wrap">
-                    <div>
+                    <div className="w-full sm:w-auto">
                       <p className="text-sm font-extrabold text-white">
                         ₹{b.amount.toLocaleString()}
                       </p>
@@ -352,7 +352,7 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                       </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                       {/* View Details Button */}
                       <button
                         onClick={() => setSelectedBooking(b)}

@@ -94,7 +94,7 @@ export default async function CustomerBookingsPage({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 bg-white/5 rounded-xl p-1 border border-white/8 w-fit">
+      <div className="flex flex-wrap gap-2 bg-white/5 rounded-xl p-1 border border-white/8 w-full sm:w-fit">
         {['All', 'Upcoming', 'Completed', 'Cancelled'].map((t) => (
           <Link
             key={t}

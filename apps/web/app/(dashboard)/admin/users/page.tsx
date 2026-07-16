@@ -368,8 +368,9 @@ export default function AdminUsersPage() {
       </DashboardAnimationItem>
 
       {/* Controls: Tabs & Filters */}
-      <DashboardAnimationItem className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
-        <div className="flex gap-2 bg-white/5 p-1 rounded-xl w-fit">
+      <DashboardAnimationItem className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 bg-white/5 p-1 rounded-xl w-full sm:w-fit">
           <button
             onClick={() => {
               setActiveTab('CUSTOMER')
