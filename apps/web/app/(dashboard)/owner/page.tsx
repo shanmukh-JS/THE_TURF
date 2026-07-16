@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthStore } from '@/store/useAuthStore'
 import Link from 'next/link'
@@ -78,7 +79,8 @@ function useAnimatedCounter(target: number, duration = 1200, decimals = 0) {
 
 export default function OwnerDashboardPage() {
   const supabase = createClient()
-  const { user } = useAuthStore()
+  const { user, isLoading: authLoading } = useAuthStore()
+  const router = useRouter()
 
   const [loading, setLoading] = useState(true)
   const [ownerProfileId, setOwnerProfileId] = useState<string | null>(null)
@@ -349,8 +351,14 @@ export default function OwnerDashboardPage() {
   }
 
   useEffect(() => {
-    if (user) fetchDashboardData()
-  }, [user])
+    if (!authLoading) {
+      if (!user) {
+        router.push('/auth/login')
+      } else {
+        fetchDashboardData()
+      }
+    }
+  }, [user, authLoading])
 
   // Real-time subscription
   useEffect(() => {
