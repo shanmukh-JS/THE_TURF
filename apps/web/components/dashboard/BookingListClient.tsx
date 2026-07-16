@@ -43,6 +43,7 @@ interface Booking {
   status: string
   image: string
   rawStartTime: string
+  rawEndTime?: string
   rawDate?: string
   cancellationPolicy?: string
   qrCode?: string
@@ -219,9 +220,19 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
   }
 
   const filteredBookings = bookings.filter((b) => {
-    if (activeTab === 'Upcoming') return b.status === 'CONFIRMED' || b.status === 'PENDING'
-    if (activeTab === 'Completed') return b.status === 'COMPLETED'
-    if (activeTab === 'Cancelled') return b.status === 'CANCELLED'
+    const isPast = b.rawEndTime ? new Date(b.rawEndTime) < new Date() : false
+
+    if (activeTab === 'Upcoming') {
+      return (b.status === 'CONFIRMED' || b.status === 'PENDING') && !isPast
+    }
+    if (activeTab === 'Completed') {
+      return (
+        b.status === 'COMPLETED' || ((b.status === 'CONFIRMED' || b.status === 'PENDING') && isPast)
+      )
+    }
+    if (activeTab === 'Cancelled') {
+      return b.status === 'CANCELLED'
+    }
     return true
   })
 

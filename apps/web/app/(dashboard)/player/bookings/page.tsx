@@ -77,8 +77,7 @@ export default async function CustomerBookingsPage() {
 
     // Automatically mark past confirmed bookings as completed
     const now = new Date()
-    dateObj.setHours(23, 59, 59, 999)
-    const isPast = dateObj < now
+    const isPast = new Date(b.slots.end_time) < now
     let derivedStatus = b.status
     if (derivedStatus === 'CONFIRMED' && isPast) {
       derivedStatus = 'COMPLETED'
@@ -101,6 +100,7 @@ export default async function CustomerBookingsPage() {
       status: derivedStatus,
       image: coverImage,
       rawStartTime: b.slots.start_time,
+      rawEndTime: b.slots.end_time,
       rawDate: b.slots.date,
       cancellationPolicy: ownerSettingsMap.get(b.venues?.owner_id) || 'flexible',
       qrCode: b.qr_code,

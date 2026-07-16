@@ -104,19 +104,14 @@ export default async function PlayerDashboard() {
   const upcomingList = bookings
     .filter((b: any) => {
       if (b.status !== 'CONFIRMED' || !b.slots) return false
-      const slotDate = new Date(b.slots.date)
-      // Strip time for clean date comparison
-      slotDate.setHours(23, 59, 59, 999)
-      return slotDate >= now
+      return new Date(b.slots.end_time) >= now
     })
     .sort((a: any, b: any) => new Date(a.slots.date).getTime() - new Date(b.slots.date).getTime())
 
   const pastList = bookings
     .filter((b: any) => {
       if (!b.slots) return false
-      const slotDate = new Date(b.slots.date)
-      slotDate.setHours(23, 59, 59, 999)
-      return slotDate < now
+      return new Date(b.slots.end_time) < now
     })
     .sort((a: any, b: any) => new Date(b.slots.date).getTime() - new Date(a.slots.date).getTime())
 
