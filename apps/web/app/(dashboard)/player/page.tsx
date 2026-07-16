@@ -119,7 +119,25 @@ export default async function PlayerDashboard() {
         .from('bookings')
         .update({ status: 'COMPLETED', review_status: 'PENDING' })
         .eq('id', b.id)
-        .then()
+        .then(async () => {
+          const { count } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('title', 'Match Completed')
+            .like('message', `%${b.venues?.name || 'Truf'}%`)
+
+          if (count === 0) {
+            await supabase.from('notifications').insert({
+              user_id: user.id,
+              title: 'Match Completed',
+              message: `Your game at ${b.venues?.name || 'Truf'} has ended. Rate your experience and earn +20 XP.`,
+              type: 'BOOKING',
+              link: '/player/bookings',
+              is_read: false,
+            })
+          }
+        })
     }
 
     return {
