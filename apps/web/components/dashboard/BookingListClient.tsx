@@ -435,7 +435,7 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                                     >
                                       Archive
                                     </button>
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-48 p-2 bg-[#0c120c] border border-white/10 rounded-lg shadow-xl text-center text-[10px] font-semibold text-yellow-400 z-20 pointer-events-none">
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-max max-w-[250px] whitespace-normal p-2 bg-[#0c120c] border border-white/10 rounded-lg shadow-xl text-center text-[10px] font-semibold text-yellow-400 z-20 pointer-events-none">
                                       Complete your review to unlock Archive. 🎁 Earn +20 XP
                                       instantly!
                                     </div>

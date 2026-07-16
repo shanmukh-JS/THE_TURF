@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import {
   DashboardAnimationWrapper,
@@ -12,6 +13,7 @@ export const metadata = {
 
 export default async function CustomerNotificationsPage() {
   const supabase = await createClient()
+  const adminSupabase = createAdminClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -24,7 +26,7 @@ export default async function CustomerNotificationsPage() {
   const now = new Date()
 
   // 1. Transition CONFIRMED → COMPLETED for past bookings
-  const { data: confirmedBookings } = await supabase
+  const { data: confirmedBookings } = await adminSupabase
     .from('bookings')
     .select('id, status, slots!inner(end_time, start_time, date), venues(name)')
     .eq('customer_id', user.id)
@@ -34,7 +36,7 @@ export default async function CustomerNotificationsPage() {
     for (const b of confirmedBookings) {
       const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
       if (slot && new Date(slot.end_time) < now) {
-        await supabase
+        await adminSupabase
           .from('bookings')
           .update({ status: 'COMPLETED', review_status: 'PENDING' })
           .eq('id', b.id)
@@ -43,7 +45,7 @@ export default async function CustomerNotificationsPage() {
   }
 
   // 2. Ensure "Match Completed" notification exists for ALL completed-pending bookings
-  const { data: completedBookings } = await supabase
+  const { data: completedBookings } = await adminSupabase
     .from('bookings')
     .select('id, venues(name)')
     .eq('customer_id', user.id)
@@ -56,15 +58,14 @@ export default async function CustomerNotificationsPage() {
       const venueName = venue?.name || 'Truf'
 
       // Check if notification already exists
-      const { count } = await supabase
+      const { count } = await adminSupabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .eq('title', 'Match Completed')
-        .like('message', `%${venueName}%`)
+        .ilike('title', '%Match Completed%')
 
       if (count === 0) {
-        await supabase.from('notifications').insert({
+        await adminSupabase.from('notifications').insert({
           user_id: user.id,
           title: '🎉 Match Completed!',
           message: `Your game at ${venueName} has ended. Rate your experience and earn +20 XP!`,

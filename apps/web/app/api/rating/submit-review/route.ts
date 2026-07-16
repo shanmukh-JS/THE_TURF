@@ -96,10 +96,13 @@ export async function POST(req: Request) {
 
     // Calculate booking duration in minutes if possible
     let bookingDuration = 60
-    if (slot) {
+    if (slot && slot.date && slot.start_time && slot.end_time) {
       const start = new Date(`${slot.date}T${slot.start_time}`).getTime()
       const end = new Date(`${slot.date}T${slot.end_time}`).getTime()
-      bookingDuration = Math.round((end - start) / 60000)
+      const calculated = Math.round((end - start) / 60000)
+      if (!isNaN(calculated) && calculated > 0) {
+        bookingDuration = calculated
+      }
     }
 
     // Perform AI sentiment analysis
@@ -225,8 +228,24 @@ export async function POST(req: Request) {
         }
       }
 
-      // Notify Turf Owner in logs table (non-blocking)
+      // Notify Turf Owner via in-app notification + logs (non-blocking)
       const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues
+      const ownerId = venue?.owner_id
+      try {
+        // Insert in-app notification for the owner
+        if (ownerId) {
+          await supabase.from('notifications').insert({
+            user_id: ownerId,
+            title: `⭐ New ${rating}-Star Review!`,
+            message: `A player rated your turf "${venue?.name || 'Truf'}" ${rating}/5 stars. "${feedback.substring(0, 80)}${feedback.length > 80 ? '...' : ''}"`,
+            type: 'BOOKING',
+            link: '/owner/reviews',
+            is_read: false,
+          })
+        }
+      } catch (e: any) {
+        console.error('Owner notification error:', e.message)
+      }
       try {
         await supabase.from('notification_logs').insert({
           action: 'NEW_REVIEW_RECEIVED',
