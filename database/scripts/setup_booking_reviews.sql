@@ -19,6 +19,11 @@ CREATE TABLE IF NOT EXISTS public.booking_reviews (
     booking_duration INTEGER NOT NULL, -- Booking duration in minutes
     review_sentiment TEXT CHECK (review_sentiment IN ('POSITIVE', 'NEUTRAL', 'NEGATIVE')),
     device_type TEXT NOT NULL, -- 'desktop' or 'mobile'
+    ground_quality INTEGER,
+    lighting INTEGER,
+    cleanliness INTEGER,
+    staff_behaviour INTEGER,
+    value_for_money INTEGER,
     edited BOOLEAN DEFAULT false NOT NULL,
     edited_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,

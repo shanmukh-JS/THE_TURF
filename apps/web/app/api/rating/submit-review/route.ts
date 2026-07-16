@@ -122,6 +122,11 @@ export async function POST(req: Request) {
         booking_duration: bookingDuration,
         review_sentiment: sentiment,
         device_type: deviceType,
+        ground_quality: groundQuality || null,
+        lighting: lighting || null,
+        cleanliness: cleanliness || null,
+        staff_behaviour: staffBehaviour || null,
+        value_for_money: valueForMoney || null,
       })
 
       if (insertErr) throw insertErr
@@ -222,6 +227,11 @@ export async function POST(req: Request) {
           review_time: reviewTime,
           edited: true,
           edited_at: new Date().toISOString(),
+          ground_quality: groundQuality || null,
+          lighting: lighting || null,
+          cleanliness: cleanliness || null,
+          staff_behaviour: staffBehaviour || null,
+          value_for_money: valueForMoney || null,
         })
         .eq('booking_id', bookingId)
 
