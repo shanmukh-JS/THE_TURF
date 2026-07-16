@@ -34,6 +34,10 @@ export const BOOKING = {
 export const XP = {
   /** XP awarded on successful booking */
   bookingAward: 250,
+  /** XP awarded on normal review */
+  reviewAward: 20,
+  /** XP awarded on first review */
+  firstReviewAward: 50,
   /** XP threshold per level */
   xpPerLevel: 1000,
   /** Max level player can reach */

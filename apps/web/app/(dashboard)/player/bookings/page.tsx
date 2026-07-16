@@ -20,7 +20,7 @@ export default async function CustomerBookingsPage() {
     redirect('/auth/login')
   }
 
-  // Fetch bookings, joining slots, venues, and areas
+  // Fetch bookings, joining slots, venues, areas, and reviews
   const { data: rawBookings } = await supabase
     .from('bookings')
     .select(
@@ -31,8 +31,11 @@ export default async function CustomerBookingsPage() {
       status,
       qr_code,
       check_in_status,
+      review_status,
+      hidden_from_player,
       slots!inner(date, start_time, end_time),
-      venues!inner(id, name, address, owner_id, areas(name), venue_images(url, is_cover))
+      venues!inner(id, name, address, owner_id, areas(name), venue_images(url, is_cover)),
+      booking_reviews(rating, feedback, ground_quality, lighting, cleanliness, staff_behaviour, value_for_money)
     `
     )
     .eq('customer_id', user.id)
@@ -79,14 +82,25 @@ export default async function CustomerBookingsPage() {
     const now = new Date()
     const isPast = new Date(b.slots.end_time) < now
     let derivedStatus = b.status
+    let derivedReviewStatus = b.review_status
+
     if (derivedStatus === 'CONFIRMED' && isPast) {
       derivedStatus = 'COMPLETED'
+      derivedReviewStatus = 'PENDING'
+      // Persist the status transition in the database asynchronously
+      supabase
+        .from('bookings')
+        .update({ status: 'COMPLETED', review_status: 'PENDING' })
+        .eq('id', b.id)
+        .then()
     }
 
     const coverImage =
       b.venues?.venue_images?.find((img: any) => img.is_cover)?.url ||
       b.venues?.venue_images?.[0]?.url ||
       'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
+
+    const rawRev = Array.isArray(b.booking_reviews) ? b.booking_reviews[0] : b.booking_reviews
 
     return {
       id: b.id,
@@ -98,6 +112,19 @@ export default async function CustomerBookingsPage() {
       amount: b.total_amount,
       advance: b.advance_paid,
       status: derivedStatus,
+      reviewStatus: derivedReviewStatus,
+      hiddenFromPlayer: b.hidden_from_player,
+      review: rawRev
+        ? {
+            rating: rawRev.rating,
+            feedback: rawRev.feedback,
+            groundQuality: rawRev.ground_quality,
+            lighting: rawRev.lighting,
+            cleanliness: rawRev.cleanliness,
+            staffBehaviour: rawRev.staff_behaviour,
+            valueForMoney: rawRev.value_for_money,
+          }
+        : null,
       image: coverImage,
       rawStartTime: b.slots.start_time,
       rawEndTime: b.slots.end_time,

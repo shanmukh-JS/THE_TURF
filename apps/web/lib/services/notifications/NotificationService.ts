@@ -9,6 +9,7 @@ export type NotificationEvent =
   | 'PAYMENT_FAILED'
   | 'BOOKING_EXPIRED'
   | 'BOOKING_REMINDER_10_MIN'
+  | 'BOOKING_COMPLETED_REVIEW_PROMPT'
 
 export interface EventPayload {
   bookingId?: string

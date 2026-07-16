@@ -18,6 +18,7 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { RatingModal } from './RatingModal'
 
 const statusMap = {
   CONFIRMED: { icon: CheckCircle, color: 'text-blue-400', bg: 'bg-blue-400/10', label: 'Upcoming' },
@@ -41,6 +42,17 @@ interface Booking {
   amount: number
   advance: number
   status: string
+  reviewStatus?: string
+  hiddenFromPlayer?: boolean
+  review?: {
+    rating: number
+    feedback: string
+    groundQuality?: number
+    lighting?: number
+    cleanliness?: number
+    staffBehaviour?: number
+    valueForMoney?: number
+  } | null
   image: string
   rawStartTime: string
   rawEndTime?: string
@@ -63,12 +75,10 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  // Review modal state
-  const [reviewBooking, setReviewBooking] = useState<Booking | null>(null)
-  const [reviewRating, setReviewRating] = useState(5)
-  const [reviewComment, setReviewComment] = useState('')
-  const [reviewLoading, setReviewLoading] = useState(false)
-  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set())
+  // Review & Archive state
+  const [activeReviewBooking, setActiveReviewBooking] = useState<Booking | null>(null)
+  const [archiveConfirmBooking, setArchiveConfirmBooking] = useState<Booking | null>(null)
+  const [isArchiving, setIsArchiving] = useState(false)
 
   // Auto-hide toast
   useEffect(() => {
@@ -167,60 +177,39 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
     setLoadingId(null)
   }
 
-  const handleSubmitReview = async () => {
-    if (!reviewBooking) return
-    setReviewLoading(true)
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      setToast({ message: 'You must be logged in to leave a review.', type: 'error' })
-      setReviewLoading(false)
-      return
+  const handleArchiveBooking = async (bookingId: string) => {
+    setIsArchiving(true)
+    try {
+      const res = await fetch('/api/bookings/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to archive booking')
+      }
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, hiddenFromPlayer: true } : b))
+      )
+      setToast({ message: 'Booking archived successfully.', type: 'success' })
+      setArchiveConfirmBooking(null)
+    } catch (err: any) {
+      setToast({ message: err.message, type: 'error' })
+    } finally {
+      setIsArchiving(false)
     }
-    // 1. Save to public.reviews (frontend Turf average displays)
-    const { error: reviewsErr } = await supabase.from('reviews').insert({
-      venue_id: reviewBooking.venueId,
-      customer_id: user.id,
-      rating: reviewRating,
-      comment: reviewComment.trim() || null,
-    })
-
-    if (reviewsErr) {
-      setToast({ message: reviewsErr.message, type: 'error' })
-      setReviewLoading(false)
-      return
-    }
-
-    // 2. Sync to public.venue_ratings (owner analytics and detailed breakdown)
-    const { error: ratingsErr } = await supabase.from('venue_ratings').insert({
-      booking_id: reviewBooking.id,
-      user_id: user.id,
-      overall_rating: reviewRating,
-      ground_quality: reviewRating,
-      lighting: reviewRating,
-      staff_behaviour: reviewRating,
-      cleanliness: reviewRating,
-      value_for_money: reviewRating,
-      comments: reviewComment.trim() || null,
-      sentiment: reviewRating >= 4 ? 'POSITIVE' : reviewRating <= 2 ? 'NEGATIVE' : 'NEUTRAL',
-      moderation_status: 'APPROVED',
-    })
-
-    if (ratingsErr) {
-      console.error('Failed to sync to venue_ratings table:', ratingsErr)
-    }
-
-    setReviewedIds((prev) => new Set([...prev, reviewBooking.id]))
-    setToast({ message: 'Review submitted! Thank you.', type: 'success' })
-    setReviewBooking(null)
-    setReviewComment('')
-    setReviewRating(5)
-    setReviewLoading(false)
   }
 
   const filteredBookings = bookings.filter((b) => {
     const isPast = b.rawEndTime ? new Date(b.rawEndTime) < new Date() : false
+
+    if (b.hiddenFromPlayer) {
+      return activeTab === 'Archived'
+    }
+    if (activeTab === 'Archived') {
+      return false
+    }
 
     if (activeTab === 'Upcoming') {
       return (b.status === 'CONFIRMED' || b.status === 'PENDING') && !isPast
@@ -258,7 +247,7 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
 
       {/* Tabs */}
       <div className="flex gap-2 bg-white/5 rounded-xl p-1 border border-white/8 w-fit">
-        {['All', 'Upcoming', 'Completed', 'Cancelled'].map((t) => (
+        {['All', 'Upcoming', 'Completed', 'Archived', 'Cancelled'].map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
@@ -408,32 +397,52 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                         <>
                           <Link
                             href={`/venues/${b.venueId}`}
-                            className="px-3.5 py-2 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500 hover:text-black hover:border-green-500 text-green-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
+                            className="px-3 py-2 rounded-xl bg-white/5 border border-white/8 hover:bg-white/10 text-white font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
                           >
-                            <RefreshCw className="w-3.5 h-3.5" /> Rebook
+                            <RefreshCw className="w-3 h-3" /> Rebook
                           </Link>
-                          {b.status === 'COMPLETED' && !reviewedIds.has(b.id) && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const res = await fetch(`/api/rating/token?bookingId=${b.id}`)
-                                  const data = await res.json()
-                                  if (!res.ok)
-                                    throw new Error(data.error || 'Failed to fetch rating token')
-                                  router.push(`/rating/${b.id}?token=${data.token}`)
-                                } catch (err: any) {
-                                  alert(err.message)
-                                }
-                              }}
-                              className="px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500 hover:text-black hover:border-amber-500 text-amber-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
-                            >
-                              <Star className="w-3.5 h-3.5" /> Review
-                            </button>
-                          )}
-                          {reviewedIds.has(b.id) && (
-                            <span className="px-3.5 py-2 text-[10px] text-green-400 font-bold flex items-center gap-1">
-                              <Star className="w-3 h-3 fill-green-400" /> Reviewed!
-                            </span>
+
+                          {b.status === 'COMPLETED' && (
+                            <>
+                              {b.reviewStatus === 'SUBMITTED' || b.review ? (
+                                <>
+                                  <button
+                                    onClick={() => setActiveReviewBooking(b)}
+                                    className="px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500 hover:text-black hover:border-green-500 text-green-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
+                                  >
+                                    <Star className="w-3 h-3 fill-current" /> View/Edit Review
+                                  </button>
+                                  <button
+                                    onClick={() => setArchiveConfirmBooking(b)}
+                                    className="px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500 hover:text-black hover:border-yellow-500 text-yellow-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1"
+                                  >
+                                    Archive
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => setActiveReviewBooking(b)}
+                                    className="px-3 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1 shadow-lg hover:shadow-yellow-500/10"
+                                  >
+                                    <Star className="w-3 h-3 fill-current animate-pulse" /> Rate
+                                    Experience
+                                  </button>
+                                  <div className="relative group inline-block">
+                                    <button
+                                      disabled
+                                      className="px-3 py-2 rounded-xl bg-white/5 border border-white/5 text-gray-500 font-bold text-[10px] tracking-wide uppercase cursor-not-allowed opacity-50"
+                                    >
+                                      Archive
+                                    </button>
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-48 p-2 bg-[#0c120c] border border-white/10 rounded-lg shadow-xl text-center text-[10px] font-semibold text-yellow-400 z-20 pointer-events-none">
+                                      Complete your review to unlock Archive. 🎁 Earn +20 XP
+                                      instantly!
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </>
                           )}
                         </>
                       )}
@@ -587,91 +596,66 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
         )}
       </AnimatePresence>
 
-      {/* REVIEW MODAL */}
+      {/* RATING MODAL */}
       <AnimatePresence>
-        {reviewBooking && (
+        {activeReviewBooking && (
+          <RatingModal
+            bookingId={activeReviewBooking.id}
+            venueName={activeReviewBooking.venue}
+            initialValues={
+              activeReviewBooking.review
+                ? {
+                    rating: activeReviewBooking.review.rating,
+                    feedback: activeReviewBooking.review.feedback,
+                    groundQuality: activeReviewBooking.review.groundQuality,
+                    lighting: activeReviewBooking.review.lighting,
+                    cleanliness: activeReviewBooking.review.cleanliness,
+                    staffBehaviour: activeReviewBooking.review.staffBehaviour,
+                    valueForMoney: activeReviewBooking.review.valueForMoney,
+                  }
+                : undefined
+            }
+            onClose={() => setActiveReviewBooking(null)}
+            onSubmitSuccess={(xpAwarded, newLevel) => {
+              router.refresh()
+              setActiveReviewBooking(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ARCHIVE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {archiveConfirmBooking && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setReviewBooking(null)}
+            <div
               className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setArchiveConfirmBooking(null)}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-md rounded-3xl border border-white/8 bg-gradient-to-br from-[#0a0f0a] to-[#040804] p-6 shadow-2xl"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0c120c] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative z-10 font-sans"
             >
-              <button
-                onClick={() => setReviewBooking(null)}
-                className="absolute top-4 right-4 p-2 text-gray-500 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="space-y-5">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Leave a Review</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">{reviewBooking.venue}</p>
-                </div>
-
-                {/* Star Rating Picker */}
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    Your Rating
-                  </p>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => setReviewRating(star)}
-                        className="transition-transform hover:scale-110"
-                      >
-                        <Star
-                          className={`w-8 h-8 transition-colors ${
-                            star <= reviewRating
-                              ? 'text-amber-400 fill-amber-400'
-                              : 'text-gray-700 fill-gray-700'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-amber-400 mt-1 font-medium">
-                    {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent!'][reviewRating]}
-                  </p>
-                </div>
-
-                {/* Comment */}
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    Comment <span className="text-gray-600 normal-case">(optional)</span>
-                  </p>
-                  <textarea
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Share your experience..."
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-gray-600 focus:outline-none focus:border-amber-500/50 text-sm resize-none"
-                  />
-                </div>
-
+              <h3 className="text-lg font-bold text-white mb-2">Archive Completed Match?</h3>
+              <p className="text-xs text-gray-400 leading-relaxed mb-6">
+                Your review has been saved successfully. This will hide the completed match from
+                your dashboard, but it will remain in your booking history.
+              </p>
+              <div className="flex gap-3 justify-end">
                 <button
-                  onClick={handleSubmitReview}
-                  disabled={reviewLoading}
-                  className="w-full py-3 rounded-xl bg-amber-500 text-black font-bold text-sm hover:bg-amber-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  onClick={() => setArchiveConfirmBooking(null)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/8 hover:bg-white/10 text-white font-bold text-xs tracking-wider uppercase transition-all"
                 >
-                  {reviewLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Star className="w-4 h-4 fill-black" /> Submit Review
-                    </>
-                  )}
+                  Cancel
+                </button>
+                <button
+                  disabled={isArchiving}
+                  onClick={() => handleArchiveBooking(archiveConfirmBooking.id)}
+                  className="px-4 py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs tracking-wider uppercase transition-all disabled:opacity-45"
+                >
+                  {isArchiving ? 'Archiving...' : 'Archive Match'}
                 </button>
               </div>
             </motion.div>

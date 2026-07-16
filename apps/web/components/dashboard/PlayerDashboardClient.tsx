@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 
 import { StatCard } from '@/components/ui/StatCard'
+import { RatingModal } from './RatingModal'
 
 // Simple helper to format time
 function formatRelativeTime(dateStr: string) {
@@ -229,6 +230,8 @@ export function PlayerDashboardClient({
   const [currentLevel, setCurrentLevel] = useState(initialLevel)
   const [currentLastCelebratedLevel, setCurrentLastCelebratedLevel] = useState(lastCelebratedLevel)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [activeReviewBooking, setActiveReviewBooking] = useState<any | null>(null)
+  const [dismissedNotification, setDismissedNotification] = useState(false)
 
   useEffect(() => {
     setCurrentXp(initialXp)
@@ -268,6 +271,10 @@ export function PlayerDashboardClient({
             : 'Amateur League'
   const xp = totalXp % 1000
   const xpTarget = 1000
+
+  const completedPendingReview = pastList.find((b: any) => {
+    return b.status === 'COMPLETED' && b.reviewStatus === 'PENDING' && !b.hiddenFromPlayer
+  })
 
   // Calculate upcoming countdown
   const nextBooking = upcomingList[0] || null
@@ -378,6 +385,69 @@ export function PlayerDashboardClient({
           </Link>
         </div>
       </motion.div>
+
+      {/* MATCH COMPLETED REVIEW BANNER */}
+      <AnimatePresence>
+        {completedPendingReview && !dismissedNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="rounded-2xl border border-yellow-500/20 bg-gradient-to-r from-yellow-950/10 to-black p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden group shadow-xl"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/[0.02] rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 border border-yellow-500/20 flex-shrink-0 text-lg">
+                🏆
+              </div>
+              <div>
+                <h3 className="font-extrabold text-white text-sm tracking-tight md:text-base">
+                  🎉 Your match has been completed!
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Hope you enjoyed your game at{' '}
+                  <span className="text-yellow-400 font-semibold">
+                    {completedPendingReview.venue}
+                  </span>
+                  . Rate your experience and earn{' '}
+                  <span className="text-green-400 font-bold">+20 XP</span> instantly!
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <button
+                onClick={() => setActiveReviewBooking(completedPendingReview)}
+                className="flex-1 md:flex-initial px-4 py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-lg hover:shadow-yellow-500/10"
+              >
+                Rate Now
+              </button>
+              <button
+                onClick={() => setDismissedNotification(true)}
+                className="px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/8 hover:bg-white/10 text-white text-xs font-bold transition-all"
+              >
+                Later
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* RATING MODAL OVERLAY */}
+      <AnimatePresence>
+        {activeReviewBooking && (
+          <RatingModal
+            bookingId={activeReviewBooking.id}
+            venueName={activeReviewBooking.venue}
+            onClose={() => setActiveReviewBooking(null)}
+            onSubmitSuccess={(xpAwarded, newLevel) => {
+              setCurrentXp((prev) => prev + xpAwarded)
+              setCurrentLevel(newLevel)
+              setDismissedNotification(true)
+              setActiveReviewBooking(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* 2. CONTINUE BOOKING WIDGET */}
       <AnimatePresence>

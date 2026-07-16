@@ -64,6 +64,8 @@ export default async function PlayerDashboard() {
       id,
       total_amount,
       status,
+      review_status,
+      hidden_from_player,
       slots(date, start_time, end_time),
       venues(id, name, address, venue_pricing(price), venue_images(url, is_cover))
     `
@@ -101,23 +103,59 @@ export default async function PlayerDashboard() {
   const totalBookings = bookings.length
 
   const now = new Date()
-  const upcomingList = bookings
-    .filter((b: any) => {
-      if (b.status !== 'CONFIRMED' || !b.slots) return false
-      return new Date(b.slots.end_time) >= now
-    })
-    .sort((a: any, b: any) => new Date(a.slots.date).getTime() - new Date(b.slots.date).getTime())
 
-  const pastList = bookings
+  // Map raw bookings to include derived statuses and persist completions
+  const mappedBookings = bookings.map((b: any) => {
+    const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
+    const isPast = slot ? new Date(slot.end_time) < now : false
+    let derivedStatus = b.status
+    let derivedReviewStatus = b.review_status
+
+    if (derivedStatus === 'CONFIRMED' && isPast) {
+      derivedStatus = 'COMPLETED'
+      derivedReviewStatus = 'PENDING'
+      // Persist update in DB
+      supabase
+        .from('bookings')
+        .update({ status: 'COMPLETED', review_status: 'PENDING' })
+        .eq('id', b.id)
+        .then()
+    }
+
+    return {
+      ...b,
+      status: derivedStatus,
+      review_status: derivedReviewStatus,
+    }
+  })
+
+  const upcomingList = mappedBookings
     .filter((b: any) => {
-      if (!b.slots) return false
-      return new Date(b.slots.end_time) < now
+      const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
+      if (b.status !== 'CONFIRMED' || !slot || b.hidden_from_player) return false
+      return new Date(slot.end_time) >= now
     })
-    .sort((a: any, b: any) => new Date(b.slots.date).getTime() - new Date(a.slots.date).getTime())
+    .sort((a: any, b: any) => {
+      const slotA = Array.isArray(a.slots) ? a.slots[0] : a.slots
+      const slotB = Array.isArray(b.slots) ? b.slots[0] : b.slots
+      return new Date(slotA?.date || 0).getTime() - new Date(slotB?.date || 0).getTime()
+    })
+
+  const pastList = mappedBookings
+    .filter((b: any) => {
+      const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
+      if (!slot || b.hidden_from_player) return false
+      return new Date(slot.end_time) < now
+    })
+    .sort((a: any, b: any) => {
+      const slotA = Array.isArray(a.slots) ? a.slots[0] : a.slots
+      const slotB = Array.isArray(b.slots) ? b.slots[0] : b.slots
+      return new Date(slotB?.date || 0).getTime() - new Date(slotA?.date || 0).getTime()
+    })
 
   const upcomingBookingsCount = upcomingList.length
 
-  const totalSpent = bookings
+  const totalSpent = mappedBookings
     .filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
     .reduce((sum, b) => sum + Number(b.total_amount), 0)
 

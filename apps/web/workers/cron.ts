@@ -86,6 +86,48 @@ cron.schedule('* * * * *', async () => {
     if (dispatched > 0) {
       console.log(`[Cron] Dispatched 10-minute reminders for ${dispatched} bookings.`)
     }
+
+    // 2. Transition past confirmed bookings to COMPLETED
+    const { data: pastBookings, error: pastErr } = await supabase
+      .from('bookings')
+      .select('id, customer_id, slots!inner(end_time, start_time, date), venues(name)')
+      .eq('status', 'CONFIRMED')
+
+    if (!pastErr && pastBookings) {
+      for (const booking of pastBookings) {
+        const slot = Array.isArray(booking.slots) ? booking.slots[0] : booking.slots
+        if (slot && new Date(slot.end_time) < now) {
+          const { error: updateErr } = await supabase
+            .from('bookings')
+            .update({ status: 'COMPLETED', review_status: 'PENDING' })
+            .eq('id', booking.id)
+
+          if (!updateErr) {
+            console.log(`[Cron] Booking ${booking.id} auto-completed.`)
+
+            const venue = Array.isArray(booking.venues) ? booking.venues[0] : booking.venues
+            // Insert in-app notification
+            await supabase.from('notifications').insert({
+              user_id: booking.customer_id,
+              title: 'Match Completed',
+              message: `Your game at ${venue?.name || 'Truf'} has ended. Rate your experience and earn +20 XP.`,
+              type: 'BOOKING',
+              link: '/player/bookings',
+              is_read: false,
+            })
+
+            // Queue notification outbox event
+            await notificationService.publishEvent('BOOKING_COMPLETED_REVIEW_PROMPT', {
+              bookingId: booking.id,
+              userId: booking.customer_id,
+              venueName: venue?.name || 'Truf Venue',
+              timeSlot: `${slot.start_time} - ${slot.end_time}`,
+              date: slot.date,
+            })
+          }
+        }
+      }
+    }
   } catch (error) {
     console.error(`[Cron] Unexpected error:`, error)
   }
