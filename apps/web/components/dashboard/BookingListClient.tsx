@@ -88,6 +88,25 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
     }
   }, [toast])
 
+  // Sync with server updates
+  useEffect(() => {
+    setBookings(initialBookings)
+  }, [initialBookings])
+
+  // Real-time subscription for live production
+  useEffect(() => {
+    const channel = supabase
+      .channel('player-bookings-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        router.refresh()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [router, supabase])
+
   // Countdown calculations
   const [countdowns, setCountdowns] = useState<Record<string, string>>({})
 

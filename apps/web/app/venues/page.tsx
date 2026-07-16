@@ -161,6 +161,24 @@ export default function VenuesPage() {
     }
 
     fetchVenues()
+
+    // Real-time subscription for live production
+    const channel = supabase
+      .channel('public-venues-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'slots' }, () => {
+        fetchVenues()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => {
+        fetchVenues()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'venues' }, () => {
+        fetchVenues()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const filteredVenues = allVenues.filter((v) => {
