@@ -4,6 +4,21 @@ import { bookingRepository } from '@/lib/repositories/bookingRepository'
 import { slotRepository } from '@/lib/repositories/slotRepository'
 import { BOOKING } from '@/config/settings'
 
+// Mock the environment to test unconfigured Razorpay integration
+let mockEnv = {
+  NEXT_PUBLIC_SUPABASE_URL: 'https://fake-supabase.co',
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: 'fake-anon-key',
+  SUPABASE_SERVICE_ROLE_KEY: 'fake-service-role-key',
+  EMAIL_ENCRYPTION_KEY: 'fake-email-encryption-key-32-chars-long',
+  NEXT_PUBLIC_RAZORPAY_KEY_ID: '',
+  RAZORPAY_SECRET: '',
+}
+
+vi.mock('@/config/env', () => ({
+  getEnv: vi.fn(() => mockEnv),
+  isProduction: vi.fn(() => false),
+}))
+
 // Mock the repositories
 vi.mock('@/lib/repositories/bookingRepository', () => ({
   bookingRepository: {

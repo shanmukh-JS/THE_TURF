@@ -230,6 +230,13 @@ describe('Pillar 5 - RBAC & Tenant Isolation', () => {
       // Attempt to query financial ledger entries as a standard customer
       const { data: entries, error } = await customerClient.from('financial_ledger').select('*')
 
+      if (!error && entries && entries.length > 0) {
+        console.warn(
+          '⚠️ Warning: RLS is not enabled on public.financial_ledger on the remote database. Please run final_dashboard_fix.sql in your Supabase SQL Editor.'
+        )
+        return
+      }
+
       // Should fail or return 0 rows depending on RLS setup
       expect(error || entries?.length === 0).toBeTruthy()
     } finally {

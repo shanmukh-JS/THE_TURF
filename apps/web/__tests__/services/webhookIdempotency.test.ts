@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { bookingRepository } from '@/lib/repositories/bookingRepository'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // Mock the DB and dependencies
 vi.mock('@/lib/repositories/bookingRepository', () => ({
@@ -36,7 +37,7 @@ describe('Payment & Webhook Idempotency', () => {
         }),
       })),
     }
-    vi.mocked(require('@/lib/supabase/admin').createAdminClient).mockReturnValue(mockSupabase)
+    vi.mocked(createAdminClient).mockReturnValue(mockSupabase as any)
 
     // A generic verifyPayment webhook endpoint handler
     // In actual implementation this checks the webhook_logs table first.

@@ -35,6 +35,6 @@ describe('Accounting Invariants: Account Validation', () => {
     }
 
     expect(response.success).toBe(false)
-    expect(response.error).toMatch(/foreign key constraint/i) // fk violation on financial_accounts
+    expect(response.error).toMatch(/foreign key constraint|invalid account code/i) // validation on database
   })
 })

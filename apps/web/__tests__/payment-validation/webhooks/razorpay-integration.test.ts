@@ -1,25 +1,52 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest'
-import { POST } from '../../../app/api/webhooks/razorpay/route'
-import * as webhookLib from '../../../lib/payments/webhook'
-import { createAdminClient } from '../../../lib/supabase/admin'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { getPaymentProvider } from '../../../lib/payments/factory'
 
-// Mock Supabase client
-vi.mock('../../../lib/supabase/admin', () => ({
-  createAdminClient: vi.fn(),
+// Mock Supabase client via globalThis to prevent hoisting / TDZ issues
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => (globalThis as any).mockSupabase),
 }))
 
-// Mock Webhook signature verification
-vi.mock('../../../lib/payments/webhook', () => ({
-  verifyRazorpayWebhook: vi.fn(),
+// Mock factory
+vi.mock('../../../lib/payments/factory', () => ({
+  getPaymentProvider: vi.fn(),
 }))
 
-const mockSupabase = {
-  rpc: vi.fn(),
+// Mock queues
+vi.mock('../../../workers/queues', () => ({
+  settlementQueue: {
+    add: vi.fn(),
+  },
+}))
+
+const mockPaymentProvider = {
+  verifyWebhook: vi.fn(),
 }
 
 describe('Razorpay Webhook Integration (Phase 2.2)', () => {
-  beforeAll(() => {
-    ;(createAdminClient as any).mockReturnValue(mockSupabase)
+  let POST: any
+  let mockSupabase: any
+  let settlementQueueMock: any
+
+  beforeAll(async () => {
+    vi.resetModules()
+
+    mockSupabase = {
+      from: vi.fn(),
+    }
+    ;(globalThis as any).mockSupabase = mockSupabase
+    ;(getPaymentProvider as any).mockReturnValue(mockPaymentProvider)
+
+    // Load queue mock dynamically from the clean sandbox
+    const queueModule = await import('../../../workers/queues')
+    settlementQueueMock = queueModule.settlementQueue
+
+    // Import dynamically to force route.ts execution in the clean sandbox
+    const route = await import('../../../app/api/webhooks/razorpay/route')
+    POST = route.POST
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   const createMockRequest = (
@@ -40,7 +67,7 @@ describe('Razorpay Webhook Integration (Phase 2.2)', () => {
   }
 
   it('Rejects invalid signature with 401', async () => {
-    ;(webhookLib.verifyRazorpayWebhook as any).mockReturnValue(false)
+    mockPaymentProvider.verifyWebhook.mockReturnValue(false)
     const req = createMockRequest({ event: 'order.paid' }, 'invalid_sig')
 
     const response = await POST(req)
@@ -49,15 +76,23 @@ describe('Razorpay Webhook Integration (Phase 2.2)', () => {
     expect(data.error).toBe('Invalid signature')
   })
 
-  it('Successfully processes valid signature and calls process_payment_webhook', async () => {
-    ;(webhookLib.verifyRazorpayWebhook as any).mockReturnValue(true)
-    mockSupabase.rpc.mockResolvedValue({ data: 'SUCCESS', error: null })
+  it('Successfully processes valid signature and enqueues job', async () => {
+    mockPaymentProvider.verifyWebhook.mockReturnValue(true)
+
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: { id: 'mock-event-db-id' },
+      error: null,
+    })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect })
+    mockSupabase.from.mockReturnValue({ insert: mockInsert })
 
     const payload = {
       event: 'order.paid',
       payload: {
-        payment: { entity: { id: 'pay_test', amount: 50000 } },
-        order: { entity: { notes: { bookingId: 'booking_123' } } },
+        payment: {
+          entity: { id: 'pay_test', amount: 50000, currency: 'INR', order_id: 'order_123' },
+        },
       },
     }
     const req = createMockRequest(payload)
@@ -65,19 +100,35 @@ describe('Razorpay Webhook Integration (Phase 2.2)', () => {
     const response = await POST(req)
     expect(response.status).toBe(200)
 
-    expect(mockSupabase.rpc).toHaveBeenCalledWith('process_payment_webhook', {
-      p_razorpay_event_id: 'evt_123',
-      p_business_event: 'BOOKING_PAID',
-      p_booking_id: 'booking_123',
-      p_payment_id: 'pay_test',
-      p_amount: 500, // 50000 paise to 500 rupees
-      p_payload: payload,
+    // Verify it saved the event to Supabase
+    expect(mockSupabase.from).toHaveBeenCalledWith('webhook_logs')
+    expect(mockInsert).toHaveBeenCalledWith({
+      provider: 'razorpay',
+      event_id: 'evt_123',
+      event_type: 'order.paid',
+      payload,
+    })
+
+    // Verify it enqueued background processing
+    expect(settlementQueueMock.add).toHaveBeenCalledWith('process-payment-settlement', {
+      webhookEventId: 'mock-event-db-id',
+      paymentId: 'pay_test',
+      orderId: 'order_123',
+      amount: 50000,
+      currency: 'INR',
     })
   })
 
   it('Returns success no-op on duplicate delivery', async () => {
-    ;(webhookLib.verifyRazorpayWebhook as any).mockReturnValue(true)
-    mockSupabase.rpc.mockResolvedValue({ data: 'ALREADY_PROCESSED', error: null })
+    mockPaymentProvider.verifyWebhook.mockReturnValue(true)
+
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: '23505', message: 'duplicate key value' },
+    })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect })
+    mockSupabase.from.mockReturnValue({ insert: mockInsert })
 
     const req = createMockRequest({
       event: 'order.paid',
@@ -87,12 +138,19 @@ describe('Razorpay Webhook Integration (Phase 2.2)', () => {
     const response = await POST(req)
     expect(response.status).toBe(200)
     const data = await response.json()
-    expect(data.message).toBe('Already processed')
+    expect(data.message).toBe('Duplicate event ignored')
   })
 
   it('Returns 500 on database failure to trigger Razorpay retries', async () => {
-    ;(webhookLib.verifyRazorpayWebhook as any).mockReturnValue(true)
-    mockSupabase.rpc.mockResolvedValue({ data: null, error: { message: 'DB Error' } })
+    mockPaymentProvider.verifyWebhook.mockReturnValue(true)
+
+    const mockSingle = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: 'OTHER_ERR', message: 'DB Error' },
+    })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect })
+    mockSupabase.from.mockReturnValue({ insert: mockInsert })
 
     const req = createMockRequest({
       event: 'order.paid',

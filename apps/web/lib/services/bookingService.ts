@@ -282,8 +282,17 @@ export class BookingService {
     if (!booking) throw new Error('Booking not found.')
     if (booking.status === 'CANCELLED') throw new Error('Booking is already cancelled.')
 
-    // Check cancellation window
-    if (booking.slot) {
+    // Check cancellation window (bypass for OWNER and ADMIN roles)
+    const supabase = createAdminClient()
+    const { data: actorRecord } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', params.actorId)
+      .single()
+
+    const isStaff = actorRecord?.role === 'OWNER' || actorRecord?.role === 'ADMIN'
+
+    if (!isStaff && booking.slot) {
       const slotStart = new Date(booking.slot.start_time)
       const hoursUntilStart = (slotStart.getTime() - Date.now()) / (1000 * 60 * 60)
       if (hoursUntilStart < BOOKING.cancellationWindowHours) {

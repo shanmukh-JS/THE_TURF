@@ -58,8 +58,8 @@ describe('Booking State Machine', () => {
         advancePaid: 500,
       })
 
-      expect(slotRepository.lockSlot).toHaveBeenCalledWith('slot-1')
-      expect(result).toHaveProperty('checkoutId')
+      expect(slotRepository.lockSlot).toHaveBeenCalledWith('slot-1', expect.any(String))
+      expect(result).toHaveProperty('orderId')
     })
 
     it('should reject locking an already locked slot', async () => {

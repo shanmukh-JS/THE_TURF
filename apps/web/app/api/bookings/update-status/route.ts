@@ -52,13 +52,22 @@ export async function POST(request: Request) {
     }
 
     // 4. Update Booking Status
-    const { error: updateError } = await adminClient
-      .from('bookings')
-      .update({ status })
-      .eq('id', bookingId)
+    if (status === 'CANCELLED') {
+      const { bookingService } = await import('@/lib/services/bookingService')
+      await bookingService.cancelBooking({
+        bookingId,
+        actorId: user.id,
+        reason: 'Cancelled by venue owner',
+      })
+    } else {
+      const { error: updateError } = await adminClient
+        .from('bookings')
+        .update({ status })
+        .eq('id', bookingId)
 
-    if (updateError) {
-      throw updateError
+      if (updateError) {
+        throw updateError
+      }
     }
 
     // 5. Send Notification securely

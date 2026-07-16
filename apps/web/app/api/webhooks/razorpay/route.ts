@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   try {
     const signature = req.headers.get('x-razorpay-signature')
     if (!signature) {
-      return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing signature' }, { status: 401 })
     }
 
     const rawBody = await req.text()
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     // 1. Verify Signature
     if (!provider.verifyWebhook(rawBody, signature)) {
       console.warn('Webhook signature verification failed')
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
     const payload = JSON.parse(rawBody)
@@ -32,12 +32,11 @@ export async function POST(req: Request) {
 
     // 2. Idempotency Check & 3. Persist Event
     const { data: insertedEvent, error: insertError } = await supabase
-      .from('webhook_events')
+      .from('webhook_logs')
       .insert({
         provider: 'razorpay',
         event_id: eventId,
         event_type: eventType,
-        signature,
         payload,
       })
       .select('id')

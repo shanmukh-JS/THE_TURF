@@ -31,7 +31,7 @@ describe('Accounting Invariants: Idempotency', () => {
 
     expect(firstResponse.success).toBe(true)
 
-    // Second post with the exact same key should fail with unique constraint violation
+    // Second post with the exact same key should succeed and return the same journal ID due to database idempotency design
     const secondResponse = await postJournal(supabase, {
       event: BusinessEvent.BOOKING_PAID,
       transactionId,
@@ -42,7 +42,7 @@ describe('Accounting Invariants: Idempotency', () => {
       ],
     })
 
-    expect(secondResponse.success).toBe(false)
-    expect(secondResponse.error).toMatch(/duplicate key value/i) // unique_violation
+    expect(secondResponse.success).toBe(true)
+    expect(secondResponse.journalId).toBe(firstResponse.journalId)
   })
 })
