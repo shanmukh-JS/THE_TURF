@@ -675,7 +675,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
               {/* Sports Filter Tabs */}
               {availableSports.length > 0 && (
-                <div className="flex gap-1.5 bg-black/40 border border-white/5 rounded-xl p-1 w-fit">
+                <div className="flex flex-wrap gap-1.5 bg-black/40 border border-white/5 rounded-xl p-1 w-full sm:w-fit">
                   <button
                     onClick={() => setSportFilter('ALL')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
