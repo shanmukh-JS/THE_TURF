@@ -68,7 +68,7 @@ export default async function CustomerNotificationsPage() {
         await adminSupabase.from('notifications').insert({
           user_id: user.id,
           title: '🎉 Match Completed!',
-          message: `Your game at ${venueName} has ended. Rate your experience and earn +20 XP!`,
+          message: `Your game at ${venueName} has ended. Rate your experience and earn up to +50 XP!`,
           type: 'BOOKING',
           link: '/player/bookings',
           is_read: false,

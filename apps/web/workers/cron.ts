@@ -109,8 +109,8 @@ cron.schedule('* * * * *', async () => {
             // Insert in-app notification
             await supabase.from('notifications').insert({
               user_id: booking.customer_id,
-              title: 'Match Completed',
-              message: `Your game at ${venue?.name || 'Truf'} has ended. Rate your experience and earn +20 XP.`,
+              title: '🎉 Match Completed!',
+              message: `Your game at ${venue?.name || 'Truf'} has ended. Rate your experience and earn up to +50 XP.`,
               type: 'BOOKING',
               link: '/player/bookings',
               is_read: false,

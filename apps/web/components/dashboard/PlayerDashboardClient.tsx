@@ -410,7 +410,7 @@ export function PlayerDashboardClient({
                     {completedPendingReview.venues?.name || 'Truf'}
                   </span>
                   . Rate your experience and earn{' '}
-                  <span className="text-green-400 font-bold">+20 XP</span> instantly!
+                  <span className="text-green-400 font-bold">up to +50 XP</span> instantly!
                 </p>
               </div>
             </div>

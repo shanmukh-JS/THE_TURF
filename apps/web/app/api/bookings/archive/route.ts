@@ -33,9 +33,9 @@ export async function POST(req: Request) {
     }
 
     // Recommendation check: Must be reviewed before archiving
-    if (booking.review_status !== 'SUBMITTED') {
+    if (booking.review_status === 'PENDING') {
       return NextResponse.json(
-        { error: 'Complete your review to unlock Archive. 🎁 Earn +20 XP instantly!' },
+        { error: 'Complete your review to unlock Archive. 🎁 Earn up to +50 XP instantly!' },
         { status: 403 }
       )
     }

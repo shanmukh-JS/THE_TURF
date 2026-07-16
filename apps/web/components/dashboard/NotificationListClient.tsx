@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, CalendarCheck, CreditCard, Info, ShieldAlert, Check, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 const getIconAndColor = (type: string) => {
   switch (type) {
@@ -39,6 +40,7 @@ interface Notification {
   type: string
   is_read: boolean
   created_at: string
+  link?: string
 }
 
 interface NotificationListClientProps {
@@ -50,6 +52,7 @@ export function NotificationListClient({
   initialNotifications,
   userId,
 }: NotificationListClientProps) {
+  const router = useRouter()
   const supabase = createClient()
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications)
   const [activeCategory, setActiveCategory] = useState('All')
@@ -155,7 +158,10 @@ export function NotificationListClient({
               <motion.div
                 layout
                 key={n.id}
-                onClick={() => !n.is_read && handleMarkAsRead(n.id)}
+                onClick={() => {
+                  if (!n.is_read) handleMarkAsRead(n.id)
+                  if (n.link) router.push(n.link)
+                }}
                 className={`rounded-2xl border ${
                   n.is_read
                     ? 'border-white/5 bg-white/[0.01]'
