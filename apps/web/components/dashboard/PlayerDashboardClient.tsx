@@ -273,7 +273,7 @@ export function PlayerDashboardClient({
   const xpTarget = 1000
 
   const completedPendingReview = pastList.find((b: any) => {
-    return b.status === 'COMPLETED' && b.reviewStatus === 'PENDING' && !b.hiddenFromPlayer
+    return b.status === 'COMPLETED' && b.review_status === 'PENDING' && !b.hidden_from_player
   })
 
   // Calculate upcoming countdown
@@ -407,7 +407,7 @@ export function PlayerDashboardClient({
                 <p className="text-xs text-gray-400 mt-1">
                   Hope you enjoyed your game at{' '}
                   <span className="text-yellow-400 font-semibold">
-                    {completedPendingReview.venue}
+                    {completedPendingReview.venues?.name || 'Truf'}
                   </span>
                   . Rate your experience and earn{' '}
                   <span className="text-green-400 font-bold">+20 XP</span> instantly!
@@ -437,7 +437,7 @@ export function PlayerDashboardClient({
         {activeReviewBooking && (
           <RatingModal
             bookingId={activeReviewBooking.id}
-            venueName={activeReviewBooking.venue}
+            venueName={activeReviewBooking.venues?.name || 'Truf'}
             onClose={() => setActiveReviewBooking(null)}
             onSubmitSuccess={(xpAwarded, newLevel) => {
               setCurrentXp((prev) => prev + xpAwarded)
