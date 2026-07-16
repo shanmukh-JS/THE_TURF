@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Trigger redeployment (clean rollback)
   // Optimize images from Supabase storage
   images: {
     remotePatterns: [
