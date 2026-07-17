@@ -693,7 +693,7 @@ export default function ManageSlotsPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex gap-2 justify-end">
-                            {slot.status !== 'Expired' && (
+                            {slot.status !== 'Expired' && slot.status !== 'Booked' && (
                               <>
                                 <button
                                   onClick={() => {
@@ -729,13 +729,15 @@ export default function ManageSlotsPage() {
                                 </button>
                               </>
                             )}
-                            <button
-                              onClick={() => handleDeleteSlot(slot.id)}
-                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
-                              title="Delete Slot"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {slot.status !== 'Booked' && (
+                              <button
+                                onClick={() => handleDeleteSlot(slot.id)}
+                                className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                                title="Delete Slot"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -820,7 +822,7 @@ export default function ManageSlotsPage() {
                           <div
                             key={slot.id}
                             onClick={() => {
-                              if (slot.status === 'Expired') return
+                              if (slot.status === 'Expired' || slot.status === 'Booked') return
                               setEditingSlot(slot)
                               setEditFormData({
                                 price: slot.price.toString(),
