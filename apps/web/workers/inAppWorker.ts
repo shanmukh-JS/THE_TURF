@@ -59,21 +59,59 @@ export const inAppWorker = new Worker(
       const userId = payload.userId || payload.ownerId
       if (!userId) throw new Error('No userId or ownerId provided for in-app notification')
 
-      // 4. Create the In-App notification record for the UI bell
-      let notifType = 'INFO'
-      if (job.name.includes('BOOKING')) notifType = 'BOOKING'
-      if (job.name.includes('CANCEL')) notifType = 'WARNING'
-
-      const { error: insertError } = await supabase.from('notifications').insert({
-        user_id: userId,
-        title,
-        message,
-        type: notifType,
+      // 4. Update lifecycle to PROCESSING
+      await supabase.from('notification_lifecycle_log').insert({
+        notification_id: notificationId,
+        state: 'PROCESSING',
       })
 
-      if (insertError) throw insertError
+      // 5. Create the In-App notification record for the UI bell with extended fields
+      const { data: newNotif, error: insertError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          title: payload.title || title,
+          message: payload.message || message,
+          type: payload.priority === 'CRITICAL' || payload.priority === 'HIGH' ? 'WARNING' : 'INFO',
+          category: payload.category || 'SYSTEM',
+          priority: payload.priority || 'MEDIUM',
+          icon: payload.icon || null,
+          color: payload.color || null,
+          action_button: payload.actionButton || false,
+          action_text: payload.actionText || null,
+          expires_at: payload.expiresAt || null,
+          metadata: payload.metadata || {},
+        })
+        .select('id')
+        .single()
 
-      // 5. Mark Event as Delivered
+      if (insertError || !newNotif) {
+        throw insertError || new Error('Failed to create notification')
+      }
+
+      // 6. Log SENT lifecycle & analytics markers
+      await supabase.from('notification_lifecycle_log').insert({
+        notification_id: notificationId,
+        state: 'SENT',
+      })
+
+      await supabase.from('notification_analytics').insert({
+        notification_id: newNotif.id,
+        action: 'SENT',
+      })
+
+      // 7. Update lifecycle to DELIVERED
+      await supabase.from('notification_lifecycle_log').insert({
+        notification_id: notificationId,
+        state: 'DELIVERED',
+      })
+
+      await supabase.from('notification_analytics').insert({
+        notification_id: newNotif.id,
+        action: 'DELIVERED',
+      })
+
+      // 8. Mark Event as Delivered in events log
       await supabase
         .from('notification_events')
         .update({
@@ -85,6 +123,12 @@ export const inAppWorker = new Worker(
       return { success: true }
     } catch (error: any) {
       console.error(`[InAppWorker] Job ${job.id} failed:`, error.message)
+
+      await supabase.from('notification_lifecycle_log').insert({
+        notification_id: notificationId,
+        state: 'PROCESSING',
+        error_message: error.message,
+      })
 
       await supabase
         .from('notification_events')

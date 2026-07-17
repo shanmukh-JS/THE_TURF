@@ -1,5 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { emailQueue, inAppQueue, reminderQueue } from '../../../workers/queues'
+import { notificationGateway } from './NotificationGateway'
 
 export type NotificationEvent =
   | 'BOOKING_CONFIRMED'
@@ -21,44 +20,41 @@ export interface EventPayload {
 
 export class NotificationService {
   /**
-   * Publishes a domain event. The service decides which channels to route to
-   * based on preferences, and pushes jobs to the appropriate BullMQ queues.
+   * Publishes a domain event. Maps it internally to the new NotificationGateway
+   * routing system to maintain full backwards compatibility.
    */
   async publishEvent(event: NotificationEvent, payload: EventPayload): Promise<void> {
-    const supabase = createAdminClient()
+    const userId = payload.userId || payload.ownerId
+    if (!userId) return
 
-    // Default channels for Phase 1 MVP
-    const channels: ('EMAIL' | 'IN_APP')[] = ['EMAIL', 'IN_APP']
+    let category = 'SYSTEM'
+    let priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'SILENT' = 'MEDIUM'
+    let icon = 'Info'
+    let color = 'bg-blue-500/10 text-blue-400'
+    let title = event.replace(/_/g, ' ')
 
-    for (const channel of channels) {
-      // 1. Create the central truth record in notification_events
-      const { data: record, error } = await supabase
-        .from('notification_events')
-        .insert({
-          event,
-          channel,
-          booking_id: payload.bookingId || null,
-          user_id: payload.userId || null,
-          payload,
-          status: 'QUEUED',
-        })
-        .select('id')
-        .single()
-
-      if (error || !record) {
-        console.error(`[NotificationService] Failed to create event record:`, error)
-        continue
-      }
-
-      const jobId = record.id
-
-      // 2. Push to the correct BullMQ Queue
-      if (channel === 'EMAIL') {
-        await emailQueue.add(event, { notificationId: jobId, payload }, { jobId })
-      } else if (channel === 'IN_APP') {
-        await inAppQueue.add(event, { notificationId: jobId, payload }, { jobId })
-      }
+    if (event.includes('BOOKING')) {
+      category = 'BOOKINGS'
+      priority = 'HIGH'
+      icon = 'CalendarCheck'
+      color = 'bg-emerald-500/10 text-emerald-400'
+    } else if (event.includes('PAYMENT')) {
+      category = 'PAYMENTS'
+      priority = 'HIGH'
+      icon = 'CreditCard'
+      color = 'bg-indigo-500/10 text-indigo-400'
     }
+
+    await notificationGateway.dispatch('IN_APP', event, {
+      userId,
+      title,
+      message: payload.message || '',
+      category,
+      priority,
+      icon,
+      color,
+      metadata: payload,
+    })
   }
 }
 
