@@ -56,6 +56,51 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
   const [favLoading, setFavLoading] = useState(false)
 
   // Check if current venue is favorited
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportFormData, setReportFormData] = useState({
+    category: 'Fraud / Fake Turf',
+    complaint: '',
+  })
+  const [reportLoading, setReportLoading] = useState(false)
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentUser) {
+      router.push('/auth/login')
+      return
+    }
+    if (reportFormData.complaint.trim().length < 10) {
+      setToast({ message: 'Complaint must be at least 10 characters', type: 'error' })
+      return
+    }
+    setReportLoading(true)
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venueId: id,
+          ownerId: venue.owner_id,
+          category: reportFormData.category,
+          complaint: reportFormData.complaint,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to submit report')
+
+      setToast({
+        message: 'Report submitted successfully. Our team will review it.',
+        type: 'success',
+      })
+      setShowReportModal(false)
+      setReportFormData({ category: 'Fraud / Fake Turf', complaint: '' })
+    } catch (err: any) {
+      setToast({ message: err.message, type: 'error' })
+    } finally {
+      setReportLoading(false)
+    }
+  }
+
   useEffect(() => {
     async function checkFavorite() {
       if (!currentUser || !id) return
@@ -545,22 +590,31 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
               <h1 className="text-3xl font-bold text-white tracking-tight">{venue.name}</h1>
             </div>
 
-            <button
-              onClick={handleToggleFavorite}
-              disabled={favLoading}
-              className={`px-4 py-2.5 rounded-xl border transition-all flex items-center gap-2 font-bold text-xs shrink-0 select-none ${
-                isFavorite
-                  ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'
-                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <Heart
-                className={`w-4 h-4 transition-transform duration-300 ${
-                  isFavorite ? 'fill-red-500 scale-110' : 'scale-100 hover:scale-110'
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all font-bold text-xs shrink-0 select-none flex items-center gap-2"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Report
+              </button>
+              <button
+                onClick={handleToggleFavorite}
+                disabled={favLoading}
+                className={`px-4 py-2.5 rounded-xl border transition-all flex items-center gap-2 font-bold text-xs shrink-0 select-none ${
+                  isFavorite
+                    ? 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
                 }`}
-              />
-              {isFavorite ? 'Favorited' : 'Favorite'}
-            </button>
+              >
+                <Heart
+                  className={`w-4 h-4 transition-transform duration-300 ${
+                    isFavorite ? 'fill-red-500 scale-110' : 'scale-100 hover:scale-110'
+                  }`}
+                />
+                {isFavorite ? 'Favorited' : 'Favorite'}
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
             <span className="flex items-center gap-1.5 bg-green-500/10 text-green-400 px-3 py-1 rounded-full text-xs font-semibold border border-green-500/20">
@@ -948,6 +1002,88 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#0a0f0a] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                Report Venue
+              </h2>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleReportSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">
+                  Reason for Reporting
+                </label>
+                <select
+                  value={reportFormData.category}
+                  onChange={(e) =>
+                    setReportFormData({ ...reportFormData, category: e.target.value })
+                  }
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-red-500/50"
+                  required
+                >
+                  <option value="Fraud / Fake Turf">Fraud / Fake Turf (High Priority)</option>
+                  <option value="Safety Hazard">Safety Hazard (High Priority)</option>
+                  <option value="Hostile Behaviour">Hostile Behaviour (High Priority)</option>
+                  <option value="Overcharging">Overcharging (Medium Priority)</option>
+                  <option value="Double Booking">Double Booking (Medium Priority)</option>
+                  <option value="Inappropriate Content">
+                    Inappropriate Content (Low Priority)
+                  </option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">
+                  Details (min. 10 characters)
+                </label>
+                <textarea
+                  value={reportFormData.complaint}
+                  onChange={(e) =>
+                    setReportFormData({ ...reportFormData, complaint: e.target.value })
+                  }
+                  rows={4}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-red-500/50 resize-none placeholder:text-gray-600"
+                  placeholder="Please describe the issue in detail..."
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowReportModal(false)}
+                  disabled={reportLoading}
+                  className="px-4 py-2 border border-white/10 rounded-xl text-sm font-semibold text-gray-400 hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reportLoading}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center gap-2"
+                >
+                  {reportLoading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : null}
+                  Submit Report
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

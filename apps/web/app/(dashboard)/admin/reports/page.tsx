@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   Flag,
   ShieldAlert,
@@ -19,7 +20,9 @@ import {
 } from '@/components/ui/DashboardAnimationWrapper'
 
 export default function AdminReportsPage() {
+  const supabase = createClient()
   const [reports, setReports] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -37,17 +40,100 @@ export default function AdminReportsPage() {
 
     const { report, action } = confirmModal
     let detailsText = ''
-    if (action === 'resolve') {
-      detailsText = 'Report marked as resolved'
-      setReports((prev) => prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r)))
-    } else {
-      detailsText = `Account/Turf suspended following report review: ${action}`
-    }
+    try {
+      if (action === 'resolve') {
+        const { error } = await supabase
+          .from('reports')
+          .update({ status: 'RESOLVED' })
+          .eq('id', report.id)
+        if (error) throw error
+        detailsText = 'Report marked as resolved'
+        setReports((prev) =>
+          prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r))
+        )
+      } else if (action === 'suspend_turf') {
+        const { error } = await supabase
+          .from('venues')
+          .update({ is_disabled: true, verification_status: 'REJECTED' })
+          .eq('id', report.venue_id)
+        if (error) throw error
 
-    await logAdminAction(`Report Action: ${action}`, 'reports', report.id, detailsText)
-    setActionLoading(false)
-    setConfirmModal(null)
+        // Also resolve the report automatically
+        await supabase.from('reports').update({ status: 'RESOLVED' }).eq('id', report.id)
+
+        detailsText = `Turf suspended following report review: ${action}`
+        setReports((prev) =>
+          prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r))
+        )
+      } else if (action === 'suspend_owner') {
+        const { error } = await supabase
+          .from('users')
+          .update({ is_suspended: true })
+          .eq('id', report.owner_id)
+        if (error) throw error
+
+        await supabase.from('reports').update({ status: 'RESOLVED' }).eq('id', report.id)
+
+        detailsText = `Owner suspended following report review: ${action}`
+        setReports((prev) =>
+          prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r))
+        )
+      }
+
+      await logAdminAction(`Report Action: ${action}`, 'reports', report.id, detailsText)
+    } catch (err) {
+      console.error('Failed to perform action:', err)
+      alert('Failed to perform action. See console for details.')
+    } finally {
+      setActionLoading(false)
+      setConfirmModal(null)
+    }
   }
+
+  useEffect(() => {
+    async function fetchReports() {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('reports')
+        .select(
+          `
+          *,
+          venues (
+            name
+          ),
+          reporter:users!reporter_id (
+            email
+          ),
+          owner:owner_profiles!owner_id (
+            full_name
+          )
+        `
+        )
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching reports:', error)
+      } else if (data) {
+        const formatted = data.map((r: any) => ({
+          id: r.id,
+          venue_id: r.venue_id,
+          owner_id: r.owner_id,
+          category: r.category,
+          priority: r.priority,
+          status: r.status,
+          complaint: r.complaint,
+          turfName: r.venues?.name || 'Unknown Turf',
+          reporterEmail: r.reporter?.email || 'Unknown User',
+          ownerName: r.owner?.full_name || 'Unknown Owner',
+          createdAt: new Date(r.created_at).toLocaleString(),
+          assignedAdmin: r.assigned_admin || 'Unassigned',
+        }))
+        setReports(formatted)
+      }
+      setLoading(false)
+    }
+    fetchReports()
+  }, [])
 
   // Filter
   const filteredReports = useMemo(() => {
@@ -222,7 +308,9 @@ export default function AdminReportsPage() {
 
       {/* Ticket List */}
       <DashboardAnimationItem className="space-y-4">
-        {filteredReports.length === 0 ? (
+        {loading ? (
+          <div className="py-20 text-center text-gray-500 animate-pulse">Loading reports...</div>
+        ) : filteredReports.length === 0 ? (
           <div className="bg-[#0a0f0a] border border-white/8 rounded-2xl p-12 text-center text-gray-500 text-sm">
             No active reports match the criteria.
           </div>
