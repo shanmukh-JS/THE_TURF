@@ -57,7 +57,7 @@ export default async function CustomerProfilePage() {
     ? firstBookedVenue[0]?.name
     : firstBookedVenue?.name
 
-  const favoriteTurf = firstFavName || firstBookedName || 'None yet'
+  const favoriteTurf = firstFavName || 'None'
 
   const role = user.user_metadata?.role || 'CUSTOMER'
   const memberSince = new Date(user.created_at).toLocaleDateString('en-US', {
