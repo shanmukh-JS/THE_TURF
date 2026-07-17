@@ -35,36 +35,38 @@ export default function AdminReportsPage() {
     action:
       'suspend_turf' | 'suspend_owner' | 'unsuspend_turf' | 'unsuspend_owner' | 'resolve' | 'delete'
   } | null>(null)
-  const [actionLoading, setActionLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | false>(false)
 
-  const handleAction = async () => {
-    if (!confirmModal) return
-    setActionLoading(true)
-
-    const { report, action } = confirmModal
-    let detailsText = ''
+  const handleAction = async (
+    report: any,
+    action:
+      'resolve' | 'suspend_turf' | 'suspend_owner' | 'unsuspend_turf' | 'unsuspend_owner' | 'delete'
+  ) => {
+    setActionLoading(report.id)
     try {
+      const response = await fetch('/api/admin/reports/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportId: report.id,
+          action,
+          venueId: report.venue_id,
+          ownerId: report.owner_id,
+        }),
+      })
+
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to perform action')
+      }
+
+      const detailsText = result.detailsText
+
       if (action === 'resolve') {
-        const { error } = await supabase
-          .from('reports')
-          .update({ status: 'RESOLVED' })
-          .eq('id', report.id)
-        if (error) throw error
-        detailsText = 'Report marked as resolved'
         setReports((prev) =>
           prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r))
         )
       } else if (action === 'suspend_turf') {
-        const { error } = await supabase
-          .from('venues')
-          .update({ is_disabled: true, verification_status: 'REJECTED' })
-          .eq('id', report.venue_id)
-        if (error) throw error
-
-        // Also resolve the report automatically
-        await supabase.from('reports').update({ status: 'RESOLVED' }).eq('id', report.id)
-
-        detailsText = `Turf suspended following report review: ${action}`
         setReports((prev) =>
           prev.map((r) =>
             r.id === report.id
@@ -75,15 +77,6 @@ export default function AdminReportsPage() {
           )
         )
       } else if (action === 'suspend_owner') {
-        const { error } = await supabase
-          .from('users')
-          .update({ is_suspended: true })
-          .eq('id', report.owner_id)
-        if (error) throw error
-
-        await supabase.from('reports').update({ status: 'RESOLVED' }).eq('id', report.id)
-
-        detailsText = `Owner suspended following report review: ${action}`
         setReports((prev) =>
           prev.map((r) =>
             r.id === report.id
@@ -94,32 +87,18 @@ export default function AdminReportsPage() {
           )
         )
       } else if (action === 'unsuspend_turf') {
-        const { error } = await supabase
-          .from('venues')
-          .update({ is_disabled: false, verification_status: 'APPROVED' })
-          .eq('id', report.venue_id)
-        if (error) throw error
-        detailsText = `Turf unsuspended following report review`
         setReports((prev) =>
           prev.map((r) => (r.venue_id === report.venue_id ? { ...r, turfIsDisabled: false } : r))
         )
       } else if (action === 'unsuspend_owner') {
-        const { error } = await supabase
-          .from('users')
-          .update({ is_suspended: false })
-          .eq('id', report.owner_id)
-        if (error) throw error
-        detailsText = `Owner unsuspended following report review`
         setReports((prev) =>
           prev.map((r) => (r.owner_id === report.owner_id ? { ...r, ownerIsSuspended: false } : r))
         )
       } else if (action === 'delete') {
-        const { error } = await supabase.from('reports').delete().eq('id', report.id)
-        if (error) throw error
-        detailsText = 'Report deleted permanently'
         setReports((prev) => prev.filter((r) => r.id !== report.id))
       }
 
+      setConfirmModal(null)
       await logAdminAction(`Report Action: ${action}`, 'reports', report.id, detailsText)
     } catch (err) {
       console.error('Failed to perform action:', err)
@@ -485,15 +464,15 @@ export default function AdminReportsPage() {
 
             <div className="flex justify-end gap-3 pt-2">
               <button
-                disabled={actionLoading}
+                disabled={!!actionLoading}
                 onClick={() => setConfirmModal(null)}
                 className="px-4 py-2 border border-white/10 rounded-xl text-sm font-semibold text-gray-400 hover:bg-white/5 transition-colors"
               >
                 Cancel
               </button>
               <button
-                disabled={actionLoading}
-                onClick={handleAction}
+                disabled={!!actionLoading}
+                onClick={() => handleAction(confirmModal.report, confirmModal.action)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-600 text-white hover:bg-red-500 transition-colors flex items-center gap-2"
               >
                 {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
