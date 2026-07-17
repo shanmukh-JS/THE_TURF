@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRealtimeTable } from '@/hooks/useRealtime'
 import {
   CreditCard,
   Search,
@@ -96,18 +97,51 @@ export default function AdminRefundsPage() {
   }, [])
 
   // Real-time subscription to refunds table
-  useEffect(() => {
-    const channel = supabase
-      .channel('admin-refunds-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'refunds' }, () => {
-        fetchRefunds()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+  useRealtimeTable('refunds', undefined, async (event) => {
+    const { eventType, new: newRow, old: oldRow } = event
+    if (eventType === 'DELETE') {
+      setRefunds((prev) => prev.filter((r) => r.id !== oldRow.id))
+      return
     }
-  }, [])
+
+    // Fetch the single updated refund with joins
+    const { data, error } = await supabase
+      .from('refunds')
+      .select(
+        `
+        *,
+        bookings(
+          customer_id,
+          total_amount,
+          advance_paid,
+          venues(name)
+        )
+      `
+      )
+      .eq('id', newRow.id)
+      .maybeSingle()
+
+    if (error || !data) return
+
+    setRefunds((prev) => {
+      const exists = prev.some((r) => r.id === data.id)
+      if (exists) {
+        // Conflict Resolution: Only update if the server's updated_at is newer
+        return prev.map((r) => {
+          if (r.id === data.id) {
+            const serverTime = new Date(data.updated_at).getTime()
+            const localTime = new Date(r.updated_at).getTime()
+            if (serverTime >= localTime) {
+              return { ...r, ...data }
+            }
+          }
+          return r
+        })
+      } else {
+        return [data, ...prev]
+      }
+    })
+  })
 
   // Action: Retry worker job
   const handleRetryRefund = async (refundId: string) => {

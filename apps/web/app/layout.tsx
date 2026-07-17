@@ -4,6 +4,7 @@ import './globals.css'
 import { Navbar } from '@/components/layout/Navbar'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { PageTransition } from '@/components/providers/PageTransition'
+import { RealtimeProvider } from '@/components/providers/RealtimeProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <Navbar />
         <AuthProvider>
-          <PageTransition>{children}</PageTransition>
+          <RealtimeProvider>
+            <PageTransition>{children}</PageTransition>
+          </RealtimeProvider>
         </AuthProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRealtimeTable } from '@/hooks/useRealtime'
 import {
   CalendarDays,
   Plus,
@@ -215,24 +216,65 @@ export default function ManageSlotsPage() {
   }, [ownerProfileId])
 
   // Real-time synchronization
-  useEffect(() => {
-    if (!ownerProfileId) return
+  useRealtimeTable(
+    'slots',
+    ownerProfileId ? `owner_id=eq.${ownerProfileId}` : undefined,
+    async (event) => {
+      const { eventType, new: newRow, old: oldRow } = event
+      if (eventType === 'DELETE') {
+        setSlots((prev) => prev.filter((s) => s.id !== oldRow.id))
+        return
+      }
 
-    const channel = supabase
-      .channel('owner-slots-sync')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'slots', filter: `owner_id=eq.${ownerProfileId}` },
-        () => {
-          fetchSlots()
+      // Fetch the single updated slot with joins
+      const { data, error } = await supabase
+        .from('slots')
+        .select(
+          `
+          *,
+          venues(name)
+        `
+        )
+        .eq('id', newRow.id)
+        .maybeSingle()
+
+      if (error || !data) return
+
+      // Process expired logic
+      const now = new Date()
+      const processedSlot = { ...data }
+      if (
+        !processedSlot.is_booked &&
+        new Date(processedSlot.end_time) < now &&
+        processedSlot.status !== 'Expired'
+      ) {
+        processedSlot.status = 'Expired'
+      }
+
+      setSlots((prev) => {
+        const exists = prev.some((s) => s.id === processedSlot.id)
+        if (exists) {
+          // Conflict Resolution: Only update if the server's updated_at is newer
+          return prev.map((s) => {
+            if (s.id === processedSlot.id) {
+              const serverTime = new Date(processedSlot.updated_at).getTime()
+              const localTime = new Date(s.updated_at).getTime()
+              if (serverTime >= localTime) {
+                return { ...s, ...processedSlot }
+              }
+            }
+            return s
+          })
+        } else {
+          return [...prev, processedSlot].sort((a, b) => {
+            const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime()
+            if (dateCompare !== 0) return dateCompare
+            return new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          })
         }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+      })
     }
-  }, [ownerProfileId])
+  )
 
   // Time formatting helpers
   const formatTimeStr = (dateStr: string) => {

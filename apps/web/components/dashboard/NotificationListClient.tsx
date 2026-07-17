@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, CalendarCheck, CreditCard, Info, ShieldAlert, Check, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useRealtimeTable } from '@/hooks/useRealtime'
 
 const getIconAndColor = (type: string) => {
   switch (type) {
@@ -41,6 +42,7 @@ interface Notification {
   is_read: boolean
   created_at: string
   link?: string
+  updated_at?: string
 }
 
 interface NotificationListClientProps {
@@ -92,29 +94,33 @@ export function NotificationListClient({
     setLoading(false)
   }
 
-  // Real-time subscription for new notifications
-  useEffect(() => {
-    const channel = supabase
-      .channel(`notifications-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as Notification
-          setNotifications((prev) => [newNotif, ...prev])
-        }
+  // Real-time subscription for notifications table
+  useRealtimeTable('notifications', userId ? `user_id=eq.${userId}` : undefined, (event) => {
+    const { eventType, new: newRow, old: oldRow } = event
+    if (eventType === 'INSERT') {
+      const newNotif = newRow as Notification
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === newNotif.id)) return prev
+        return [newNotif, ...prev]
+      })
+    } else if (eventType === 'UPDATE') {
+      const updatedNotif = newRow as Notification
+      setNotifications((prev) =>
+        prev.map((n) => {
+          if (n.id === updatedNotif.id) {
+            const serverTime = new Date(updatedNotif.updated_at || '').getTime()
+            const localTime = new Date(n.updated_at || '').getTime()
+            if (serverTime >= localTime) {
+              return { ...n, ...updatedNotif }
+            }
+          }
+          return n
+        })
       )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+    } else if (eventType === 'DELETE') {
+      setNotifications((prev) => prev.filter((n) => n.id !== oldRow.id))
     }
-  }, [userId])
+  })
 
   // Group notifications chronologically
   const groupNotifications = (list: Notification[]) => {

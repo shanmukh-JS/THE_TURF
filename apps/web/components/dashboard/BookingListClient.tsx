@@ -19,6 +19,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { RatingModal } from './RatingModal'
+import { useAuthStore } from '@/store/useAuthStore'
+import { useRealtimeTable } from '@/hooks/useRealtime'
 
 const statusMap = {
   CONFIRMED: { icon: CheckCircle, color: 'text-blue-400', bg: 'bg-blue-400/10', label: 'Upcoming' },
@@ -111,19 +113,114 @@ export function BookingListClient({
     setBookings(initialBookings)
   }, [initialBookings])
 
-  // Real-time subscription for live production
-  useEffect(() => {
-    const channel = supabase
-      .channel('player-bookings-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
-        router.refresh()
-      })
-      .subscribe()
+  const user = useAuthStore((state) => state.user)
 
-    return () => {
-      supabase.removeChannel(channel)
+  // Real-time subscription for live production
+  useRealtimeTable('bookings', user ? `customer_id=eq.${user.id}` : undefined, async (event) => {
+    const { eventType, new: newRow, old: oldRow } = event
+    if (eventType === 'DELETE') {
+      setBookings((prev) => prev.filter((b) => b.id !== oldRow.id))
+      return
     }
-  }, [router, supabase])
+
+    // Fetch the single updated booking with joins
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(
+        `
+          id,
+          total_amount,
+          advance_paid,
+          status,
+          qr_code,
+          check_in_status,
+          review_status,
+          hidden_from_player,
+          booking_version,
+          cancellation_reason,
+          cancelled_by,
+          cancelled_at,
+          refund_status,
+          refund_amount,
+          refund_reference,
+          refund_completed_at,
+          slots (date, start_time, end_time),
+          venues (id, name, address, owner_id)
+        `
+      )
+      .eq('id', newRow.id)
+      .maybeSingle()
+
+    if (error || !data) return
+    const bookingData = data as any
+
+    // Format Date
+    const dateObj = new Date(bookingData.slots.date)
+    const formattedDate = dateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+
+    // Format Time
+    const formatTime = (timeStr: string) => {
+      const t = new Date(timeStr)
+      return t.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    }
+    const formattedTime = `${formatTime(bookingData.slots.start_time)} – ${formatTime(bookingData.slots.end_time)}`
+
+    const formattedBooking: Booking = {
+      id: bookingData.id,
+      venueId: bookingData.venues.id,
+      venue: bookingData.venues.name,
+      area: bookingData.venues.address?.split(',')[0]?.trim() || 'Unknown',
+      date: formattedDate,
+      time: formattedTime,
+      amount: Number(bookingData.total_amount),
+      advance: Number(bookingData.advance_paid),
+      status: bookingData.status,
+      reviewStatus: bookingData.review_status,
+      hiddenFromPlayer: bookingData.hidden_from_player,
+      review: null,
+      image:
+        'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop',
+      rawStartTime: bookingData.slots.start_time,
+      rawEndTime: bookingData.slots.end_time,
+      rawDate: bookingData.slots.date,
+      cancellationPolicy: 'flexible',
+      qrCode: bookingData.qr_code,
+      checkInStatus: bookingData.check_in_status,
+      bookingVersion: bookingData.booking_version || 1,
+      cancellationReason: bookingData.cancellation_reason,
+      cancelledBy: bookingData.cancelled_by,
+      cancelledAt: bookingData.cancelled_at,
+      refundStatus: bookingData.refund_status || 'NOT_REQUESTED',
+      refundAmount: bookingData.refund_amount ? Number(bookingData.refund_amount) : undefined,
+      refundReference: bookingData.refund_reference,
+      refundCompletedAt: bookingData.refund_completed_at,
+    }
+
+    setBookings((prev) => {
+      const exists = prev.some((b) => b.id === formattedBooking.id)
+      if (exists) {
+        // Conflict Resolution: Only update if the new version is greater or equal
+        return prev.map((b) => {
+          if (b.id === formattedBooking.id) {
+            if ((formattedBooking.bookingVersion || 1) >= (b.bookingVersion || 1)) {
+              return { ...b, ...formattedBooking }
+            }
+          }
+          return b
+        })
+      } else {
+        return [formattedBooking, ...prev]
+      }
+    })
+  })
 
   // Countdown calculations
   const [countdowns, setCountdowns] = useState<Record<string, string>>({})
@@ -213,8 +310,13 @@ export function BookingListClient({
   const executeCancellation = async () => {
     if (!cancellationModalBooking) return
 
-    setIsCancelling(true)
     const bookingId = cancellationModalBooking.id
+    const originalBookings = [...bookings]
+
+    // 1. Optimistic Update (Immediate transition)
+    setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b)))
+
+    setIsCancelling(true)
 
     try {
       const res = await fetch('/api/bookings/cancel', {
@@ -233,10 +335,6 @@ export function BookingListClient({
         throw new Error(data.error || 'Failed to cancel booking')
       }
 
-      setBookings((prev) =>
-        prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b))
-      )
-
       setCancellationSuccessData({
         refundAmount: data.refund_amount,
         refundPercent: data.refund_percent,
@@ -245,6 +343,8 @@ export function BookingListClient({
         reference: data.idempotency_key,
       })
     } catch (err: any) {
+      // 2. Rollback local state on request failure
+      setBookings(originalBookings)
       setToast({ message: err.message || 'An error occurred during cancellation', type: 'error' })
     } finally {
       setIsCancelling(false)
