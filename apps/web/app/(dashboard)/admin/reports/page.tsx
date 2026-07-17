@@ -12,6 +12,7 @@ import {
   Search,
   Download,
   AlertCircle,
+  Trash2,
 } from 'lucide-react'
 import { logAdminAction } from '@/lib/admin/audit'
 import {
@@ -30,7 +31,7 @@ export default function AdminReportsPage() {
 
   const [confirmModal, setConfirmModal] = useState<{
     report: any
-    action: 'suspend_turf' | 'suspend_owner' | 'resolve'
+    action: 'suspend_turf' | 'suspend_owner' | 'resolve' | 'delete'
   } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -78,6 +79,11 @@ export default function AdminReportsPage() {
         setReports((prev) =>
           prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r))
         )
+      } else if (action === 'delete') {
+        const { error } = await supabase.from('reports').delete().eq('id', report.id)
+        if (error) throw error
+        detailsText = 'Report deleted permanently'
+        setReports((prev) => prev.filter((r) => r.id !== report.id))
       }
 
       await logAdminAction(`Report Action: ${action}`, 'reports', report.id, detailsText)
@@ -368,21 +374,31 @@ export default function AdminReportsPage() {
                 <div className="flex flex-row lg:flex-col gap-2 self-end lg:self-start">
                   <button
                     onClick={() => setConfirmModal({ report: r, action: 'resolve' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold hover:bg-green-500 hover:text-black transition-all"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold hover:bg-green-500 hover:text-black transition-all"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Resolve ticket
                   </button>
                   <button
                     onClick={() => setConfirmModal({ report: r, action: 'suspend_turf' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500/15 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold hover:bg-amber-500 hover:text-black transition-all"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500/15 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold hover:bg-amber-500 hover:text-black transition-all"
                   >
                     <AlertTriangle className="w-3.5 h-3.5" /> Suspend Turf
                   </button>
                   <button
                     onClick={() => setConfirmModal({ report: r, action: 'suspend_owner' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500 hover:text-white transition-all"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500 hover:text-white transition-all"
                   >
                     <UserX className="w-3.5 h-3.5" /> Suspend Owner
+                  </button>
+                </div>
+              )}
+              {r.status === 'RESOLVED' && (
+                <div className="flex flex-row lg:flex-col gap-2 self-end lg:self-start">
+                  <button
+                    onClick={() => setConfirmModal({ report: r, action: 'delete' })}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-500/15 border border-gray-500/20 text-gray-400 rounded-xl text-xs font-semibold hover:bg-red-500 hover:border-red-500 hover:text-white transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Ticket
                   </button>
                 </div>
               )}
