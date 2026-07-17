@@ -1,4 +1,3 @@
-import { Reporter, File } from 'vitest/node'
 import { execSync } from 'child_process'
 
 function getGitMetadata() {
@@ -11,8 +10,8 @@ function getGitMetadata() {
   }
 }
 
-export default class PaymentValidationReporter implements Reporter {
-  onFinished(files: File[] = [], errors: unknown[] = []) {
+export default class PaymentValidationReporter {
+  onFinished(files: any[] = [], errors: any[] = []) {
     let passed = 0
     let failed = 0
     let skipped = 0
@@ -25,7 +24,7 @@ export default class PaymentValidationReporter implements Reporter {
 
     // Traverse tests to collect stats
     files.forEach((file) => {
-      file.tasks.forEach((task) => {
+      file.tasks.forEach((task: any) => {
         if (task.type === 'test') {
           if (task.result?.state === 'pass') passed++
           if (task.result?.state === 'fail') failed++
@@ -86,7 +85,7 @@ export default class PaymentValidationReporter implements Reporter {
       console.log('Failure Diagnostics:')
       // Extract specific task errors if they exist for better DX
       files.forEach((file) => {
-        file.tasks.forEach((task) => {
+        file.tasks.forEach((task: any) => {
           if (task.type === 'test' && task.result?.state === 'fail') {
             console.log(`- FAILED: ${task.name}`)
             if (task.result.errors?.length) {

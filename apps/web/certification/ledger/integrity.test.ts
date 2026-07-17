@@ -18,11 +18,14 @@ describe('Pillar 1 - Ledger Integrity', () => {
     // Accumulate debit and credit sums per journal
     const sums: Record<string, { debit: number; credit: number }> = {}
     for (const entry of entries) {
-      if (!sums[entry.journal_id]) {
-        sums[entry.journal_id] = { debit: 0, credit: 0 }
+      const journalId = entry.journal_id
+      if (journalId) {
+        if (!sums[journalId]) {
+          sums[journalId] = { debit: 0, credit: 0 }
+        }
+        sums[journalId].debit += Number(entry.debit || 0)
+        sums[journalId].credit += Number(entry.credit || 0)
       }
-      sums[entry.journal_id].debit += Number(entry.debit)
-      sums[entry.journal_id].credit += Number(entry.credit)
     }
 
     // Verify each journal's double-entry balances
@@ -66,7 +69,8 @@ describe('Pillar 1 - Ledger Integrity', () => {
       return
     }
 
-    const targetId = entries[0].id
+    const targetId = entries?.[0]?.id
+    if (!targetId) return
 
     // Attempt update
     const { error: updateError } = await supabase
