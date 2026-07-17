@@ -354,14 +354,25 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
   // Real-time synchronization for slots
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_ENABLE_REALTIME_SLOTS === 'false') {
+      return
+    }
+
     const channel = supabase
       .channel(`venue-slots-${id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'slots', filter: `venue_id=eq.${id}` },
-        () => {
-          // Re-fetch slots to ensure instant dashboard updates
-          fetchData()
+        { event: 'UPDATE', schema: 'public', table: 'slots', filter: `venue_id=eq.${id}` },
+        (payload) => {
+          const updatedSlot = payload.new as any
+          setSlots((prevSlots) =>
+            prevSlots.map((slot) => {
+              if (slot.id === updatedSlot.id) {
+                return { ...slot, status: updatedSlot.status, is_booked: updatedSlot.is_booked }
+              }
+              return slot
+            })
+          )
         }
       )
       .subscribe()
@@ -771,13 +782,21 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                   >
                     <div className="space-y-2">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="bg-green-500/15 text-green-400 px-2.5 py-0.5 rounded-md text-xs font-semibold">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-md text-xs font-semibold ${slot.status !== 'Available' ? 'bg-gray-500/15 text-gray-400' : 'bg-green-500/15 text-green-400'}`}
+                        >
                           {slot.sport_type}
                         </span>
-                        <span className="text-sm font-bold text-white">₹{slot.price}</span>
+                        <span
+                          className={`text-sm font-bold ${slot.status !== 'Available' ? 'text-gray-500' : 'text-white'}`}
+                        >
+                          ₹{slot.price}
+                        </span>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-white">
+                        <p
+                          className={`text-sm font-medium ${slot.status !== 'Available' ? 'text-gray-500' : 'text-white'}`}
+                        >
                           {formatSlotDate(slot.date)}
                         </p>
                         <p className="text-xs text-gray-400 font-mono">
@@ -794,9 +813,14 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
                     <button
                       onClick={() => handleSelectSlot(slot)}
-                      className="w-full py-2.5 rounded-xl bg-green-500 hover:bg-green-400 text-black font-semibold text-xs transition-colors flex items-center justify-center"
+                      disabled={slot.status !== 'Available'}
+                      className={`w-full py-2.5 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center ${
+                        slot.status !== 'Available'
+                          ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-500 hover:bg-green-400 text-black'
+                      }`}
                     >
-                      Book Now
+                      {slot.status !== 'Available' ? 'Booked' : 'Book Now'}
                     </button>
                   </div>
                 ))}

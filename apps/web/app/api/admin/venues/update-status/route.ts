@@ -2,26 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-async function verifyAdmin() {
-  const serverSupabase = await createServerClient()
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser()
-  if (!user) return null
-  const { data: dbUser } = await serverSupabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  return dbUser?.role === 'ADMIN' ? user : null
-}
+import { requireRole } from '@/lib/auth/requireRole'
 
-export async function POST(req: NextRequest) {
+import { rateLimitGuard } from '@/lib/utils/rateLimiter'
+
+export async function POST(req: Request) {
+  const rateLimitResponse = await rateLimitGuard(req, 'admin_api')
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
-    const adminUser = await verifyAdmin()
-    if (!adminUser) {
-      return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 403 })
-    }
+    const roleCheck = await requireRole(['ADMIN'])
+    if (roleCheck.error) return roleCheck.error
+    const adminUser = roleCheck.user!
 
     const { venueId, verificationStatus, adminNotes, reason } = await req.json()
 

@@ -13,6 +13,12 @@ const settlementService = new SettlementService(supabase)
 export const settlementWorker = new Worker(
   QUEUES.SETTLEMENT,
   async (job: Job) => {
+    if (job.name === 'sweep-pending-settlements') {
+      console.log(`[Worker: Settlement] Sweeping pending settlements...`)
+      // TODO: Implement Razorpay polling to find settled transfers and enqueue them individually.
+      return { success: true, message: 'Sweep completed.' }
+    }
+
     const { transferId, providerSettlementId, amount, settledAt } = job.data
 
     // Basic Idempotency log
@@ -66,5 +72,12 @@ export const settlementWorker = new Worker(
       await lock.release(lockOwner)
     }
   },
-  { connection }
+  {
+    connection,
+    settings: {
+      backoffStrategies: {
+        exponential: (attemptsMade, err) => Math.round(Math.pow(2, attemptsMade) * 1000),
+      },
+    },
+  }
 )

@@ -1,27 +1,18 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient()
-
     // 1. Authenticate Owner
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
-    }
-
-    const { data: dbUser } = await supabase.from('users').select('role').eq('id', user.id).single()
-    if (dbUser?.role !== 'OWNER') {
+    const roleCheck = await requireRole(['OWNER'])
+    if (roleCheck.error) {
       return NextResponse.json(
         { error: 'Unauthorized. Only venue owners can scan check-ins.' },
         { status: 401 }
       )
     }
+    const user = roleCheck.user!
 
     const { qrCode } = await req.json()
     if (!qrCode) {

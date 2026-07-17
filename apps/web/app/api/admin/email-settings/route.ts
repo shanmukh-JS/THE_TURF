@@ -1,25 +1,17 @@
 import { NextRequest } from 'next/server'
-import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { encrypt } from '@/lib/email/crypto'
 import { apiSuccess, apiError } from '@/lib/email/validation'
 
 // Guard to verify the authenticated user is an ADMIN
-async function verifyAdmin() {
-  const serverSupabase = await createServerClient()
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser()
-  if (!user) return null
-  const { data: dbUser } = await serverSupabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  return dbUser?.role === 'ADMIN' ? user : null
-}
+import { requireRole } from '@/lib/auth/requireRole'
 
-export async function GET(req: NextRequest) {
+import { rateLimitGuard } from '@/lib/utils/rateLimiter'
+
+export async function GET(req: Request) {
+  const rateLimitResponse = await rateLimitGuard(req, 'admin_api')
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const adminUser = await verifyAdmin()
     if (!adminUser) {

@@ -20,6 +20,8 @@ const PRESETS: Record<string, RateLimitConfig> = {
   booking: { maxTokens: 20, refillRate: 1 }, // 20 per second burst
   webhook: { maxTokens: 100, refillRate: 10 }, // High throughput for webhooks
   forgotPassword: { maxTokens: 3, refillRate: 0.05 }, // 3 attempts, refills 1 every 20s
+  booking_mutation: { maxTokens: 10, refillRate: 10 / 60 }, // 10 req / minute
+  admin_api: { maxTokens: 20, refillRate: 20 / 60 }, // 20 req / minute
   default: { maxTokens: 60, refillRate: 2 }, // General: 60 req/30s
 }
 

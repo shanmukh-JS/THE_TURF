@@ -9,18 +9,18 @@
 
 ## Tech Stack
 
-| Layer            | Technology                                                    |
-| ---------------- | ------------------------------------------------------------- |
-| Monorepo         | Turborepo + pnpm workspaces                                   |
-| Frontend & API   | Next.js 16 (App Router), Tailwind CSS, Zustand, Framer Motion |
-| Database         | Supabase Postgres                                             |
-| Cache / Locks    | Redis (ioredis)                                               |
-| Background Jobs  | BullMQ                                                        |
-| Payments         | Razorpay                                                      |
-| Media/Documents  | Supabase Storage                                              |
-| OTP / SMS        | Twilio (WhatsApp OTP)                                         |
-| Auth             | Supabase Auth (GoTrue)                                        |
-| Containerization | Docker + Docker Compose (for local Redis/Postgres services)   |
+| Layer           | Technology                                                      |
+| --------------- | --------------------------------------------------------------- |
+| Monorepo        | Turborepo + pnpm workspaces                                     |
+| Frontend & API  | Next.js 16 (App Router), Tailwind CSS, Zustand, Framer Motion   |
+| Database        | Supabase Postgres                                               |
+| Cache / Locks   | Redis (ioredis)                                                 |
+| Background Jobs | BullMQ                                                          |
+| Payments        | Razorpay                                                        |
+| Media/Documents | Supabase Storage                                                |
+| OTP / SMS       | Twilio (WhatsApp OTP)                                           |
+| Auth            | Supabase Auth (GoTrue)                                          |
+| Platform        | Vercel (Web), Supabase (Postgres & Auth), Redis (Upstash/Local) |
 
 ---
 

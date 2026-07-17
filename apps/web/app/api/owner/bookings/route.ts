@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 
 export async function GET(request: NextRequest) {
   try {
     // 1. Authenticate user
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const roleCheck = await requireRole(['OWNER'])
+    if (roleCheck.error) return roleCheck.error
+    const user = roleCheck.user!
 
     const adminClient = createAdminClient()
 

@@ -1,26 +1,17 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAdminAction } from '@/lib/admin/audit'
 
-export async function POST(request: Request) {
+import { rateLimitGuard } from '@/lib/utils/rateLimiter'
+
+export async function POST(req: Request) {
+  const rateLimitResponse = await rateLimitGuard(req, 'admin_api')
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Verify role is ADMIN
-    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
-
-    if (!profile || profile.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 })
-    }
+    const roleCheck = await requireRole(['ADMIN'])
+    if (roleCheck.error) return roleCheck.error
 
     const { refundId, reason } = await request.json()
 

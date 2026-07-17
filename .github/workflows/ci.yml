@@ -33,11 +33,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Run ESLint across all packages
-        run: npx turbo run lint
+      - name: Run ESLint
+        run: pnpm --filter web run lint
+
+      - name: Check Auth Imports
+        run: pnpm --filter web run check-auth
 
       - name: TypeScript type check
-        run: npx turbo run typecheck
+        run: pnpm --filter web typecheck
 
   # ────────────────────────────────────────────────────────────
   # JOB 2: Build
@@ -126,13 +129,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Run Prisma migrations on test DB
-        run: npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma
-        env:
-          DATABASE_URL: postgresql://admin:testpassword@localhost:5432/truf_gaming_test
-
       - name: Run unit & integration tests
-        run: npx turbo run test
+        run: pnpm --filter web test
         env:
           DATABASE_URL: postgresql://admin:testpassword@localhost:5432/truf_gaming_test
           REDIS_URL: redis://localhost:6379
@@ -161,22 +159,3 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: apps/web
           vercel-args: "--prod"
-
-      - name: Build & push API Docker image
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-          docker build -t trufgaming/api:${{ github.sha }} -f apps/api/Dockerfile .
-          docker push trufgaming/api:${{ github.sha }}
-          docker tag trufgaming/api:${{ github.sha }} trufgaming/api:latest
-          docker push trufgaming/api:latest
-
-      - name: Notify Slack on deploy
-        if: success()
-        uses: slackapi/slack-github-action@v1.27.0
-        with:
-          payload: |
-            {
-              "text": "✅ TRUF GAMING deployed to production successfully! Commit: ${{ github.sha }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -3,7 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { refundQueue } from '@/workers/queues'
 
-export async function POST(request: Request) {
+import { rateLimitGuard } from '@/lib/utils/rateLimiter'
+
+export async function POST(req: Request) {
+  const rateLimitResponse = await rateLimitGuard(req, 'booking_mutation')
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const supabase = await createClient()
     const {

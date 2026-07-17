@@ -12,6 +12,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:certify": "vitest run -c vitest.cert.config.ts",
+    "db:verify": "node scripts/check-relations.js",
+    "check-auth": "bash scripts/check-auth-imports.sh",
     "worker": "tsx workers/index.ts",
     "scheduler": "tsx scheduler/index.ts"
   },
@@ -51,6 +53,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.61.1",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",

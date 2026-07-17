@@ -86,5 +86,12 @@ export const payoutBatchWorker = new Worker(
       await lock.release(lockOwner)
     }
   },
-  { connection }
+  {
+    connection,
+    settings: {
+      backoffStrategies: {
+        exponential: (attemptsMade, err) => Math.round(Math.pow(2, attemptsMade) * 1000),
+      },
+    },
+  }
 )

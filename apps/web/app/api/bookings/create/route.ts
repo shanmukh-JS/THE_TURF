@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+import { rateLimitGuard } from '@/lib/utils/rateLimiter'
+
 export async function POST(req: Request) {
+  const rateLimitResponse = await rateLimitGuard(req, 'booking_mutation')
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const supabase = await createClient()
     const {
@@ -70,6 +75,7 @@ export async function POST(req: Request) {
       p_total_amount: slot.price,
       p_advance_paid: advanceAmount,
       p_payment_id: null,
+      p_status: bookingStatus,
     })
 
     if (bookingError) {
@@ -84,39 +90,52 @@ export async function POST(req: Request) {
       .single()
 
     // 5. Securely send notifications
-    if (ownerSettings?.notify_bookings) {
-      // Find owner profile user id
+    let ownerEmail: string | undefined
+
+    if (ownerSettings?.notify_bookings || ownerSettings?.notify_email) {
+      // Find owner profile user id and email
       const { data: ownerProfile } = await adminClient
         .from('owner_profiles')
-        .select('user_id')
+        .select('user_id, users(email)')
         .eq('id', slot.venues.owner_id)
         .maybeSingle()
+
       if (ownerProfile) {
-        const slotDate = new Date(slot.start_time).toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-        })
-        const slotTime = new Date(slot.start_time).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-        })
-        await adminClient.from('notifications').insert({
-          user_id: ownerProfile.user_id,
-          title: 'New Booking!',
-          message: `${user.email} booked a slot at ${slot.venues.name} on ${slotDate} at ${slotTime} for ₹${slot.price}.`,
-          type: 'BOOKING',
-        })
+        ownerEmail = (ownerProfile.users as any)?.email
+
+        if (ownerSettings?.notify_bookings) {
+          const slotDate = new Date(slot.start_time).toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          })
+          const slotTime = new Date(slot.start_time).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+          })
+          await adminClient.from('notifications').insert({
+            user_id: ownerProfile.user_id,
+            title: 'New Booking!',
+            message: `${user.email} booked a slot at ${slot.venues.name} on ${slotDate} at ${slotTime} for ₹${slot.price}.`,
+            type: 'BOOKING',
+          })
+        }
       }
     }
 
     if (ownerSettings?.notify_email) {
-      await adminClient.from('email_logs').insert({
-        recipient_email: 'owner@turfgaming.com', // In a real app, fetch owner email
-        subject: `New Booking at ${slot.venues.name}`,
-        body: `You have received a new booking from ${user.email}.`,
-        status: 'PENDING', // Will be picked up by the email worker
-      })
+      if (ownerEmail) {
+        await adminClient.from('email_logs').insert({
+          recipient_email: ownerEmail,
+          subject: `New Booking at ${slot.venues.name}`,
+          body: `You have received a new booking from ${user.email}.`,
+          status: 'PENDING', // Will be picked up by the email worker
+        })
+      } else {
+        console.warn(
+          `Could not send notification email for venue ${slot.venues.name} - no owner email found`
+        )
+      }
     }
 
     return NextResponse.json({ booking })
