@@ -227,11 +227,19 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       return
     }
 
-    const { data: ownerProfileData } = await supabase
-      .from('owner_profiles')
-      .select('user_id, full_name, business_name')
-      .eq('id', venueData.owner_id)
-      .maybeSingle()
+    let ownerProfileData = null
+    let ownerSettingsData = null
+
+    try {
+      const res = await fetch(`/api/public/owner-info?ownerId=${venueData.owner_id}`)
+      if (res.ok) {
+        const json = await res.json()
+        ownerProfileData = json.profile
+        ownerSettingsData = json.settings
+      }
+    } catch (e) {
+      console.error('Failed to fetch owner info', e)
+    }
 
     setOwnerProfile(ownerProfileData)
 
@@ -298,15 +306,6 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         formattedVenue.reviewsCount = reviewsData.length
       }
     }
-
-    // Fetch owner settings for buffer time and auto-accept
-    const { data: ownerSettingsData } = await supabase
-      .from('owner_settings')
-      .select(
-        'auto_accept_bookings, booking_buffer_time, cancellation_policy, notify_bookings, notify_email, max_players_per_booking, business_logo_url, business_email, business_phone'
-      )
-      .eq('owner_id', venueData.owner_id)
-      .maybeSingle()
 
     setOwnerSettings(ownerSettingsData)
 
