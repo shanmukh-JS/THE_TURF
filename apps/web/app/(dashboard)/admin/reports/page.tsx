@@ -13,6 +13,7 @@ import {
   Download,
   AlertCircle,
   Trash2,
+  UserCheck,
 } from 'lucide-react'
 import { logAdminAction } from '@/lib/admin/audit'
 import {
@@ -31,7 +32,8 @@ export default function AdminReportsPage() {
 
   const [confirmModal, setConfirmModal] = useState<{
     report: any
-    action: 'suspend_turf' | 'suspend_owner' | 'resolve' | 'delete'
+    action:
+      'suspend_turf' | 'suspend_owner' | 'unsuspend_turf' | 'unsuspend_owner' | 'resolve' | 'delete'
   } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -64,7 +66,13 @@ export default function AdminReportsPage() {
 
         detailsText = `Turf suspended following report review: ${action}`
         setReports((prev) =>
-          prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r))
+          prev.map((r) =>
+            r.id === report.id
+              ? { ...r, status: 'RESOLVED', turfIsDisabled: true }
+              : r.venue_id === report.venue_id
+                ? { ...r, turfIsDisabled: true }
+                : r
+          )
         )
       } else if (action === 'suspend_owner') {
         const { error } = await supabase
@@ -77,7 +85,33 @@ export default function AdminReportsPage() {
 
         detailsText = `Owner suspended following report review: ${action}`
         setReports((prev) =>
-          prev.map((r) => (r.id === report.id ? { ...r, status: 'RESOLVED' } : r))
+          prev.map((r) =>
+            r.id === report.id
+              ? { ...r, status: 'RESOLVED', ownerIsSuspended: true }
+              : r.owner_id === report.owner_id
+                ? { ...r, ownerIsSuspended: true }
+                : r
+          )
+        )
+      } else if (action === 'unsuspend_turf') {
+        const { error } = await supabase
+          .from('venues')
+          .update({ is_disabled: false, verification_status: 'APPROVED' })
+          .eq('id', report.venue_id)
+        if (error) throw error
+        detailsText = `Turf unsuspended following report review`
+        setReports((prev) =>
+          prev.map((r) => (r.venue_id === report.venue_id ? { ...r, turfIsDisabled: false } : r))
+        )
+      } else if (action === 'unsuspend_owner') {
+        const { error } = await supabase
+          .from('users')
+          .update({ is_suspended: false })
+          .eq('id', report.owner_id)
+        if (error) throw error
+        detailsText = `Owner unsuspended following report review`
+        setReports((prev) =>
+          prev.map((r) => (r.owner_id === report.owner_id ? { ...r, ownerIsSuspended: false } : r))
         )
       } else if (action === 'delete') {
         const { error } = await supabase.from('reports').delete().eq('id', report.id)
@@ -105,13 +139,15 @@ export default function AdminReportsPage() {
           `
           *,
           venues (
-            name
+            name,
+            is_disabled
           ),
           reporter:users!reporter_id (
             email
           ),
           owner:users!owner_id (
             email,
+            is_suspended,
             owner_profiles (
               full_name
             )
@@ -132,8 +168,10 @@ export default function AdminReportsPage() {
           status: r.status,
           complaint: r.complaint,
           turfName: r.venues?.name || 'Unknown Turf',
+          turfIsDisabled: r.venues?.is_disabled || false,
           reporterEmail: r.reporter?.email || 'Unknown User',
           ownerName: r.owner?.owner_profiles?.[0]?.full_name || r.owner?.email || 'Unknown Owner',
+          ownerIsSuspended: r.owner?.is_suspended || false,
           createdAt: new Date(r.created_at).toLocaleString(),
           assignedAdmin: r.assigned_admin || 'Unassigned',
         }))
@@ -370,38 +408,57 @@ export default function AdminReportsPage() {
                 </p>
               </div>
 
-              {r.status !== 'RESOLVED' && (
-                <div className="flex flex-row lg:flex-col gap-2 self-end lg:self-start">
+              <div className="flex flex-row lg:flex-col gap-2 self-end lg:self-start">
+                {r.status !== 'RESOLVED' && (
                   <button
                     onClick={() => setConfirmModal({ report: r, action: 'resolve' })}
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/20 text-green-400 rounded-xl text-xs font-semibold hover:bg-green-500 hover:text-black transition-all"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Resolve ticket
                   </button>
+                )}
+
+                {r.turfIsDisabled ? (
+                  <button
+                    onClick={() => setConfirmModal({ report: r, action: 'unsuspend_turf' })}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/15 border border-blue-500/20 text-blue-400 rounded-xl text-xs font-semibold hover:bg-blue-500 hover:text-white transition-all"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Unsuspend Turf
+                  </button>
+                ) : (
                   <button
                     onClick={() => setConfirmModal({ report: r, action: 'suspend_turf' })}
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500/15 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-semibold hover:bg-amber-500 hover:text-black transition-all"
                   >
                     <AlertTriangle className="w-3.5 h-3.5" /> Suspend Turf
                   </button>
+                )}
+
+                {r.ownerIsSuspended ? (
+                  <button
+                    onClick={() => setConfirmModal({ report: r, action: 'unsuspend_owner' })}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500/15 border border-blue-500/20 text-blue-400 rounded-xl text-xs font-semibold hover:bg-blue-500 hover:text-white transition-all"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" /> Unsuspend Owner
+                  </button>
+                ) : (
                   <button
                     onClick={() => setConfirmModal({ report: r, action: 'suspend_owner' })}
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500 hover:text-white transition-all"
                   >
                     <UserX className="w-3.5 h-3.5" /> Suspend Owner
                   </button>
-                </div>
-              )}
-              {r.status === 'RESOLVED' && (
-                <div className="flex flex-row lg:flex-col gap-2 self-end lg:self-start">
+                )}
+
+                {r.status === 'RESOLVED' && (
                   <button
                     onClick={() => setConfirmModal({ report: r, action: 'delete' })}
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-500/15 border border-gray-500/20 text-gray-400 rounded-xl text-xs font-semibold hover:bg-red-500 hover:border-red-500 hover:text-white transition-all"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Delete Ticket
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ))
         )}
