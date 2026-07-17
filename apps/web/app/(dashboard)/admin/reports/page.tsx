@@ -104,8 +104,11 @@ export default function AdminReportsPage() {
           reporter:users!reporter_id (
             email
           ),
-          owner:owner_profiles!owner_id (
-            full_name
+          owner:users!owner_id (
+            email,
+            owner_profiles (
+              full_name
+            )
           )
         `
         )
@@ -124,7 +127,7 @@ export default function AdminReportsPage() {
           complaint: r.complaint,
           turfName: r.venues?.name || 'Unknown Turf',
           reporterEmail: r.reporter?.email || 'Unknown User',
-          ownerName: r.owner?.full_name || 'Unknown Owner',
+          ownerName: r.owner?.owner_profiles?.[0]?.full_name || r.owner?.email || 'Unknown Owner',
           createdAt: new Date(r.created_at).toLocaleString(),
           assignedAdmin: r.assigned_admin || 'Unassigned',
         }))
