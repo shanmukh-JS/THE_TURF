@@ -33,6 +33,14 @@ export default async function CustomerBookingsPage() {
       check_in_status,
       review_status,
       hidden_from_player,
+      booking_version,
+      cancellation_reason,
+      cancelled_by,
+      cancelled_at,
+      refund_status,
+      refund_amount,
+      refund_reference,
+      refund_completed_at,
       slots!inner(date, start_time, end_time),
       venues!inner(id, name, address, owner_id, areas(name), venue_images(url, is_cover)),
       booking_reviews(rating, feedback, ground_quality, lighting, cleanliness, staff_behaviour, value_for_money)
@@ -56,6 +64,13 @@ export default async function CustomerBookingsPage() {
       settingsData.forEach((s) => ownerSettingsMap.set(s.owner_id, s.cancellation_policy))
     }
   }
+
+  // Fetch global admin cancellation policies
+  const { data: adminSettings } = await supabase
+    .from('admin_settings')
+    .select('cancellation_policy')
+    .limit(1)
+    .maybeSingle()
 
   // Transform raw data into the UI shape
   const bookings = (rawBookings || []).map((b: any) => {
@@ -150,6 +165,14 @@ export default async function CustomerBookingsPage() {
       cancellationPolicy: ownerSettingsMap.get(b.venues?.owner_id) || 'flexible',
       qrCode: b.qr_code,
       checkInStatus: b.check_in_status,
+      bookingVersion: b.booking_version || 1,
+      cancellationReason: b.cancellation_reason,
+      cancelledBy: b.cancelled_by,
+      cancelledAt: b.cancelled_at,
+      refundStatus: b.refund_status || 'NOT_REQUESTED',
+      refundAmount: b.refund_amount,
+      refundReference: b.refund_reference,
+      refundCompletedAt: b.refund_completed_at,
     }
   })
 
@@ -161,7 +184,10 @@ export default async function CustomerBookingsPage() {
       </DashboardAnimationItem>
 
       <DashboardAnimationItem>
-        <BookingListClient initialBookings={bookings} />
+        <BookingListClient
+          initialBookings={bookings}
+          cancellationPolicyRules={adminSettings?.cancellation_policy}
+        />
       </DashboardAnimationItem>
     </DashboardAnimationWrapper>
   )

@@ -65,6 +65,110 @@ export async function POST(req: Request) {
         amount: paymentEntity.amount,
         currency: paymentEntity.currency,
       })
+    } else if (eventType === 'refund.processed') {
+      const refundEntity = payload.payload.refund.entity
+      const correlationId = refundEntity.notes?.correlationId || crypto.randomUUID()
+
+      console.log(
+        `[Webhook: Razorpay] Processing refund.processed event for refund ${refundEntity.id}`
+      )
+
+      const { data: result, error: rpcError } = await supabase.rpc('rpc_complete_refund_v1', {
+        p_provider_refund_id: refundEntity.id,
+        p_correlation_id: correlationId,
+      })
+
+      if (rpcError) {
+        console.error('[Webhook: Razorpay] Failed to process rpc_complete_refund_v1:', rpcError)
+        throw rpcError
+      }
+
+      console.log('[Webhook: Razorpay] Completed refund transaction successfully:', result)
+
+      // Publish refund.completed event and trigger notification flow
+      try {
+        const resObj = result as any
+        const { emitRefundCompletedEvent, emitBookingCancelledEvent } =
+          await import('../../../../lib/events/handlers')
+
+        // Fetch details for customer notifications
+        const { data: b } = await supabase
+          .from('bookings')
+          .select(
+            'id, customer_id, total_amount, venues(name), users(phone, email, customer_profiles(full_name))'
+          )
+          .eq('id', resObj.booking_id)
+          .single()
+
+        if (b) {
+          const userRec = b.users as any
+          const ownerProfile = userRec?.customer_profiles
+          const venue = b.venues as any
+
+          await emitRefundCompletedEvent({
+            refundId: resObj.refund_id,
+            bookingId: resObj.booking_id,
+            userId: b.customer_id,
+            amount: Number(resObj.amount),
+            correlationId,
+          })
+
+          await emitBookingCancelledEvent({
+            bookingId: resObj.booking_id,
+            userId: b.customer_id,
+            phone: userRec?.phone || '',
+            fullName:
+              (Array.isArray(ownerProfile) ? ownerProfile[0] : ownerProfile)?.full_name || 'Player',
+            venueName: venue?.name || 'the Turf',
+            amount: resObj.amount.toString(),
+            reason: 'Booking cancelled (Refund processed successfully)',
+          })
+        }
+      } catch (evtError) {
+        console.error('[Webhook: Razorpay] Failed to trigger webhook success events:', evtError)
+      }
+    } else if (eventType === 'refund.failed') {
+      const refundEntity = payload.payload.refund.entity
+      const correlationId = refundEntity.notes?.correlationId || crypto.randomUUID()
+
+      console.log(
+        `[Webhook: Razorpay] Processing refund.failed event for refund ${refundEntity.id}`
+      )
+
+      const { data: result, error: rpcError } = await supabase.rpc('rpc_fail_refund_v1', {
+        p_provider_refund_id: refundEntity.id,
+        p_error_message: refundEntity.error_description || 'Razorpay reported failure',
+        p_correlation_id: correlationId,
+      })
+
+      if (rpcError) {
+        console.error('[Webhook: Razorpay] Failed to process rpc_fail_refund_v1:', rpcError)
+        throw rpcError
+      }
+
+      console.log('[Webhook: Razorpay] Failed refund transaction logged successfully:', result)
+
+      // Publish refund.failed event
+      try {
+        const resObj = result as any
+        const { emitRefundFailedEvent } = await import('../../../../lib/events/handlers')
+
+        const { data: b } = await supabase
+          .from('bookings')
+          .select('customer_id')
+          .eq('id', resObj.booking_id)
+          .single()
+
+        await emitRefundFailedEvent({
+          refundId: resObj.refund_id,
+          bookingId: resObj.booking_id,
+          userId: b?.customer_id || '00000000-0000-0000-0000-000000000000',
+          error: refundEntity.error_description || 'Razorpay reported failure',
+          correlationId,
+        })
+      } catch (evtError) {
+        console.error('[Webhook: Razorpay] Failed to trigger webhook failure events:', evtError)
+      }
     }
 
     // 5. Return quickly

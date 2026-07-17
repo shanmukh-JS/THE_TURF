@@ -30,6 +30,7 @@ export const QUEUES = {
   EMAIL: 'email.queue',
   IN_APP: 'in-app.queue',
   REMINDER: 'reminder.queue',
+  REFUND: 'refund.queue',
 }
 
 // Initialize Queues
@@ -44,6 +45,7 @@ export const deadLetterQueue = new Queue(QUEUES.DEAD_LETTER, { connection })
 export const emailQueue = new Queue(QUEUES.EMAIL, { connection, defaultJobOptions })
 export const inAppQueue = new Queue(QUEUES.IN_APP, { connection, defaultJobOptions })
 export const reminderQueue = new Queue(QUEUES.REMINDER, { connection, defaultJobOptions })
+export const refundQueue = new Queue(QUEUES.REFUND, { connection, defaultJobOptions })
 
 // 4. Queue Events for Observability
 export const settlementQueueEvents = new QueueEvents(QUEUES.SETTLEMENT, { connection })
@@ -53,6 +55,7 @@ export const ownerPayableQueueEvents = new QueueEvents(QUEUES.OWNER_PAYABLE, { c
 export const emailQueueEvents = new QueueEvents(QUEUES.EMAIL, { connection })
 export const inAppQueueEvents = new QueueEvents(QUEUES.IN_APP, { connection })
 export const reminderQueueEvents = new QueueEvents(QUEUES.REMINDER, { connection })
+export const refundQueueEvents = new QueueEvents(QUEUES.REFUND, { connection })
 
 // Example logger attachment (Can be extended into a real logger)
 ;[
@@ -63,6 +66,7 @@ export const reminderQueueEvents = new QueueEvents(QUEUES.REMINDER, { connection
   emailQueueEvents,
   inAppQueueEvents,
   reminderQueueEvents,
+  refundQueueEvents,
 ].forEach((events) => {
   events.on('completed', ({ jobId, returnvalue }) => {
     console.log(`[BullMQ] Job ${jobId} completed in ${events.name}`, returnvalue)

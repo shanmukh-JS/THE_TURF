@@ -42,6 +42,12 @@ export default function AdminSettingsPage() {
     session_timeout_mins: 60,
     notify_on_new_turf: true,
     notify_on_new_booking: true,
+    cancellation_policy: [
+      { hours: 24, refund_percent: 100 },
+      { hours: 12, refund_percent: 75 },
+      { hours: 6, refund_percent: 50 },
+    ],
+    refund_expiration_days: 60,
   })
 
   // Email Configuration States
@@ -109,6 +115,12 @@ export default function AdminSettingsPage() {
         session_timeout_mins: data.session_timeout_mins ?? 60,
         notify_on_new_turf: data.notify_on_new_turf ?? true,
         notify_on_new_booking: data.notify_on_new_booking ?? true,
+        cancellation_policy: data.cancellation_policy || [
+          { hours: 24, refund_percent: 100 },
+          { hours: 12, refund_percent: 75 },
+          { hours: 6, refund_percent: 50 },
+        ],
+        refund_expiration_days: data.refund_expiration_days || 60,
       }))
     }
     setLoading(false)
@@ -237,6 +249,8 @@ export default function AdminSettingsPage() {
         session_timeout_mins: form.session_timeout_mins,
         notify_on_new_turf: form.notify_on_new_turf,
         notify_on_new_booking: form.notify_on_new_booking,
+        cancellation_policy: form.cancellation_policy,
+        refund_expiration_days: form.refund_expiration_days,
         updated_at: new Date().toISOString(),
       })
       .eq('id', form.id)
@@ -342,6 +356,61 @@ export default function AdminSettingsPage() {
                     onChange={(e) => setForm({ ...form, max_payout_limit: Number(e.target.value) })}
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
                   />
+                </div>
+
+                {/* Refund & Cancellation policy */}
+                <div className="pt-3 border-t border-white/5 space-y-3">
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Cancellation Policy Rules
+                  </h4>
+                  {Array.isArray(form.cancellation_policy) &&
+                    form.cancellation_policy.map((rule: any, index: number) => (
+                      <div key={index} className="flex gap-3 items-center">
+                        <div className="flex-1 flex gap-1.5 items-center">
+                          <span className="text-[10px] text-gray-500">Hours &gt;=</span>
+                          <input
+                            type="number"
+                            value={rule.hours}
+                            onChange={(e) => {
+                              const newPolicy = [...(form.cancellation_policy || [])]
+                              if (newPolicy[index]) {
+                                newPolicy[index].hours = Number(e.target.value)
+                                setForm({ ...form, cancellation_policy: newPolicy })
+                              }
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-green-500"
+                          />
+                        </div>
+                        <div className="flex-1 flex gap-1.5 items-center">
+                          <span className="text-[10px] text-gray-500">Refund %</span>
+                          <input
+                            type="number"
+                            value={rule.refund_percent}
+                            onChange={(e) => {
+                              const newPolicy = [...(form.cancellation_policy || [])]
+                              if (newPolicy[index]) {
+                                newPolicy[index].refund_percent = Number(e.target.value)
+                                setForm({ ...form, cancellation_policy: newPolicy })
+                              }
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-green-500"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  <div className="flex flex-col gap-1.5 mt-2">
+                    <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                      Refund Expiration Window (Days)
+                    </label>
+                    <input
+                      type="number"
+                      value={form.refund_expiration_days}
+                      onChange={(e) =>
+                        setForm({ ...form, refund_expiration_days: Number(e.target.value) })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-green-500"
+                    />
+                  </div>
                 </div>
               </div>
             </DashboardAnimationItem>

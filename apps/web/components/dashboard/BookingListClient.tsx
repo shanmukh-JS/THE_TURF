@@ -60,13 +60,25 @@ interface Booking {
   cancellationPolicy?: string
   qrCode?: string
   checkInStatus?: string
+  bookingVersion: number
+  cancellationReason?: string
+  cancelledBy?: string
+  cancelledAt?: string
+  refundStatus: string
+  refundAmount?: number
+  refundReference?: string
+  refundCompletedAt?: string
 }
 
 interface BookingListClientProps {
   initialBookings: Booking[]
+  cancellationPolicyRules?: { hours: number; refund_percent: number }[]
 }
 
-export function BookingListClient({ initialBookings }: BookingListClientProps) {
+export function BookingListClient({
+  initialBookings,
+  cancellationPolicyRules,
+}: BookingListClientProps) {
   const supabase = createClient()
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>(initialBookings)
@@ -74,6 +86,12 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Cancellation system states
+  const [cancellationModalBooking, setCancellationModalBooking] = useState<Booking | null>(null)
+  const [cancellationReason, setCancellationReason] = useState('')
+  const [cancellationSuccessData, setCancellationSuccessData] = useState<any | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // Review & Archive state
   const [activeReviewBooking, setActiveReviewBooking] = useState<Booking | null>(null)
@@ -151,49 +169,86 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
     return () => clearInterval(interval)
   }, [bookings])
 
-  // Handle Booking Cancellation
-  const handleCancelBooking = async (bookingId: string) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) return
+  const getRefundPreview = (booking: Booking) => {
+    if (!booking) return { percent: 0, amount: 0, hoursRemaining: 0 }
 
-    setLoadingId(bookingId)
-    const shortId = bookingId.substring(0, 8).toUpperCase()
-
-    // 1. Get full booking details first
-    const { data: bookingData, error: fetchErr } = await supabase
-      .from('bookings')
-      .select('id, slot_id')
-      .eq('id', bookingId)
-      .single()
-
-    if (fetchErr || !bookingData) {
-      setToast({ message: 'Failed to retrieve booking information.', type: 'error' })
-      setLoadingId(null)
-      return
+    let slotTime = 0
+    if (booking.rawDate && booking.rawStartTime) {
+      slotTime = new Date(`${booking.rawDate}T${booking.rawStartTime}`).getTime()
+    } else {
+      slotTime = new Date(booking.rawStartTime).getTime()
     }
 
-    // 2. Update booking status to CANCELLED
-    const { error: cancelErr } = await supabase
-      .from('bookings')
-      .update({ status: 'CANCELLED' })
-      .eq('id', bookingId)
+    const now = Date.now()
+    const diffHours = (slotTime - now) / (1000 * 60 * 60)
 
-    if (cancelErr) {
-      setToast({ message: cancelErr.message, type: 'error' })
-      setLoadingId(null)
-      return
+    if (diffHours <= 0) return { percent: 0, amount: 0, hoursRemaining: 0 }
+
+    const rules = cancellationPolicyRules || [
+      { hours: 24, refund_percent: 100 },
+      { hours: 12, refund_percent: 75 },
+      { hours: 6, refund_percent: 50 },
+    ]
+
+    const sortedRules = [...rules].sort((a, b) => b.hours - a.hours)
+
+    let percent = 0
+    for (const rule of sortedRules) {
+      if (diffHours >= rule.hours) {
+        percent = rule.refund_percent
+        break
+      }
     }
 
-    // 3. Free up the slot in the slots table
-    if (bookingData.slot_id) {
-      await supabase
-        .from('slots')
-        .update({ status: 'Available', is_booked: false })
-        .eq('id', bookingData.slot_id)
-    }
+    const refundAmount = Math.round(booking.advance * (percent / 100) * 100) / 100
+    return { percent, amount: refundAmount, hoursRemaining: Math.round(diffHours * 10) / 10 }
+  }
 
-    setToast({ message: 'Booking cancelled successfully.', type: 'success' })
-    setBookings((prev) => prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b)))
-    setLoadingId(null)
+  const handleCancelBookingClick = (booking: Booking) => {
+    setCancellationModalBooking(booking)
+    setCancellationReason('')
+    setCancellationSuccessData(null)
+  }
+
+  const executeCancellation = async () => {
+    if (!cancellationModalBooking) return
+
+    setIsCancelling(true)
+    const bookingId = cancellationModalBooking.id
+
+    try {
+      const res = await fetch('/api/bookings/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId,
+          cancellationReason: cancellationReason || 'Player cancelled match',
+          expectedVersion: cancellationModalBooking.bookingVersion,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to cancel booking')
+      }
+
+      setBookings((prev) =>
+        prev.map((b) => (b.id === bookingId ? { ...b, status: 'CANCELLED' } : b))
+      )
+
+      setCancellationSuccessData({
+        refundAmount: data.refund_amount,
+        refundPercent: data.refund_percent,
+        refundStatus: data.refund_status,
+        refundId: data.refund_id,
+        reference: data.idempotency_key,
+      })
+    } catch (err: any) {
+      setToast({ message: err.message || 'An error occurred during cancellation', type: 'error' })
+    } finally {
+      setIsCancelling(false)
+    }
   }
 
   const handleArchiveBooking = async (bookingId: string) => {
@@ -384,28 +439,12 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                       {(b.status === 'CONFIRMED' || b.status === 'PENDING') &&
                         b.cancellationPolicy !== 'strict' && (
                           <button
-                            onClick={() => {
-                              if (b.cancellationPolicy === 'moderate' && b.rawDate) {
-                                const slotTime = new Date(
-                                  `${b.rawDate}T${b.rawStartTime}`
-                                ).getTime()
-                                const diff = slotTime - Date.now()
-                                if (diff < 86400000) {
-                                  alert(
-                                    'This venue has a moderate cancellation policy. You cannot cancel within 24 hours of the slot.'
-                                  )
-                                  return
-                                }
-                              }
-                              handleCancelBooking(b.id)
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCancelBookingClick(b)
                             }}
                             disabled={loadingId === b.id}
                             className="px-3.5 py-2 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-black hover:border-red-500 text-red-400 font-bold text-[10px] tracking-wide uppercase transition-all flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                            title={
-                              b.cancellationPolicy === 'moderate'
-                                ? 'Moderate Policy: Can only cancel 24h before'
-                                : ''
-                            }
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Cancel
                           </button>
@@ -580,30 +619,10 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                     selectedBooking.cancellationPolicy !== 'strict' && (
                       <button
                         onClick={() => {
-                          if (
-                            selectedBooking.cancellationPolicy === 'moderate' &&
-                            selectedBooking.rawDate
-                          ) {
-                            const slotTime = new Date(
-                              `${selectedBooking.rawDate}T${selectedBooking.rawStartTime}`
-                            ).getTime()
-                            const diff = slotTime - Date.now()
-                            if (diff < 86400000) {
-                              alert(
-                                'This venue has a moderate cancellation policy. You cannot cancel within 24 hours of the slot.'
-                              )
-                              return
-                            }
-                          }
                           setSelectedBooking(null)
-                          handleCancelBooking(selectedBooking.id)
+                          handleCancelBookingClick(selectedBooking)
                         }}
                         className="flex-1 py-3 rounded-xl bg-red-950/20 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-black font-bold text-xs uppercase tracking-wider transition-colors"
-                        title={
-                          selectedBooking.cancellationPolicy === 'moderate'
-                            ? 'Moderate Policy: Can only cancel 24h before'
-                            : ''
-                        }
                       >
                         Cancel Match
                       </button>
@@ -677,6 +696,202 @@ export function BookingListClient({ initialBookings }: BookingListClientProps) {
                   {isArchiving ? 'Archiving...' : 'Archive Match'}
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* CANCELLATION SYSTEM MODALS */}
+      <AnimatePresence>
+        {cancellationModalBooking && !cancellationSuccessData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => {
+                if (!isCancelling) setCancellationModalBooking(null)
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0b100b] border border-white/10 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative z-10 font-sans text-left"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-white">Cancel Match Reservation</h3>
+                <button
+                  disabled={isCancelling}
+                  onClick={() => setCancellationModalBooking(null)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Booking Summary */}
+              <div className="bg-white/5 border border-white/8 rounded-xl p-4 mb-4 space-y-2">
+                <h4 className="text-sm font-semibold text-yellow-400">
+                  {cancellationModalBooking.venue}
+                </h4>
+                <div className="flex gap-4 text-xs text-gray-300">
+                  <span className="flex items-center gap-1">
+                    <CalendarCheck className="w-3.5 h-3.5" /> {cancellationModalBooking.date}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" /> {cancellationModalBooking.time}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-white/5 flex justify-between text-xs font-semibold">
+                  <span className="text-gray-400">Total Advance Paid:</span>
+                  <span className="text-white">₹{cancellationModalBooking.advance}</span>
+                </div>
+              </div>
+
+              {/* SLA / Cancellation Refund Calculation */}
+              {(() => {
+                const { percent, amount, hoursRemaining } =
+                  getRefundPreview(cancellationModalBooking)
+                return (
+                  <div className="space-y-3 mb-6">
+                    <div className="p-4 rounded-xl border flex items-start gap-3 bg-blue-500/10 border-blue-500/20 text-blue-400">
+                      <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs space-y-1">
+                        <p className="font-semibold text-white">Cancellation Policy Details</p>
+                        <p>
+                          Time remaining before start:{' '}
+                          <span className="font-bold text-white">{hoursRemaining} hours</span>.
+                        </p>
+                        <p>
+                          Based on our policy, you are eligible for a{' '}
+                          <span className="font-bold text-white">{percent}% refund</span>.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/8 rounded-xl p-4 space-y-2.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-400">Refund Eligible amount ({percent}%):</span>
+                        <span className="text-green-400 font-bold">₹{amount}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-400">Platform commission retained:</span>
+                        <span className="text-red-400">
+                          ₹{(cancellationModalBooking.advance - amount).toFixed(2)}
+                        </span>
+                      </div>
+                      {amount > 0 && (
+                        <p className="text-[10px] text-gray-500 italic pt-1 border-t border-white/5">
+                          * Refund will be processed automatically to your original payment source
+                          in 3–5 business days.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Cancellation Reason */}
+              <div className="space-y-1.5 mb-6">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                  Cancellation Reason (Optional)
+                </label>
+                <textarea
+                  disabled={isCancelling}
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="e.g. Change of plans, bad weather..."
+                  className="w-full h-20 bg-white/5 border border-white/8 rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-yellow-500/50 resize-none transition-colors"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end">
+                <button
+                  disabled={isCancelling}
+                  onClick={() => setCancellationModalBooking(null)}
+                  className="px-4 py-3 rounded-xl bg-white/5 border border-white/8 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40"
+                >
+                  Keep Booking
+                </button>
+                <button
+                  disabled={isCancelling}
+                  onClick={executeCancellation}
+                  className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-45 flex items-center gap-1.5 shadow-lg shadow-red-500/10"
+                >
+                  {isCancelling ? 'Cancelling...' : 'Confirm Cancel'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CANCELLATION SUCCESS SCREEN */}
+      <AnimatePresence>
+        {cancellationSuccessData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0b100b] border border-white/10 rounded-2xl w-full max-w-md p-8 shadow-2xl relative z-10 text-center font-sans"
+            >
+              <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-5 text-green-400">
+                <CheckCircle className="w-10 h-10 animate-bounce" />
+              </div>
+
+              <h3 className="text-xl font-bold text-white mb-2">Booking Cancelled Successfully</h3>
+              <p className="text-xs text-gray-400 leading-relaxed mb-6">
+                Your slots have been released back to availability immediately.
+              </p>
+
+              {/* Refund Info */}
+              <div className="bg-white/5 border border-white/8 rounded-xl p-5 mb-8 space-y-3.5 text-left">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400">Refund Status:</span>
+                  <span className="px-2 py-0.5 rounded bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-wider">
+                    {cancellationSuccessData.refundStatus === 'QUEUED'
+                      ? 'Refund Initiated'
+                      : 'Refund Completed'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400">Refund Amount:</span>
+                  <span className="text-white font-bold text-sm">
+                    ₹{cancellationSuccessData.refundAmount}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400">Reference:</span>
+                  <span
+                    className="text-gray-300 font-mono text-[10px]"
+                    title={cancellationSuccessData.reference}
+                  >
+                    {cancellationSuccessData.reference?.substring(0, 18)}...
+                  </span>
+                </div>
+                {cancellationSuccessData.refundAmount > 0 && (
+                  <div className="pt-3 border-t border-white/5 flex gap-2 items-start text-[10px] text-gray-400 leading-relaxed">
+                    <AlertCircle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <span>
+                      Credits will reflect in your original payment method within{' '}
+                      <strong className="text-white">3–5 business days</strong> depending on your
+                      bank.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => {
+                  setCancellationSuccessData(null)
+                  setCancellationModalBooking(null)
+                  router.refresh()
+                }}
+                className="w-full py-3.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-yellow-500/10"
+              >
+                Back to My Bookings
+              </button>
             </motion.div>
           </div>
         )}

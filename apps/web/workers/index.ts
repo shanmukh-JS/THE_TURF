@@ -4,6 +4,7 @@ import { settlementWorker } from './settlementWorker'
 import { payoutBatchWorker } from './payoutBatchWorker'
 import { reconciliationWorker } from './reconciliationWorker'
 import { ownerPayableWorker } from './ownerPayableWorker'
+import { refundWorker } from './refundWorker'
 
 import * as http from 'http'
 import './cron'
@@ -33,6 +34,7 @@ const workers = [
   emailWorker,
   inAppWorker,
   reminderWorker,
+  refundWorker,
 ]
 
 const gracefulShutdown = async (signal: string) => {

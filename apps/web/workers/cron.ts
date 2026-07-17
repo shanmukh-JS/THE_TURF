@@ -133,4 +133,96 @@ cron.schedule('* * * * *', async () => {
   }
 })
 
+// 3. Reconciliation Cron Job - runs every 30 minutes
+cron.schedule('*/30 * * * *', async () => {
+  console.log(`[Cron: Reconciliation] Scanning for stuck processing/pending refunds...`)
+  const supabase = createAdminClient()
+
+  try {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60000).toISOString()
+
+    // Fetch refunds that are stuck in PROCESSING or REQUESTED/QUEUED and haven't been updated for 10 minutes
+    const { data: stuckRefunds, error } = await supabase
+      .from('refunds')
+      .select('*')
+      .in('status', ['PROCESSING', 'REQUESTED', 'QUEUED', 'RETRYING'])
+      .lt('updated_at', tenMinutesAgo)
+
+    if (error || !stuckRefunds || stuckRefunds.length === 0) {
+      if (error) console.error(`[Cron: Reconciliation] Fetch error:`, error)
+      return
+    }
+
+    console.log(`[Cron: Reconciliation] Found ${stuckRefunds.length} stuck refunds to reconcile.`)
+
+    const { getPaymentProvider } = await import('@/lib/payments/factory')
+    const provider = getPaymentProvider()
+
+    for (const refund of stuckRefunds) {
+      try {
+        if (refund.status === 'PROCESSING' && refund.refund_id) {
+          // Query Razorpay directly for the refund status
+          console.log(
+            `[Cron: Reconciliation] Fetching refund status from Razorpay for refund ${refund.id} (Razorpay Ref: ${refund.refund_id})`
+          )
+          const providerRefund = await provider.fetchRefund(refund.payment_id, refund.refund_id)
+
+          if (providerRefund && providerRefund.status === 'processed') {
+            console.log(
+              `[Cron: Reconciliation] Refund ${refund.id} confirmed processed by Razorpay. Completing locally.`
+            )
+            const { data: result, error: rpcErr } = await supabase.rpc('rpc_complete_refund_v1', {
+              p_provider_refund_id: refund.refund_id,
+              p_correlation_id: refund.correlation_id,
+            })
+            if (rpcErr) throw rpcErr
+          } else if (providerRefund && providerRefund.status === 'failed') {
+            console.warn(
+              `[Cron: Reconciliation] Refund ${refund.id} marked failed by Razorpay. Failing locally.`
+            )
+            const { data: result, error: rpcErr } = await supabase.rpc('rpc_fail_refund_v1', {
+              p_provider_refund_id: refund.refund_id,
+              p_error_message: 'Razorpay reported failure',
+              p_correlation_id: refund.correlation_id,
+            })
+            if (rpcErr) throw rpcErr
+          } else {
+            console.log(
+              `[Cron: Reconciliation] Refund ${refund.id} is still in provider status: ${providerRefund?.status || 'unknown'}. Skipping.`
+            )
+          }
+        } else if (
+          refund.status === 'REQUESTED' ||
+          refund.status === 'QUEUED' ||
+          refund.status === 'RETRYING'
+        ) {
+          // If stuck in requested or queued, we should re-enqueue the job to BullMQ
+          console.log(
+            `[Cron: Reconciliation] Refund ${refund.id} is stuck in ${refund.status}. Re-enqueuing worker job.`
+          )
+          const { refundQueue } = await import('./queues')
+          await refundQueue.add(
+            'process-refund',
+            {
+              refundId: refund.id,
+              bookingId: refund.booking_id,
+              correlationId: refund.correlation_id,
+            },
+            {
+              jobId: refund.idempotency_key, // ensure worker-level idempotency
+            }
+          )
+        }
+      } catch (err: any) {
+        console.error(
+          `[Cron: Reconciliation] Error reconciling refund ${refund.id}:`,
+          err.message || err
+        )
+      }
+    }
+  } catch (err: any) {
+    console.error(`[Cron: Reconciliation] Unexpected loop error:`, err.message || err)
+  }
+})
+
 console.log(`✅ Reminder Cron Job initialized.`)

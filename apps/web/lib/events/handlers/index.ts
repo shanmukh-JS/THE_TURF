@@ -108,7 +108,111 @@ export async function emitBookingCancelledEvent(params: {
     reason: params.reason,
   })
 
+  // Also publish to the global event bus
+  await globalEventBus.publish({
+    eventType: 'booking.cancel.completed',
+    version: 1,
+    bookingId: params.bookingId,
+    userId: params.userId,
+    payload: { amount: params.amount, reason: params.reason },
+  })
+
   return { success: true }
+}
+
+export async function emitBookingCancelRequestedEvent(params: {
+  bookingId: string
+  userId: string
+  correlationId: string
+  payload: any
+}) {
+  return globalEventBus.publish({
+    eventType: 'booking.cancel.requested',
+    version: 1,
+    bookingId: params.bookingId,
+    userId: params.userId,
+    payload: { ...params.payload, correlationId: params.correlationId },
+  })
+}
+
+export async function emitRefundRequestedEvent(params: {
+  refundId: string
+  bookingId: string
+  userId: string
+  amount: number
+  correlationId: string
+}) {
+  return globalEventBus.publish({
+    eventType: 'refund.requested',
+    version: 1,
+    bookingId: params.bookingId,
+    userId: params.userId,
+    payload: {
+      refundId: params.refundId,
+      amount: params.amount,
+      correlationId: params.correlationId,
+    },
+  })
+}
+
+export async function emitRefundProcessingEvent(params: {
+  refundId: string
+  bookingId: string
+  userId: string
+  amount: number
+  correlationId: string
+}) {
+  return globalEventBus.publish({
+    eventType: 'refund.processing',
+    version: 1,
+    bookingId: params.bookingId,
+    userId: params.userId,
+    payload: {
+      refundId: params.refundId,
+      amount: params.amount,
+      correlationId: params.correlationId,
+    },
+  })
+}
+
+export async function emitRefundCompletedEvent(params: {
+  refundId: string
+  bookingId: string
+  userId: string
+  amount: number
+  correlationId: string
+}) {
+  return globalEventBus.publish({
+    eventType: 'refund.completed',
+    version: 1,
+    bookingId: params.bookingId,
+    userId: params.userId,
+    payload: {
+      refundId: params.refundId,
+      amount: params.amount,
+      correlationId: params.correlationId,
+    },
+  })
+}
+
+export async function emitRefundFailedEvent(params: {
+  refundId: string
+  bookingId: string
+  userId: string
+  error: string
+  correlationId: string
+}) {
+  return globalEventBus.publish({
+    eventType: 'refund.failed',
+    version: 1,
+    bookingId: params.bookingId,
+    userId: params.userId,
+    payload: {
+      refundId: params.refundId,
+      error: params.error,
+      correlationId: params.correlationId,
+    },
+  })
 }
 
 /**

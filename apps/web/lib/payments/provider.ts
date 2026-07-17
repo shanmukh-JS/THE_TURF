@@ -69,6 +69,11 @@ export interface PaymentProvider {
   refund(paymentId: string, amount?: number): Promise<any>
 
   /**
+   * Retrieves the current status of a refund.
+   */
+  fetchRefund(paymentId: string, refundId: string): Promise<any>
+
+  /**
    * Checks the health and connectivity of the provider API.
    */
   healthCheck(): Promise<boolean>

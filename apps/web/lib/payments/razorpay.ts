@@ -83,6 +83,10 @@ export class RazorpayProvider implements PaymentProvider {
     return await razorpay.payments.refund(paymentId, { amount })
   }
 
+  async fetchRefund(paymentId: string, refundId: string): Promise<any> {
+    return await razorpay.payments.fetchRefund(paymentId, refundId)
+  }
+
   async healthCheck(): Promise<boolean> {
     try {
       // Simplest healthcheck: fetch an invalid order to ensure auth succeeds but resource fails
