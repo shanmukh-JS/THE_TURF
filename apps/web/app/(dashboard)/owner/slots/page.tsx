@@ -150,6 +150,7 @@ export default function ManageSlotsPage() {
         .from('venues')
         .select('id, name, verification_status, venue_pricing(price)')
         .eq('owner_id', ownerProfileId)
+        .eq('is_disabled', false)
 
       if (venuesData) {
         const mappedVenues = venuesData.map((v) => ({
