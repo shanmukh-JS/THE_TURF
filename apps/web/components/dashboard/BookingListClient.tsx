@@ -154,13 +154,16 @@ export function BookingListClient({
     if (error || !data) return
     const bookingData = data as any
 
-    // Format Date
-    const dateObj = new Date(bookingData.slots.date)
-    const formattedDate = dateObj.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    // Format Date safely
+    let formattedDate = 'N/A'
+    if (bookingData.slots?.date) {
+      const dateObj = new Date(bookingData.slots.date)
+      formattedDate = dateObj.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    }
 
     // Format Time
     const formatTime = (timeStr: string) => {
