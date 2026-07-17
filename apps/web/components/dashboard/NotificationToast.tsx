@@ -18,6 +18,30 @@ export interface ToastProps {
   onClose: (id: string) => void
 }
 
+/**
+ * Shared AudioContext singleton — avoids creating a new context per toast.
+ */
+let sharedAudioCtx: AudioContext | null = null
+
+function getAudioContext(): AudioContext | null {
+  try {
+    if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+      sharedAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    }
+    return sharedAudioCtx
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Check if user prefers reduced motion.
+ */
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 export const NotificationToast: React.FC<ToastProps> = ({
   id,
   title,
@@ -33,44 +57,55 @@ export const NotificationToast: React.FC<ToastProps> = ({
 }) => {
   const [progress, setProgress] = useState(100)
   const [isLeaving, setIsLeaving] = useState(false)
+  const reducedMotion = prefersReducedMotion()
 
   // Dynamically load the correct Lucide icon
   const IconComponent = (Lucide as any)[icon] || Lucide.Bell
 
   // Expiration countdown
   useEffect(() => {
-    const duration = priority === 'CRITICAL' ? 10000 : 5000 // Critical stays longer
-    const startTime = Date.now()
+    const duration = priority === 'CRITICAL' ? 10000 : 5000
 
-    // Try playing sound effect
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const osc = audioCtx.createOscillator()
-      const gain = audioCtx.createGain()
+    // Play sound effect (only if not reduced-motion)
+    if (!reducedMotion) {
+      const audioCtx = getAudioContext()
+      if (audioCtx) {
+        try {
+          const osc = audioCtx.createOscillator()
+          const gain = audioCtx.createGain()
 
-      // Xbox/Achievement bell pitch sequence
-      if (category === 'XP' || category === 'LEVELS') {
-        osc.type = 'triangle'
-        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime) // C5
-        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1) // E5
-        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2) // G5
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4)
-      } else {
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime) // A4
-        gain.gain.setValueAtTime(0.08, audioCtx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2)
+          // Xbox/Achievement bell pitch sequence for gamification events
+          if (category === 'XP' || category === 'LEVELS' || category === 'ACHIEVEMENTS') {
+            osc.type = 'triangle'
+            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime) // C5
+            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1) // E5
+            osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2) // G5
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime)
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4)
+          } else {
+            osc.type = 'sine'
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime) // A4
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime)
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2)
+          }
+
+          osc.connect(gain)
+          gain.connect(audioCtx.destination)
+          osc.start()
+          osc.stop(audioCtx.currentTime + 0.5)
+        } catch {
+          // AudioContext might be blocked by browser user interaction policy
+        }
       }
-
-      osc.connect(gain)
-      gain.connect(audioCtx.destination)
-      osc.start()
-      osc.stop(audioCtx.currentTime + 0.5)
-    } catch (e) {
-      // AudioContext might be blocked by browser user interaction policy, fail silently
     }
 
+    // Skip animation progress bar if reduced motion
+    if (reducedMotion) {
+      const timeout = setTimeout(() => onClose(id), duration)
+      return () => clearTimeout(timeout)
+    }
+
+    const startTime = Date.now()
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime
       const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
@@ -83,13 +118,16 @@ export const NotificationToast: React.FC<ToastProps> = ({
     }, 30)
 
     return () => clearInterval(interval)
-  }, [priority, category])
+  }, [priority, category, reducedMotion])
 
   const triggerDismiss = () => {
     setIsLeaving(true)
-    setTimeout(() => {
-      onClose(id)
-    }, 300)
+    setTimeout(
+      () => {
+        onClose(id)
+      },
+      reducedMotion ? 0 : 300
+    )
   }
 
   const isXp = category === 'XP' || category === 'LEVELS'
@@ -99,10 +137,22 @@ export const NotificationToast: React.FC<ToastProps> = ({
 
   return (
     <div
-      className={`relative w-96 rounded-2xl border p-4 shadow-2xl backdrop-blur-md transition-all duration-300 transform cursor-pointer ${
-        isLeaving ? 'translate-x-full opacity-0 scale-95' : 'translate-x-0 opacity-100 scale-100'
+      role="alert"
+      aria-label={`${category} notification: ${title}`}
+      className={`relative w-full rounded-2xl border p-4 shadow-2xl backdrop-blur-md cursor-pointer ${
+        reducedMotion
+          ? ''
+          : `transition-all duration-300 transform ${
+              isLeaving
+                ? 'translate-x-full opacity-0 scale-95'
+                : 'translate-x-0 opacity-100 scale-100'
+            }`
       } ${color}`}
       onClick={triggerDismiss}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') triggerDismiss()
+      }}
     >
       <div className="flex gap-3">
         {/* Glow effect matching priority */}
@@ -110,7 +160,7 @@ export const NotificationToast: React.FC<ToastProps> = ({
 
         {/* Icon slot */}
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
-          <IconComponent className="h-5 w-5 animate-pulse" />
+          <IconComponent className={`h-5 w-5 ${reducedMotion ? '' : 'animate-pulse'}`} />
         </div>
 
         {/* Title, message & CTAs */}
@@ -129,6 +179,10 @@ export const NotificationToast: React.FC<ToastProps> = ({
               <div
                 className="bg-yellow-400 h-full rounded-full transition-all duration-1000"
                 style={{ width: `${progressPercent}%` }}
+                role="progressbar"
+                aria-valuenow={progressPercent}
+                aria-valuemin={0}
+                aria-valuemax={100}
               />
               <span className="text-[9px] text-yellow-400 font-bold mt-1 block">
                 Level {metadata.nextLevel - 1} Progress: {metadata.currentXp % 1000}/1000 XP
@@ -156,16 +210,19 @@ export const NotificationToast: React.FC<ToastProps> = ({
             e.stopPropagation()
             triggerDismiss()
           }}
+          aria-label="Dismiss notification"
         >
           <Lucide.X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Slide timer bar */}
-      <div
-        className="absolute bottom-0 left-0 h-1 bg-current opacity-40 rounded-b-2xl transition-all duration-300"
-        style={{ width: `${progress}%` }}
-      />
+      {!reducedMotion && (
+        <div
+          className="absolute bottom-0 left-0 h-1 bg-current opacity-40 rounded-b-2xl transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      )}
     </div>
   )
 }

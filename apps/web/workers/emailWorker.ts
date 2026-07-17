@@ -37,15 +37,26 @@ export const emailWorker = new Worker(
       }
 
       // 3. Simple string replacement for dynamic variables (e.g. {{ playerName }})
+      // Sanitize values to prevent XSS in email HTML
       let subject = template.subject
       let html = template.html_body
 
       for (const [key, value] of Object.entries(payload)) {
-        const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
-        const strValue = String(value || '')
-        subject = subject.replace(regex, strValue)
-        html = html.replace(regex, strValue)
+        if (typeof value === 'string' || typeof value === 'number') {
+          const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g')
+          const sanitized = String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+          subject = subject.replace(regex, sanitized)
+          html = html.replace(regex, sanitized)
+        }
       }
+      // Strip remaining unreplaced template variables
+      subject = subject.replace(/\{\{\s*\w+\s*\}\}/g, '')
+      html = html.replace(/\{\{\s*\w+\s*\}\}/g, '')
 
       // 4. Send Email
       const emailTo = payload.email

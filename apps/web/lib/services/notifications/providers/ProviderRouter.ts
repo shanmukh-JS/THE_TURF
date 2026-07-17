@@ -32,7 +32,7 @@ export class ProviderRouter implements NotificationProvider {
 
     if (payload.userId) {
       const { data: prefs } = await supabase
-        .from('notification_preferences')
+        .from('user_notification_preferences')
         .select('whatsapp_enabled, sms_enabled')
         .eq('user_id', payload.userId)
         .maybeSingle()

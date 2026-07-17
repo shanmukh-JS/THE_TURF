@@ -29,6 +29,7 @@ export async function emitLoginEvent(params: {
 
 /**
  * Dispatches the booking.confirmed.v1 event upon verified payment.
+ * Notifies BOTH the player AND the venue owner.
  */
 export async function emitBookingConfirmedEvent(params: {
   bookingId: string
@@ -45,7 +46,6 @@ export async function emitBookingConfirmedEvent(params: {
   ownerId?: string
   ownerEmail?: string
 }) {
-  // Use the new Unified Notification Service directly (bypassing legacy outbox)
   const { notificationService } = await import('@/lib/services/notifications/NotificationService')
 
   // Dispatch to Player
@@ -68,7 +68,6 @@ export async function emitBookingConfirmedEvent(params: {
     await notificationService.publishEvent('NEW_BOOKING', {
       bookingId: params.bookingId,
       userId: params.ownerId,
-      recipient: '',
       email: params.ownerEmail || '',
       playerName: params.fullName,
       venueName: params.venueName,
@@ -78,13 +77,12 @@ export async function emitBookingConfirmedEvent(params: {
     })
   }
 
-  // Optionally keep publishing to globalEventBus for other non-notification systems if needed,
-  // but Notifications are now fully handled directly via BullMQ queue.
   return { success: true }
 }
 
 /**
- * Dispatches the booking.cancelled.v1 event when cancelled by owner or client.
+ * Dispatches the booking.cancelled.v1 event.
+ * Notifies the player and optionally the owner.
  */
 export async function emitBookingCancelledEvent(params: {
   bookingId: string
@@ -94,10 +92,11 @@ export async function emitBookingCancelledEvent(params: {
   venueName: string
   amount: string
   reason: string
+  ownerId?: string
 }) {
-  // Use the new Unified Notification Service directly
   const { notificationService } = await import('@/lib/services/notifications/NotificationService')
 
+  // Player notification
   await notificationService.publishEvent('BOOKING_CANCELLED', {
     bookingId: params.bookingId,
     userId: params.userId,
@@ -108,7 +107,19 @@ export async function emitBookingCancelledEvent(params: {
     reason: params.reason,
   })
 
-  // Also publish to the global event bus
+  // Owner notification
+  if (params.ownerId) {
+    await notificationService.publishEvent('BOOKING_CANCELLED', {
+      bookingId: params.bookingId,
+      userId: params.ownerId,
+      venueName: params.venueName,
+      playerName: params.fullName,
+      amount: params.amount,
+      reason: params.reason,
+    })
+  }
+
+  // Also publish to the global event bus for outbox-based downstream consumers
   await globalEventBus.publish({
     eventType: 'booking.cancel.completed',
     version: 1,
@@ -175,6 +186,10 @@ export async function emitRefundProcessingEvent(params: {
   })
 }
 
+/**
+ * Dispatches the refund.completed event.
+ * Notifies the player via the unified notification service.
+ */
 export async function emitRefundCompletedEvent(params: {
   refundId: string
   bookingId: string
@@ -182,6 +197,17 @@ export async function emitRefundCompletedEvent(params: {
   amount: number
   correlationId: string
 }) {
+  const { notificationService } = await import('@/lib/services/notifications/NotificationService')
+
+  // Player refund notification
+  await notificationService.publishEvent('REFUND_COMPLETED', {
+    bookingId: params.bookingId,
+    userId: params.userId,
+    amount: params.amount.toString(),
+    reference: params.refundId,
+  })
+
+  // Also publish to outbox for downstream consumers
   return globalEventBus.publish({
     eventType: 'refund.completed',
     version: 1,
@@ -202,6 +228,15 @@ export async function emitRefundFailedEvent(params: {
   error: string
   correlationId: string
 }) {
+  const { notificationService } = await import('@/lib/services/notifications/NotificationService')
+
+  // Player refund failure notification
+  await notificationService.publishEvent('REFUND_FAILED', {
+    bookingId: params.bookingId,
+    userId: params.userId,
+    error: params.error,
+  })
+
   return globalEventBus.publish({
     eventType: 'refund.failed',
     version: 1,
@@ -238,5 +273,39 @@ export async function emitRatingRequestEvent(params: {
         BookingId: params.bookingId,
       },
     },
+  })
+}
+
+/**
+ * Dispatches settlement completed notification to venue owner.
+ */
+export async function emitSettlementCompletedEvent(params: {
+  ownerId: string
+  amount: number
+  settlementId: string
+}) {
+  const { notificationService } = await import('@/lib/services/notifications/NotificationService')
+
+  await notificationService.publishEvent('SETTLEMENT_COMPLETED', {
+    userId: params.ownerId,
+    amount: params.amount.toString(),
+    settlementId: params.settlementId,
+  })
+}
+
+/**
+ * Dispatches low-rating alert notification to venue owner.
+ */
+export async function emitLowRatingAlertEvent(params: {
+  ownerId: string
+  venueName: string
+  averageRating: number
+}) {
+  const { notificationService } = await import('@/lib/services/notifications/NotificationService')
+
+  await notificationService.publishEvent('LOW_RATING_ALERT', {
+    userId: params.ownerId,
+    venueName: params.venueName,
+    averageRating: params.averageRating.toString(),
   })
 }

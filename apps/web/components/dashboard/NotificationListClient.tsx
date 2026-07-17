@@ -251,9 +251,11 @@ export function NotificationListClient({
       setNotifications((prev) =>
         prev.map((n) => {
           if (n.id === updatedNotif.id) {
-            const serverTime = new Date(updatedNotif.updated_at || '').getTime()
-            const localTime = new Date(n.updated_at || '').getTime()
-            if (serverTime >= localTime) {
+            const serverTime = updatedNotif.updated_at
+              ? new Date(updatedNotif.updated_at).getTime()
+              : 0
+            const localTime = n.updated_at ? new Date(n.updated_at).getTime() : 0
+            if (serverTime >= localTime || serverTime === 0) {
               return { ...n, ...updatedNotif }
             }
           }
@@ -313,20 +315,39 @@ export function NotificationListClient({
               <motion.div
                 layout
                 key={n.id}
+                role="listitem"
+                tabIndex={0}
+                aria-label={`${n.is_read ? '' : 'Unread: '}${n.title}`}
                 onClick={() => {
                   if (!n.is_read) handleMarkAsRead(n.id)
                   if (n.link) router.push(n.link)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (!n.is_read) handleMarkAsRead(n.id)
+                    if (n.link) router.push(n.link)
+                  }
                 }}
                 className={`rounded-2xl border ${
                   n.is_read
                     ? 'border-white/5 bg-white/[0.01]'
                     : 'border-white/10 bg-white/[0.03] shadow-md shadow-green-950/5'
-                } p-4 flex gap-4 hover:border-white/15 hover:bg-white/[0.03] transition-all cursor-pointer group relative`}
+                } p-4 flex gap-4 hover:border-white/15 hover:bg-white/[0.03] transition-all cursor-pointer group relative focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:ring-offset-0`}
               >
                 {/* Checkbox selector */}
                 <div
                   className="flex items-center justify-center shrink-0"
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  aria-label={`Select notification: ${n.title}`}
+                  tabIndex={0}
                   onClick={(e) => handleToggleSelect(e, n.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault()
+                      handleToggleSelect(e as any, n.id)
+                    }
+                  }}
                 >
                   <div
                     className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
@@ -359,13 +380,14 @@ export function NotificationListClient({
                       </span>
 
                       {/* Row Action buttons */}
-                      <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                      <div className="flex gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                         <button
                           onClick={(e) => handleTogglePin(e, n.id, !!n.is_pinned)}
                           className={`p-1.5 rounded-lg hover:bg-white/5 transition-all ${
                             n.is_pinned ? 'text-green-400' : 'text-gray-500 hover:text-white'
                           }`}
                           title={n.is_pinned ? 'Unpin' : 'Pin'}
+                          aria-label={n.is_pinned ? 'Unpin notification' : 'Pin notification'}
                         >
                           <Lucide.Pin className="w-3.5 h-3.5" />
                         </button>
@@ -377,6 +399,7 @@ export function NotificationListClient({
                               : 'text-gray-500 hover:text-white'
                           }`}
                           title="Favorite"
+                          aria-label={n.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
                         >
                           <Lucide.Star className="w-3.5 h-3.5" />
                         </button>
@@ -386,6 +409,9 @@ export function NotificationListClient({
                             n.is_archived ? 'text-blue-400' : 'text-gray-500 hover:text-white'
                           }`}
                           title={n.is_archived ? 'Unarchive' : 'Archive'}
+                          aria-label={
+                            n.is_archived ? 'Unarchive notification' : 'Archive notification'
+                          }
                         >
                           <Lucide.Archive className="w-3.5 h-3.5" />
                         </button>
@@ -393,6 +419,7 @@ export function NotificationListClient({
                           onClick={(e) => handleDeleteNotification(e, n.id)}
                           className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-white/5 transition-all"
                           title="Delete"
+                          aria-label="Delete notification"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -487,7 +514,7 @@ export function NotificationListClient({
       </div>
 
       {/* Notifications Grouped List */}
-      <div className="space-y-8 w-full">
+      <div className="space-y-8 w-full" role="list" aria-label="Notification list">
         {filteredNotifications.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-white/10 rounded-2xl bg-white/[0.02] space-y-3">
             <Bell className="w-8 h-8 text-gray-600 mx-auto" />

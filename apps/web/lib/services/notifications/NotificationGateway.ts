@@ -1,4 +1,4 @@
-import { inAppQueue, emailQueue, reminderQueue } from '../../../workers/queues'
+import { inAppQueue, emailQueue } from '../../../workers/queues'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface GatewayPayload {
@@ -17,6 +17,24 @@ export interface GatewayPayload {
   causationId?: string
 }
 
+/**
+ * In-memory deduplication window to prevent duplicate dispatches within 60s.
+ * Keys are cleared on a rolling basis to prevent memory leak.
+ */
+const recentDispatches = new Map<string, number>()
+const DEDUP_WINDOW_MS = 60_000
+const MAX_DEDUP_ENTRIES = 500
+
+function cleanupDedupCache() {
+  if (recentDispatches.size <= MAX_DEDUP_ENTRIES) return
+  const now = Date.now()
+  for (const [key, ts] of recentDispatches) {
+    if (now - ts > DEDUP_WINDOW_MS) {
+      recentDispatches.delete(key)
+    }
+  }
+}
+
 export class NotificationGateway {
   /**
    * Dispatches the notification event to the appropriate channel queue
@@ -31,6 +49,18 @@ export class NotificationGateway {
     const idempotencyKey = `notif_ref_${payload.correlationId || crypto.randomUUID()}_${channel.toLowerCase()}`
 
     try {
+      // 0. Deduplication window check
+      const dedupKey = `${payload.userId}_${eventType}_${channel}`
+      const lastDispatch = recentDispatches.get(dedupKey)
+      if (lastDispatch && Date.now() - lastDispatch < DEDUP_WINDOW_MS) {
+        console.log(
+          `[NotificationGateway] Dedup hit: ${dedupKey} dispatched ${Date.now() - lastDispatch}ms ago. Skipping.`
+        )
+        return null
+      }
+      recentDispatches.set(dedupKey, Date.now())
+      cleanupDedupCache()
+
       // 1. Check user Preferences Matrix for this category & channel
       const { data: preference } = await supabase
         .from('user_notification_preferences')
@@ -55,7 +85,7 @@ export class NotificationGateway {
         }
       }
 
-      // 2. Create the central truth record in notification_events (Lifecycle: CREATED -> QUEUED)
+      // 2. Create the central truth record in notification_events (Lifecycle: CREATED → QUEUED)
       const { data: record, error } = await supabase
         .from('notification_events')
         .insert({
