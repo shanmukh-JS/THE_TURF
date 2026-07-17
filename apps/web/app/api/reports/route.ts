@@ -37,26 +37,25 @@ export async function POST(req: Request) {
     }
 
     // Insert into reports table
-    const { data, error } = await supabase
-      .from('reports')
-      .insert({
-        reporter_id: userId,
-        venue_id: venueId,
-        owner_id: ownerId || null,
-        category,
-        priority,
-        complaint,
-        status: 'PENDING',
-      })
-      .select()
-      .single()
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: userId,
+      venue_id: venueId,
+      owner_id: ownerId || null,
+      category,
+      priority,
+      complaint,
+      status: 'PENDING',
+    })
 
     if (error) {
       console.error('Error submitting report:', error)
-      return NextResponse.json({ error: 'Failed to submit report' }, { status: 500 })
+      return NextResponse.json(
+        { error: `Failed to submit report: ${error.message}` },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json({ success: true, report: data })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('API Error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

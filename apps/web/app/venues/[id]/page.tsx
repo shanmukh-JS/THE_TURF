@@ -80,7 +80,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           venueId: id,
-          ownerId: venue.owner_id,
+          ownerId: venue?.ownerUserId || null,
           category: reportFormData.category,
           complaint: reportFormData.complaint,
         }),
