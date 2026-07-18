@@ -19,7 +19,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const bookingId = searchParams.get('bookingId')
     const refundId = searchParams.get('refundId')
 

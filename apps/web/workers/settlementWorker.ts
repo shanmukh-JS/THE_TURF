@@ -75,9 +75,7 @@ export const settlementWorker = new Worker(
   {
     connection,
     settings: {
-      backoffStrategies: {
-        exponential: (attemptsMade, err) => Math.round(Math.pow(2, attemptsMade) * 1000),
-      },
+      backoffStrategy: (attemptsMade: number) => Math.round(Math.pow(2, attemptsMade) * 1000),
     },
   }
 )
