@@ -13,8 +13,8 @@ export async function POST(req: Request) {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const adminUser = await verifyAdmin()
-    if (!adminUser) {
+    const { user: adminUser, error: roleError } = await requireRole(['ADMIN'])
+    if (roleError || !adminUser) {
       return apiError('UNAUTHORIZED', 'Access denied.', 403)
     }
 

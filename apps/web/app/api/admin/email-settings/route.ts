@@ -13,8 +13,8 @@ export async function GET(req: Request) {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const adminUser = await verifyAdmin()
-    if (!adminUser) {
+    const { user: adminUser, error: roleError } = await requireRole(['ADMIN'])
+    if (roleError || !adminUser) {
       return apiError('UNAUTHORIZED', 'Access denied.', 403)
     }
 
@@ -52,8 +52,8 @@ export async function GET(req: Request) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const adminUser = await verifyAdmin()
-    if (!adminUser) {
+    const { user: adminUser, error: roleError } = await requireRole(['ADMIN'])
+    if (roleError || !adminUser) {
       return apiError('UNAUTHORIZED', 'Access denied.', 403)
     }
 
