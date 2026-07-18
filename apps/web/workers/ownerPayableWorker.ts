@@ -12,7 +12,7 @@ const ownerPayableService = new OwnerPayableService(supabase)
 export const ownerPayableWorker = new Worker(
   QUEUES.OWNER_PAYABLE,
   async (job: Job) => {
-    const { bookingId, ownerId, totalBookingAmount, platformCommissionPct, executedBy } = job.data
+    const { bookingId, ownerId, totalBookingAmount, executedBy } = job.data
 
     console.log(`[Worker: OwnerPayable] Processing Job ${job.id} for Booking ${bookingId}`)
 
@@ -31,7 +31,6 @@ export const ownerPayableWorker = new Worker(
         bookingId,
         ownerId,
         totalBookingAmount,
-        platformCommissionPct,
         executedBy,
       })
 

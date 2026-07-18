@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
     // 2. Validate Request Body
     const body = await req.json()
-    const { bookingId, ownerId, totalBookingAmount, platformCommissionPct, executedBy } = body
+    const { bookingId, ownerId, totalBookingAmount, executedBy } = body
     if (!bookingId || !ownerId || !totalBookingAmount || !executedBy) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
@@ -31,7 +31,6 @@ export async function POST(req: Request) {
       bookingId,
       ownerId,
       totalBookingAmount,
-      platformCommissionPct: platformCommissionPct || 0.1, // Default 10% if not provided
       executedBy,
     })
 

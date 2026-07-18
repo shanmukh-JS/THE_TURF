@@ -12,7 +12,6 @@ export class OwnerPayableService {
     bookingId: string
     ownerId: string
     totalBookingAmount: number
-    platformCommissionPct: number
     executedBy: string
   }): Promise<{ payableId: string }> {
     // 1. Validate Request (Basic checks, deep validation happens in schema)
@@ -28,7 +27,6 @@ export class OwnerPayableService {
       p_booking_id: params.bookingId,
       p_owner_id: params.ownerId,
       p_total_booking_amount: params.totalBookingAmount,
-      p_platform_commission_pct: params.platformCommissionPct,
       p_executed_by: params.executedBy,
     })
 
