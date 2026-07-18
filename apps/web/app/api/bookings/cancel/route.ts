@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       cancellationReason,
       expectedVersion,
       correlationId = crypto.randomUUID(),
-    } = await request.json()
+    } = await req.json()
 
     if (!bookingId || expectedVersion === undefined) {
       return NextResponse.json({ error: 'Missing bookingId or expectedVersion' }, { status: 400 })

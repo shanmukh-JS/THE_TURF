@@ -11,10 +11,11 @@ export async function POST(req: Request) {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const roleCheck = await requireRole(['ADMIN'])
-    if (roleCheck.error) return roleCheck.error
+    const { user, error: roleError } = await requireRole(['ADMIN'])
+    if (roleError || !user)
+      return roleError || NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { refundId } = await request.json()
+    const { refundId } = await req.json()
 
     if (!refundId) {
       return NextResponse.json({ error: 'Missing refundId' }, { status: 400 })

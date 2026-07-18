@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const roleCheck = await requireRole(['ADMIN'])
     if (roleCheck.error) return roleCheck.error
 
-    const { refundId, reason } = await request.json()
+    const { refundId, reason } = await req.json()
 
     if (!refundId) {
       return NextResponse.json({ error: 'Missing refundId' }, { status: 400 })
