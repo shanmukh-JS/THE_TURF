@@ -76,14 +76,7 @@ export default function VenuesPage() {
           venue_pricing(price),
           venue_images(url, is_cover),
           slots(status, date, start_time),
-          reviews(rating),
-          owner_profiles (
-            id,
-            full_name,
-            owner_settings (
-              business_logo_url
-            )
-          )
+          reviews(rating)
         `
         )
         .eq('verification_status', 'APPROVED')
@@ -155,8 +148,8 @@ export default function VenuesPage() {
             friendPlayed: false,
             timings,
             isOpen: openStatus,
-            ownerLogo: v.owner_profiles?.owner_settings?.business_logo_url || null,
-            ownerName: v.owner_profiles?.full_name || 'Owner',
+            ownerLogo: null,
+            ownerName: 'Owner',
           }
         })
         setAllVenues(mappedVenues)

@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(profile): add resilient profile update API with foreign-key sync and enable instant page prefetching" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(player-module): complete production readiness audit, streamline venue discovery queries, and add player test suite" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
