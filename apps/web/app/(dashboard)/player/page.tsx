@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PlayerDashboardClient } from '@/components/dashboard/PlayerDashboardClient'
+import { calculateBookingStreak } from '@/lib/utils/streak'
 
 function formatTimeStr(timeStr: string | null) {
   if (!timeStr) return null
@@ -238,6 +239,9 @@ export default async function PlayerDashboard() {
 
   const totalFavorites = favoritesCount || 0
 
+  // Calculate Booking Streak (consecutive calendar weeks with qualifying confirmed/completed bookings)
+  const bookingStreak = calculateBookingStreak(mappedBookings)
+
   return (
     <PlayerDashboardClient
       displayName={displayName}
@@ -246,6 +250,7 @@ export default async function PlayerDashboard() {
       totalBookings={totalBookings}
       upcomingBookingsCount={upcomingBookingsCount}
       totalFavorites={totalFavorites}
+      bookingStreak={bookingStreak}
       totalSpent={totalSpent}
       upcomingList={upcomingList}
       pastList={formattedPastList}

@@ -6,6 +6,7 @@ interface StatCardProps {
   value: React.ReactNode
   change?: string
   trend?: 'up' | 'down' | 'neutral'
+  badge?: React.ReactNode
   icon: React.ReactNode
   accent?: string
 }
@@ -15,6 +16,7 @@ export function StatCard({
   value,
   change,
   trend = 'neutral',
+  badge,
   icon,
   accent = 'green',
 }: StatCardProps) {
@@ -23,6 +25,8 @@ export function StatCard({
       'from-green-500/10 to-emerald-500/5 border-green-500/20 hover:border-green-500/50 hover:from-green-500/20',
     blue: 'from-blue-500/10 to-cyan-500/5 border-blue-500/20 hover:border-blue-500/50 hover:from-blue-500/20',
     amber:
+      'from-amber-500/10 to-orange-500/5 border-amber-500/20 hover:border-amber-500/50 hover:from-amber-500/20',
+    orange:
       'from-amber-500/10 to-orange-500/5 border-amber-500/20 hover:border-amber-500/50 hover:from-amber-500/20',
     purple:
       'from-purple-500/10 to-violet-500/5 border-purple-500/20 hover:border-purple-500/50 hover:from-purple-500/20',
@@ -33,6 +37,8 @@ export function StatCard({
     blue: 'bg-blue-500/15 text-blue-400 group-hover:bg-blue-500/25 group-hover:scale-110 transition-all duration-300',
     amber:
       'bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/25 group-hover:scale-110 transition-all duration-300',
+    orange:
+      'bg-amber-500/15 text-amber-400 group-hover:bg-amber-500/25 group-hover:scale-110 transition-all duration-300',
     purple:
       'bg-purple-500/15 text-purple-400 group-hover:bg-purple-500/25 group-hover:scale-110 transition-all duration-300',
   }
@@ -41,6 +47,7 @@ export function StatCard({
     green: 'bg-green-500 group-hover:shadow-[0_0_40px_15px_rgba(34,197,94,0.3)]',
     blue: 'bg-blue-500 group-hover:shadow-[0_0_40px_15px_rgba(59,130,246,0.3)]',
     amber: 'bg-amber-500 group-hover:shadow-[0_0_40px_15px_rgba(245,158,11,0.3)]',
+    orange: 'bg-amber-500 group-hover:shadow-[0_0_40px_15px_rgba(245,158,11,0.3)]',
     purple: 'bg-purple-500 group-hover:shadow-[0_0_40px_15px_rgba(168,85,247,0.3)]',
   }
 
@@ -58,7 +65,9 @@ export function StatCard({
           >
             {icon}
           </div>
-          {change && (
+          {badge ? (
+            badge
+          ) : change ? (
             <span
               className={cn(
                 'flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full',
@@ -72,7 +81,7 @@ export function StatCard({
               )}
               {change}
             </span>
-          )}
+          ) : null}
         </div>
         <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
         <p className="text-sm text-gray-400 mt-1">{label}</p>

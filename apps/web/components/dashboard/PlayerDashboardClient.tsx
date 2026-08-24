@@ -10,7 +10,7 @@ import {
   CalendarCheck,
   Clock,
   Heart,
-  DollarSign,
+  Flame,
   Plus,
   Compass,
   MapPin,
@@ -147,7 +147,8 @@ interface PlayerDashboardClientProps {
   totalBookings: number
   upcomingBookingsCount: number
   totalFavorites: number
-  totalSpent: number
+  bookingStreak?: number
+  totalSpent?: number
   upcomingList: any[]
   pastList: any[]
   venues: any[]
@@ -163,6 +164,7 @@ export function PlayerDashboardClient({
   totalBookings,
   upcomingBookingsCount,
   totalFavorites,
+  bookingStreak = 0,
   totalSpent,
   upcomingList,
   pastList,
@@ -515,17 +517,19 @@ export function PlayerDashboardClient({
           }}
         >
           <StatCard
-            label="Total Spent"
+            label="Booking Streak"
             value={
               <span className="flex items-baseline font-sans font-extrabold text-white text-2xl">
-                <span className="text-gray-400 mr-0.5 text-lg font-bold">₹</span>
-                <AnimatedNumber value={totalSpent} />
+                <AnimatedNumber value={bookingStreak} />
               </span>
             }
-            change="+0%"
-            trend="up"
-            accent="green"
-            icon={<DollarSign className="w-5 h-5" />}
+            badge={
+              <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                🔥 {bookingStreak} {bookingStreak === 1 ? 'week' : 'weeks'}
+              </span>
+            }
+            accent="amber"
+            icon={<Flame className="w-5 h-5 text-amber-400" />}
           />
         </motion.div>
 
