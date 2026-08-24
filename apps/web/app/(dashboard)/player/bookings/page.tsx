@@ -22,8 +22,8 @@ export default async function CustomerBookingsPage() {
     redirect('/auth/login')
   }
 
-  // Fetch bookings, joining slots, venues, areas, and reviews
-  const { data: rawBookings } = await supabase
+  // Fetch bookings, joining slots, venues, areas
+  const { data: rawBookings, error: bookingsError } = await supabase
     .from('bookings')
     .select(
       `
@@ -45,12 +45,33 @@ export default async function CustomerBookingsPage() {
       refund_completed_at,
       created_at,
       slots(date, start_time, end_time),
-      venues(id, name, address, owner_id, areas(name), venue_images(url, is_cover)),
-      booking_reviews(rating, feedback, ground_quality, lighting, cleanliness, staff_behaviour, value_for_money)
+      venues(id, name, address, owner_id, areas(name), venue_images(url, is_cover))
     `
     )
     .eq('customer_id', user.id)
     .order('created_at', { ascending: false })
+
+  if (bookingsError) {
+    console.error('Error fetching player bookings:', bookingsError)
+  }
+
+  // Fetch reviews separately for all returned booking IDs
+  const bookingIds = (rawBookings || []).map((b: any) => b.id)
+  let reviewsMap = new Map<string, any>()
+  if (bookingIds.length > 0) {
+    try {
+      const { data: reviewsData } = await supabase
+        .from('booking_reviews')
+        .select('booking_id, rating, feedback, ground_quality, lighting, cleanliness, staff_behaviour, value_for_money')
+        .in('booking_id', bookingIds)
+
+      if (reviewsData) {
+        reviewsData.forEach((r: any) => reviewsMap.set(r.booking_id, r))
+      }
+    } catch (e) {
+      console.warn('Booking reviews fetch skipped:', e)
+    }
+  }
 
   // Fetch owner settings to get cancellation policies
   const ownerIds = Array.from(
@@ -156,7 +177,7 @@ export default async function CustomerBookingsPage() {
       b.venues?.venue_images?.[0]?.url ||
       'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
 
-    const rawRev = Array.isArray(b.booking_reviews) ? b.booking_reviews[0] : b.booking_reviews
+    const rawRev = reviewsMap.get(b.id)
 
     return {
       id: b.id,

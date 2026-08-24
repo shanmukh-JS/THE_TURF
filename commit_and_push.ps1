@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(refunds): verify end-to-end refund pipeline and dynamic route handlers" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(player): resolve booking_reviews join in My Bookings query to display all bookings and cancellations" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
