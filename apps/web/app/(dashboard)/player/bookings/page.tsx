@@ -48,7 +48,7 @@ export default async function CustomerBookingsPage() {
       refund_completed_at,
       created_at,
       slots(date, start_time, end_time),
-      venues(id, name, address, owner_id, areas(name), venue_images(url, is_cover))
+      venues(id, name, address, owner_id, venue_images(url, is_cover))
     `
     )
     .eq('customer_id', user.id)
@@ -80,7 +80,7 @@ export default async function CustomerBookingsPage() {
         refund_completed_at,
         created_at,
         slots(date, start_time, end_time),
-        venues(id, name, address, owner_id, areas(name), venue_images(url, is_cover))
+        venues(id, name, address, owner_id, venue_images(url, is_cover))
       `
       )
       .eq('customer_id', user.id)

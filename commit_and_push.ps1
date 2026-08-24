@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(ai-verification): refine scoring rules to ensure 95-100% confidence for all physical venue submissions" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(bookings): remove invalid areas relation embed so player bookings and cancellations load cleanly" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
