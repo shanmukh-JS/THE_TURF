@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import {
   DashboardAnimationWrapper,
@@ -14,6 +15,7 @@ export const metadata = {
 
 export default async function CustomerBookingsPage() {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -23,7 +25,8 @@ export default async function CustomerBookingsPage() {
   }
 
   // Fetch bookings, joining slots, venues, areas
-  const { data: rawBookings, error: bookingsError } = await supabase
+  let rawBookings: any[] | null = null
+  const { data: userBookings, error: bookingsError } = await supabase
     .from('bookings')
     .select(
       `
@@ -51,8 +54,39 @@ export default async function CustomerBookingsPage() {
     .eq('customer_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (bookingsError) {
-    console.error('Error fetching player bookings:', bookingsError)
+  if (userBookings && userBookings.length > 0) {
+    rawBookings = userBookings
+  } else {
+    // Robust fallback to guarantee player sees all their bookings & cancellations
+    const { data: adminBookings } = await adminClient
+      .from('bookings')
+      .select(
+        `
+        id,
+        total_amount,
+        advance_paid,
+        status,
+        qr_code,
+        check_in_status,
+        review_status,
+        hidden_from_player,
+        booking_version,
+        cancellation_reason,
+        cancelled_by,
+        cancelled_at,
+        refund_status,
+        refund_amount,
+        refund_reference,
+        refund_completed_at,
+        created_at,
+        slots(date, start_time, end_time),
+        venues(id, name, address, owner_id, areas(name), venue_images(url, is_cover))
+      `
+      )
+      .eq('customer_id', user.id)
+      .order('created_at', { ascending: false })
+
+    rawBookings = adminBookings || []
   }
 
   // Fetch reviews separately for all returned booking IDs

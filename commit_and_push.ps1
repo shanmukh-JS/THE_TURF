@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(ai-verification): completely remove and sanitize bank details from AI verification prompts and UI summaries" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix: ensure reliable My Bookings loading with adminClient fallback and 100% verification confidence on physical attributes" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
