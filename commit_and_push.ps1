@@ -4,9 +4,12 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(player-dashboard): sync accurate favorites count with active venues and remove fake trend percentage badges" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(profile): add resilient profile update API with foreign-key sync and enable instant page prefetching" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
+
+Write-Host "Pushing to feature branch..."
+& "C:\Program Files\Git\cmd\git.exe" push origin main:feature/production-readiness-phases
 
 Write-Host "Git push complete!"

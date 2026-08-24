@@ -144,32 +144,23 @@ export function PlayerProfileClient({
       const { data } = supabase.storage.from('player_profiles').getPublicUrl(filePath)
       const uploadedUrl = data.publicUrl
 
-      // Get current database values
-      const { data: currentProfile } = await supabase
-        .from('customer_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      const updatePayload: any = {
-        user_id: user.id,
-        full_name: currentProfile?.full_name || fullName,
-      }
-
+      const updatePayload: any = {}
       if (target === 'profile') {
-        updatePayload.profile_image_url = uploadedUrl
-        updatePayload.banner_image_url = currentProfile?.banner_image_url || bannerImageUrl
+        updatePayload.profileImageUrl = uploadedUrl
       } else {
-        updatePayload.profile_image_url = currentProfile?.profile_image_url || profileImageUrl
-        updatePayload.banner_image_url = uploadedUrl
+        updatePayload.bannerImageUrl = uploadedUrl
       }
 
-      // Update public.customer_profiles table
-      const { error: profileError } = await supabase
-        .from('customer_profiles')
-        .upsert(updatePayload, { onConflict: 'user_id' })
+      const res = await fetch('/api/player/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatePayload),
+      })
 
-      if (profileError) throw profileError
+      const resData = await res.json()
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.error || 'Failed to update profile')
+      }
 
       if (target === 'profile') {
         setProfileImageUrl(uploadedUrl)
@@ -195,32 +186,23 @@ export function PlayerProfileClient({
     setToast(null)
 
     try {
-      // Get current database values
-      const { data: currentProfile } = await supabase
-        .from('customer_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      const updatePayload: any = {
-        user_id: user.id,
-        full_name: currentProfile?.full_name || fullName,
-      }
-
+      const updatePayload: any = {}
       if (target === 'profile') {
-        updatePayload.profile_image_url = null
-        updatePayload.banner_image_url = currentProfile?.banner_image_url || bannerImageUrl
+        updatePayload.profileImageUrl = null
       } else {
-        updatePayload.profile_image_url = currentProfile?.profile_image_url || profileImageUrl
-        updatePayload.banner_image_url = null
+        updatePayload.bannerImageUrl = null
       }
 
-      // Update public.customer_profiles table
-      const { error: profileError } = await supabase
-        .from('customer_profiles')
-        .upsert(updatePayload, { onConflict: 'user_id' })
+      const res = await fetch('/api/player/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatePayload),
+      })
 
-      if (profileError) throw profileError
+      const resData = await res.json()
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.error || 'Failed to remove image')
+      }
 
       if (target === 'profile') {
         setProfileImageUrl(null)
@@ -320,7 +302,8 @@ export function PlayerProfileClient({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editName.trim()) {
+    const trimmed = editName.trim()
+    if (!trimmed) {
       setToast({ message: 'Full name cannot be empty', type: 'error' })
       return
     }
@@ -329,34 +312,25 @@ export function PlayerProfileClient({
     setToast(null)
 
     try {
-      // Get current database values
-      const { data: currentProfile } = await supabase
-        .from('customer_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      // Update public.customer_profiles table
-      const { error: profileError } = await supabase.from('customer_profiles').upsert(
-        {
-          user_id: user.id,
-          full_name: editName.trim(),
-          profile_image_url: currentProfile?.profile_image_url || profileImageUrl,
-          banner_image_url: currentProfile?.banner_image_url || bannerImageUrl,
-        },
-        { onConflict: 'user_id' }
-      )
-
-      if (profileError) throw profileError
-
-      // Update auth user metadata
-      const { error: authError } = await supabase.auth.updateUser({
-        data: { full_name: editName.trim() },
+      const res = await fetch('/api/player/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: trimmed }),
       })
 
-      if (authError) throw authError
+      const resData = await res.json()
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.error || 'Failed to update profile')
+      }
 
-      setFullName(editName.trim())
+      setFullName(trimmed)
+      useAuthStore.getState().setUser({
+        id: user.id,
+        email: user.email || '',
+        role: user.user_metadata?.role || 'CUSTOMER',
+        fullName: trimmed,
+        logoUrl: profileImageUrl || undefined,
+      })
       setIsEditing(false)
       setToast({ message: 'Profile updated successfully!', type: 'success' })
 
