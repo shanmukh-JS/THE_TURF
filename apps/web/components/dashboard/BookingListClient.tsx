@@ -108,9 +108,25 @@ export function BookingListClient({
     }
   }, [toast])
 
-  // Sync with server updates
+  // Sync with server updates and fetch fresh data on mount
   useEffect(() => {
     setBookings(initialBookings)
+
+    const fetchFreshBookings = async () => {
+      try {
+        const res = await fetch('/api/player/bookings')
+        if (res.ok) {
+          const json = await res.json()
+          if (json.bookings && Array.isArray(json.bookings)) {
+            setBookings(json.bookings)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch /api/player/bookings:', err)
+      }
+    }
+
+    fetchFreshBookings()
   }, [initialBookings])
 
   const user = useAuthStore((state) => state.user)
@@ -122,6 +138,17 @@ export function BookingListClient({
       setBookings((prev) => prev.filter((b) => b.id !== oldRow.id))
       return
     }
+
+    try {
+      const res = await fetch('/api/player/bookings')
+      if (res.ok) {
+        const json = await res.json()
+        if (json.bookings && Array.isArray(json.bookings)) {
+          setBookings(json.bookings)
+          return
+        }
+      }
+    } catch {}
 
     // Fetch the single updated booking with joins
     const { data, error } = await supabase

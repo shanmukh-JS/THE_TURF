@@ -151,6 +151,7 @@ interface PlayerDashboardClientProps {
   totalSpent?: number
   upcomingList: any[]
   pastList: any[]
+  recentActivityList?: any[]
   venues: any[]
   xp: number
   level: number
@@ -168,6 +169,7 @@ export function PlayerDashboardClient({
   totalSpent,
   upcomingList,
   pastList,
+  recentActivityList,
   venues,
   xp: initialXp,
   level: initialLevel,
@@ -724,34 +726,62 @@ export function PlayerDashboardClient({
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-white tracking-wide">Recent Activity</h2>
           <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6 h-[400px] overflow-y-auto">
-            {pastList.length === 0 ? (
+            {(!recentActivityList || recentActivityList.length === 0) && pastList.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 space-y-2">
                 <History className="w-8 h-8 text-gray-600" />
                 <p className="text-sm">No activity recorded yet</p>
               </div>
             ) : (
               <div className="relative border-l border-white/10 pl-6 space-y-6">
-                {pastList.slice(0, 4).map((act) => {
+                {(recentActivityList || pastList).slice(0, 5).map((act) => {
                   const isCancelled = act.status === 'CANCELLED'
-                  const venueName = act.venues?.name || 'Venue'
-                  const statusColor = isCancelled ? 'bg-red-500' : 'bg-green-500'
+                  const isUpcoming = act.status === 'CONFIRMED'
+                  const venueName = act.venues?.name || 'Turf Arena'
+                  const statusColor = isCancelled
+                    ? 'bg-red-500 ring-red-500/20'
+                    : isUpcoming
+                    ? 'bg-emerald-500 ring-emerald-500/20'
+                    : 'bg-blue-500 ring-blue-500/20'
+
+                  let actionTitle = `Played at ${venueName}`
+                  if (isCancelled) {
+                    actionTitle = `Cancelled booking at ${venueName}`
+                  } else if (isUpcoming) {
+                    actionTitle = `Booked slot at ${venueName}`
+                  }
+
+                  const slotObj = Array.isArray(act.slots) ? act.slots[0] : act.slots
 
                   return (
                     <div key={act.id} className="relative group">
                       {/* Timeline dot */}
                       <span
-                        className={`absolute -left-[30px] top-1.5 w-2 h-2 rounded-full ring-4 ring-[#060d06] ${statusColor}`}
+                        className={`absolute -left-[30px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-[#060d06] ${statusColor}`}
                       />
 
                       <div className="space-y-1">
                         <span className="text-[10px] font-mono text-gray-500 block">
-                          {formatRelativeTime(act.slots?.date || new Date())}
+                          {formatRelativeTime(act.created_at || slotObj?.date || new Date())}
                         </span>
                         <h4 className="text-sm font-bold text-white leading-snug">
-                          {isCancelled
-                            ? `Cancelled booking at ${venueName}`
-                            : `Played at ${venueName}`}
+                          {actionTitle}
                         </h4>
+                        {slotObj?.date && (
+                          <p className="text-[11px] text-gray-400">
+                            {slotObj.date}
+                            {slotObj.start_time
+                              ? ` • ${
+                                  slotObj.start_time.includes('T')
+                                    ? new Date(slotObj.start_time).toLocaleTimeString('en-US', {
+                                        timeZone: 'Asia/Kolkata',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                      })
+                                    : slotObj.start_time
+                                }`
+                              : ''}
+                          </p>
+                        )}
                         <div className="h-px bg-white/5 my-2 w-full" />
                       </div>
                     </div>

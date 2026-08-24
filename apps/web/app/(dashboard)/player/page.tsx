@@ -280,6 +280,28 @@ export default async function PlayerDashboard() {
   // Calculate Booking Streak (consecutive calendar weeks with qualifying confirmed/completed bookings)
   const bookingStreak = calculateBookingStreak(mappedBookings)
 
+  // Unified recent activity list: all player actions (new bookings, played matches, cancellations) sorted by most recent
+  const recentActivityList = [...mappedBookings]
+    .filter((b: any) => !b.hidden_from_player)
+    .sort((a: any, b: any) => {
+      const timeA = new Date(a.created_at || a.slots?.date || 0).getTime()
+      const timeB = new Date(b.created_at || b.slots?.date || 0).getTime()
+      return timeB - timeA
+    })
+    .map((b: any) => {
+      const coverImage =
+        b.venues?.venue_images?.find((img: any) => img.is_cover)?.url ||
+        b.venues?.venue_images?.[0]?.url ||
+        'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
+      return {
+        ...b,
+        venues: {
+          ...b.venues,
+          image: coverImage,
+        },
+      }
+    })
+
   return (
     <PlayerDashboardClient
       displayName={displayName}
@@ -292,6 +314,7 @@ export default async function PlayerDashboard() {
       totalSpent={totalSpent}
       upcomingList={upcomingList}
       pastList={formattedPastList}
+      recentActivityList={recentActivityList}
       venues={mappedVenues}
       xp={profile?.xp ?? 0}
       level={profile?.level ?? 1}

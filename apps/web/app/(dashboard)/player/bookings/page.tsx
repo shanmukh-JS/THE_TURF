@@ -24,9 +24,8 @@ export default async function CustomerBookingsPage() {
     redirect('/auth/login')
   }
 
-  // Fetch bookings, joining slots, venues, areas
-  let rawBookings: any[] | null = null
-  const { data: userBookings, error: bookingsError } = await supabase
+  // Fetch bookings, joining slots and venues using adminClient for reliable relations
+  const { data: rawBookings } = await adminClient
     .from('bookings')
     .select(
       `
@@ -54,49 +53,16 @@ export default async function CustomerBookingsPage() {
     .eq('customer_id', user.id)
     .order('created_at', { ascending: false })
 
-  if (userBookings && userBookings.length > 0) {
-    rawBookings = userBookings
-  } else {
-    // Robust fallback to guarantee player sees all their bookings & cancellations
-    const { data: adminBookings } = await adminClient
-      .from('bookings')
-      .select(
-        `
-        id,
-        total_amount,
-        advance_paid,
-        status,
-        qr_code,
-        check_in_status,
-        review_status,
-        hidden_from_player,
-        booking_version,
-        cancellation_reason,
-        cancelled_by,
-        cancelled_at,
-        refund_status,
-        refund_amount,
-        refund_reference,
-        refund_completed_at,
-        created_at,
-        slots(date, start_time, end_time),
-        venues(id, name, address, owner_id, venue_images(url, is_cover))
-      `
-      )
-      .eq('customer_id', user.id)
-      .order('created_at', { ascending: false })
-
-    rawBookings = adminBookings || []
-  }
-
   // Fetch reviews separately for all returned booking IDs
   const bookingIds = (rawBookings || []).map((b: any) => b.id)
   let reviewsMap = new Map<string, any>()
   if (bookingIds.length > 0) {
     try {
-      const { data: reviewsData } = await supabase
+      const { data: reviewsData } = await adminClient
         .from('booking_reviews')
-        .select('booking_id, rating, feedback, ground_quality, lighting, cleanliness, staff_behaviour, value_for_money')
+        .select(
+          'booking_id, rating, feedback, ground_quality, lighting, cleanliness, staff_behaviour, value_for_money'
+        )
         .in('booking_id', bookingIds)
 
       if (reviewsData) {
@@ -109,12 +75,19 @@ export default async function CustomerBookingsPage() {
 
   // Fetch owner settings to get cancellation policies
   const ownerIds = Array.from(
-    new Set((rawBookings || []).map((b: any) => b.venues?.owner_id).filter(Boolean))
+    new Set(
+      (rawBookings || [])
+        .map((b: any) => {
+          const v = Array.isArray(b.venues) ? b.venues[0] : b.venues
+          return v?.owner_id
+        })
+        .filter(Boolean)
+    )
   )
 
   let ownerSettingsMap = new Map<string, string>()
   if (ownerIds.length > 0) {
-    const { data: settingsData } = await supabase
+    const { data: settingsData } = await adminClient
       .from('owner_settings')
       .select('owner_id, cancellation_policy')
       .in('owner_id', ownerIds as string[])
@@ -125,7 +98,7 @@ export default async function CustomerBookingsPage() {
   }
 
   // Fetch global admin cancellation policies
-  const { data: adminSettings } = await supabase
+  const { data: adminSettings } = await adminClient
     .from('admin_settings')
     .select('cancellation_policy')
     .limit(1)
@@ -133,8 +106,11 @@ export default async function CustomerBookingsPage() {
 
   // Transform raw data into the UI shape
   const bookings = (rawBookings || []).map((b: any) => {
+    const slotObj = Array.isArray(b.slots) ? b.slots[0] : b.slots
+    const venueObj = Array.isArray(b.venues) ? b.venues[0] : b.venues
+
     // Format Date (e.g. "Jul 10, 2026")
-    const rawDateStr = b.slots?.date || (b.created_at ? b.created_at.split('T')[0] : null)
+    const rawDateStr = slotObj?.date || (b.created_at ? b.created_at.split('T')[0] : null)
     let formattedDate = 'N/A'
     if (rawDateStr) {
       const dateObj = new Date(rawDateStr + 'T00:00:00')
@@ -164,14 +140,19 @@ export default async function CustomerBookingsPage() {
             minute: '2-digit',
           })
     }
-    const startTimeFormatted = formatTime(b.slots?.start_time)
-    const endTimeFormatted = formatTime(b.slots?.end_time)
-    const formattedTime = startTimeFormatted && endTimeFormatted ? `${startTimeFormatted} – ${endTimeFormatted}` : 'Custom Slot'
+    const startTimeFormatted = formatTime(slotObj?.start_time)
+    const endTimeFormatted = formatTime(slotObj?.end_time)
+    const formattedTime =
+      startTimeFormatted && endTimeFormatted
+        ? `${startTimeFormatted} – ${endTimeFormatted}`
+        : 'Custom Slot'
 
     // Automatically mark past confirmed bookings as completed
     const now = new Date()
-    const isPast = b.slots?.end_time
-      ? (b.slots.end_time.includes('T') ? new Date(b.slots.end_time) : new Date(`${b.slots.date}T${b.slots.end_time}`)) < now
+    const isPast = slotObj?.end_time
+      ? (slotObj.end_time.includes('T')
+          ? new Date(slotObj.end_time)
+          : new Date(`${slotObj.date}T${slotObj.end_time}`)) < now
       : false
 
     let derivedStatus = b.status
@@ -181,23 +162,23 @@ export default async function CustomerBookingsPage() {
       derivedStatus = 'COMPLETED'
       derivedReviewStatus = 'PENDING'
       // Persist the status transition in the database asynchronously
-      supabase
+      adminClient
         .from('bookings')
         .update({ status: 'COMPLETED', review_status: 'PENDING' })
         .eq('id', b.id)
         .then(async () => {
-          const { count } = await supabase
+          const { count } = await adminClient
             .from('notifications')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)
             .eq('title', 'Match Completed')
-            .like('message', `%${b.venues?.name || 'Truf'}%`)
+            .like('message', `%${venueObj?.name || 'Truf'}%`)
 
           if (count === 0) {
-            await supabase.from('notifications').insert({
+            await adminClient.from('notifications').insert({
               user_id: user.id,
               title: '🎉 Match Completed!',
-              message: `Your game at ${b.venues?.name || 'Truf'} has ended. Rate your experience and earn up to +50 XP.`,
+              message: `Your game at ${venueObj?.name || 'Truf'} has ended. Rate your experience and earn up to +50 XP.`,
               type: 'BOOKING',
               link: '/player/bookings',
               is_read: false,
@@ -206,18 +187,19 @@ export default async function CustomerBookingsPage() {
         })
     }
 
+    const venueImages = venueObj?.venue_images || []
     const coverImage =
-      b.venues?.venue_images?.find((img: any) => img.is_cover)?.url ||
-      b.venues?.venue_images?.[0]?.url ||
+      venueImages.find((img: any) => img.is_cover)?.url ||
+      venueImages[0]?.url ||
       'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
 
     const rawRev = reviewsMap.get(b.id)
 
     return {
       id: b.id,
-      venueId: b.venues?.id || '',
-      venue: b.venues?.name || 'Turf Arena',
-      area: b.venues?.areas?.name || b.venues?.address?.split(',')[0]?.trim() || 'Unknown',
+      venueId: venueObj?.id || '',
+      venue: venueObj?.name || 'Turf Arena',
+      area: venueObj?.address?.split(',')[0]?.trim() || 'Unknown Area',
       date: formattedDate,
       time: formattedTime,
       amount: Number(b.total_amount || 0),
@@ -237,10 +219,10 @@ export default async function CustomerBookingsPage() {
           }
         : null,
       image: coverImage,
-      rawStartTime: b.slots?.start_time || '',
-      rawEndTime: b.slots?.end_time || '',
-      rawDate: b.slots?.date || '',
-      cancellationPolicy: ownerSettingsMap.get(b.venues?.owner_id) || 'flexible',
+      rawStartTime: slotObj?.start_time || '',
+      rawEndTime: slotObj?.end_time || '',
+      rawDate: slotObj?.date || '',
+      cancellationPolicy: ownerSettingsMap.get(venueObj?.owner_id) || 'flexible',
       qrCode: b.qr_code,
       checkInStatus: b.check_in_status,
       bookingVersion: b.booking_version || 1,

@@ -1,6 +1,7 @@
 import { CalendarCheck, Clock, MapPin, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 
 const statusMap = {
@@ -22,6 +23,7 @@ export default async function CustomerBookingsPage({
   const activeTab = params.tab || 'All'
 
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -30,8 +32,8 @@ export default async function CustomerBookingsPage({
     redirect('/auth/login')
   }
 
-  // Fetch bookings, joining slots, venues, and areas
-  const { data: rawBookings } = await supabase
+  // Fetch bookings, joining slots and venues
+  const { data: rawBookings } = await adminClient
     .from('bookings')
     .select(
       `
@@ -39,8 +41,8 @@ export default async function CustomerBookingsPage({
       total_amount,
       advance_paid,
       status,
-      slots!inner(date, start_time, end_time),
-      venues!inner(name, areas(name))
+      slots(date, start_time, end_time),
+      venues(name, address)
     `
     )
     .eq('customer_id', user.id)
@@ -48,8 +50,11 @@ export default async function CustomerBookingsPage({
 
   // Transform raw data into the UI shape
   const bookings = (rawBookings || []).map((b: any) => {
+    const slotObj = Array.isArray(b.slots) ? b.slots[0] : b.slots
+    const venueObj = Array.isArray(b.venues) ? b.venues[0] : b.venues
+
     // Format Date (e.g. "Jul 10, 2026")
-    const dateObj = new Date(b.slots.date)
+    const dateObj = slotObj?.date ? new Date(slotObj.date + 'T00:00:00') : new Date()
     const formattedDate = dateObj.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -57,24 +62,39 @@ export default async function CustomerBookingsPage({
     })
 
     // Format Time (e.g. "7:00 PM - 8:00 PM")
-    const formatTime = (timeStr: string) => {
+    const formatTime = (timeStr?: string) => {
+      if (!timeStr) return ''
+      if (timeStr.includes(':') && !timeStr.includes('T')) {
+        const [hrStr, minStr] = timeStr.split(':')
+        const hr = parseInt(hrStr || '0', 10)
+        const ampm = hr >= 12 ? 'PM' : 'AM'
+        const displayHr = hr % 12 || 12
+        return `${displayHr}:${minStr || '00'} ${ampm}`
+      }
       const t = new Date(timeStr)
-      return t.toLocaleTimeString('en-US', {
-        timeZone: 'Asia/Kolkata',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
+      return isNaN(t.getTime())
+        ? timeStr
+        : t.toLocaleTimeString('en-US', {
+            timeZone: 'Asia/Kolkata',
+            hour: 'numeric',
+            minute: '2-digit',
+          })
     }
-    const formattedTime = `${formatTime(b.slots.start_time)} – ${formatTime(b.slots.end_time)}`
+    const startTimeFormatted = formatTime(slotObj?.start_time)
+    const endTimeFormatted = formatTime(slotObj?.end_time)
+    const formattedTime =
+      startTimeFormatted && endTimeFormatted
+        ? `${startTimeFormatted} – ${endTimeFormatted}`
+        : 'Custom Slot'
 
     return {
       id: b.id.substring(0, 8).toUpperCase(), // Short ID
-      venue: b.venues.name,
-      area: b.venues.areas?.name || 'Unknown',
+      venue: venueObj?.name || 'Turf Arena',
+      area: venueObj?.address?.split(',')[0]?.trim() || 'Unknown Area',
       date: formattedDate,
       time: formattedTime,
-      amount: b.total_amount,
-      advance: b.advance_paid,
+      amount: Number(b.total_amount || 0),
+      advance: Number(b.advance_paid || 0),
       status: b.status,
     }
   })
