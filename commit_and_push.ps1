@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "feat(ui): add CustomDatePicker and strictly block past dates across all calendar pickers" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "feat(ai): integrate Google Gemini AI Verification engine for turf approvals with live reasoning and interactive audit" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

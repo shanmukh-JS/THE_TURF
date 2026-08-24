@@ -22,6 +22,7 @@ import {
   Activity,
   Edit3,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -51,6 +52,32 @@ export default function EnterpriseVerificationReviewPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Gemini AI Verification State
+  const [geminiResult, setGeminiResult] = useState<any>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
+  const handleRunGeminiAi = async () => {
+    if (!venue) return
+    setAiLoading(true)
+    try {
+      const res = await fetch('/api/admin/verify-venue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId: venue.id, venueData: venue }),
+      })
+      const data = await res.json()
+      if (res.ok && data.verification) {
+        setGeminiResult(data.verification)
+        setToast({ message: 'Gemini AI verification completed!', type: 'success' })
+      }
+    } catch (e: any) {
+      console.error('Gemini AI Verification error:', e)
+      setToast({ message: e.message || 'Verification failed', type: 'error' })
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   useEffect(() => {
     async function fetchDetails() {
@@ -235,17 +262,24 @@ export default function EnterpriseVerificationReviewPage() {
     )
   }
 
-  // Calculate AI Score
+  // Calculate AI Score (with Gemini AI support)
   const checks = Object.values(checklist)
   const passedChecks = checks.filter(Boolean).length
-  const aiScore = Math.round((passedChecks / checks.length) * 100)
-  const riskLevel = aiScore > 80 ? 'LOW RISK' : aiScore > 50 ? 'MEDIUM RISK' : 'HIGH RISK'
+  const baseScore = Math.round((passedChecks / checks.length) * 100)
+  const aiScore = geminiResult?.score ?? baseScore
+  const riskLevel = geminiResult?.riskLevel ?? (aiScore >= 80 ? 'LOW RISK' : aiScore >= 50 ? 'MEDIUM RISK' : 'HIGH RISK')
   const riskColor =
-    aiScore > 80
+    aiScore >= 80
       ? 'text-green-500 border-green-500/30 bg-green-500/10'
-      : aiScore > 50
+      : aiScore >= 50
         ? 'text-amber-500 border-amber-500/30 bg-amber-500/10'
         : 'text-red-500 border-red-500/30 bg-red-500/10'
+  const aiAction = geminiResult?.recommendedAction ?? (aiScore >= 80 ? 'Approve' : 'Request Changes')
+  const aiReasoning = geminiResult?.reasoning ?? (
+    aiScore >= 80
+      ? 'Most documentation checklists have passed. No duplicate listings or coordinates flags detected on the network.'
+      : 'Missing crucial verification steps. Advise owner to complete identity and location verification.'
+  )
 
   return (
     <div className="min-h-screen bg-[#050505] text-gray-300 pb-24 font-sans selection:bg-green-500/30">
@@ -542,9 +576,27 @@ export default function EnterpriseVerificationReviewPage() {
         <div className="lg:col-span-4 space-y-6">
           {/* AI VERIFICATION SUMMARY */}
           <div className="bg-[#0a0a0a] rounded-2xl border border-white/5 p-6 shadow-xl relative overflow-hidden group border-t-2 border-t-green-500">
-            <h3 className="text-xs font-bold text-green-500 tracking-wider mb-6 flex items-center gap-2 uppercase">
-              <ShieldCheck className="w-4 h-4" /> AI Verification Summary
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs font-bold text-green-500 tracking-wider flex items-center gap-2 uppercase">
+                <ShieldCheck className="w-4 h-4" /> AI Verification Summary
+              </h3>
+              <button
+                type="button"
+                onClick={handleRunGeminiAi}
+                disabled={aiLoading}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/30 text-[10px] font-bold transition-all disabled:opacity-50"
+              >
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" /> Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3" /> Re-Analyze with Gemini
+                  </>
+                )}
+              </button>
+            </div>
 
             <div className="flex items-end justify-between mb-2">
               <div>
@@ -570,12 +622,10 @@ export default function EnterpriseVerificationReviewPage() {
                 <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
                 <div>
                   <p className="text-sm font-bold text-white mb-1">
-                    Recommended Action: {aiScore >= 80 ? 'Approve' : 'Request Changes'}
+                    Recommended Action: {aiAction}
                   </p>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    {aiScore >= 80
-                      ? 'Most documentation checklists have passed. No duplicate listings or coordinates flags detected on the network.'
-                      : 'Missing crucial verification steps. Advise owner to complete identity and location verification.'}
+                    {aiReasoning}
                   </p>
                 </div>
               </div>

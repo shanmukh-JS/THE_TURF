@@ -55,6 +55,31 @@ export default function AdminApprovalsPage() {
   const [reason, setReason] = useState('')
   const [adminNotes, setAdminNotes] = useState('')
 
+  // Gemini AI Verification state
+  const [aiVerificationMap, setAiVerificationMap] = useState<Record<string, any>>({})
+  const [aiLoading, setAiLoading] = useState(false)
+
+  const handleRunGeminiAi = async (venue: any) => {
+    setAiLoading(true)
+    try {
+      const res = await fetch('/api/admin/verify-venue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId: venue.id, venueData: venue }),
+      })
+      const data = await res.json()
+      if (res.ok && data.verification) {
+        setAiVerificationMap((prev) => ({ ...prev, [venue.id]: data.verification }))
+        showToast('Gemini AI verification completed!', 'success')
+      }
+    } catch (e: any) {
+      console.error('Gemini AI Verification error:', e)
+      showToast(e.message || 'Verification failed', 'error')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   // Gallery view state
   const [activeImageIndex, setActiveImageIndex] = useState(0)
   const [isFullscreenImage, setIsFullscreenImage] = useState(false)
@@ -400,38 +425,42 @@ export default function AdminApprovalsPage() {
                 ✕ Close
               </button>
             </div>
-
             {(() => {
-              let score = 20
-              if (selectedVenue.venue_images?.length > 0) score += 20
-              if (selectedVenue.documents_url) score += 30
+              const aiData = aiVerificationMap[selectedVenue.id]
+
+              let baseScore = 20
+              if (selectedVenue.venue_images?.length > 0) baseScore += 20
+              if (selectedVenue.documents_url) baseScore += 30
               const hasBank = Array.isArray(selectedVenue.owner_profiles?.owner_settings)
                 ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_account_number
                 : selectedVenue.owner_profiles?.owner_settings?.bank_account_number
-              if (hasBank) score += 30
-              score = Math.min(score, 98)
+              if (hasBank) baseScore += 30
+              baseScore = Math.min(baseScore, 98)
 
-              const riskLevel = score > 80 ? 'LOW RISK' : score > 50 ? 'MEDIUM RISK' : 'HIGH RISK'
+              const score = aiData?.score ?? baseScore
+              const riskLevel = aiData?.riskLevel ?? (score >= 80 ? 'LOW RISK' : score >= 50 ? 'MEDIUM RISK' : 'HIGH RISK')
               const riskColor =
-                score > 80
+                score >= 80
                   ? 'text-green-400 bg-green-500/10 border-green-500/20'
-                  : score > 50
+                  : score >= 50
                     ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
                     : 'text-red-400 bg-red-500/10 border-red-500/20'
               const riskBarColor =
-                score > 80 ? 'bg-green-500' : score > 50 ? 'bg-amber-500' : 'bg-red-500'
-              const aiAction =
-                score > 80
-                  ? '🟢 Recommended Action: Approve'
-                  : score > 50
-                    ? '🟡 Recommended Action: Request Changes'
-                    : '🔴 Recommended Action: Reject'
-              const aiActionText =
-                score > 80
+                score >= 80 ? 'bg-green-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500'
+              const aiAction = aiData?.recommendedAction
+                ? (aiData.recommendedAction === 'Approve' ? '🟢 Recommended Action: Approve' : aiData.recommendedAction === 'Request Changes' ? '🟡 Recommended Action: Request Changes' : '🔴 Recommended Action: Reject')
+                : (score >= 80
+                    ? '🟢 Recommended Action: Approve'
+                    : score >= 50
+                      ? '🟡 Recommended Action: Request Changes'
+                      : '🔴 Recommended Action: Reject')
+              const aiActionText = aiData?.reasoning ?? (
+                score >= 80
                   ? 'All documentation checklists have passed. No duplicate listings or coordinates flags detected on the network.'
-                  : score > 50
+                  : score >= 50
                     ? 'Some documentation or bank details are missing. Please review carefully.'
                     : 'Critical information is missing. High risk listing.'
+              )
 
               return (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -771,9 +800,27 @@ export default function AdminApprovalsPage() {
                   <div className="space-y-6">
                     {/* Section: AI Score Summary */}
                     <div className="bg-gradient-to-br from-green-950/20 to-emerald-950/10 border border-green-500/20 rounded-2xl p-5 space-y-4">
-                      <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4" /> AI Verification Summary
-                      </h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-green-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4" /> AI Verification Summary
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => handleRunGeminiAi(selectedVenue)}
+                          disabled={aiLoading}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/30 text-[10px] font-bold transition-all disabled:opacity-50"
+                        >
+                          {aiLoading ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" /> Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3" /> Re-Analyze with Gemini
+                            </>
+                          )}
+                        </button>
+                      </div>
 
                       <div className="flex items-center justify-between">
                         <div>
