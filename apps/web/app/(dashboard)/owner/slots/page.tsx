@@ -1000,7 +1000,10 @@ export default function ManageSlotsPage() {
                     type="date"
                     min={todayStr}
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setFormData({ ...formData, date: val && val < todayStr ? todayStr : val })
+                    }}
                     required
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-green-500/50"
                   />

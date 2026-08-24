@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react'
 import { MapPin, Calendar, Clock, Search, Loader2, Navigation, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { CustomDatePicker } from '@/components/ui/CustomDatePicker'
 
 export default function HomePage() {
   const supabase = createClient()
@@ -180,28 +181,11 @@ export default function HomePage() {
             </div>
 
             {/* Date */}
-            <div
-              className="flex items-center justify-between flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full cursor-pointer"
-              onClick={(e) => {
-                const input = e.currentTarget.querySelector('input')
-                if (input) {
-                  try {
-                    input.showPicker()
-                  } catch (err) {
-                    input.click()
-                  }
-                }
-              }}
-            >
-              <input
-                type="date"
-                min={minDate}
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent border-none outline-none text-white w-full placeholder:text-gray-400 cursor-pointer"
-              />
-              <CalendarDays className="text-primary w-5 h-5 ml-3 flex-shrink-0" />
-            </div>
+            <CustomDatePicker
+              value={selectedDate}
+              onChange={setSelectedDate}
+              minDate={minDate}
+            />
 
             {/* Time */}
             <div className="flex items-center flex-1 bg-black/40 rounded-lg px-4 py-3 border border-white/10 w-full">

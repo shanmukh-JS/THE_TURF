@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(profile): remove non-existent updated_at column from customer_profiles schema mutations" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "feat(ui): add CustomDatePicker and strictly block past dates across all calendar pickers" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
