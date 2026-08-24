@@ -90,15 +90,23 @@ export default function HomePage() {
           venue_pricing(price),
           venue_images(url),
           reviews(rating),
-          slots(id, date, start_time, status)
+          slots(id, date, start_time, status),
+          owner_profiles(
+            user_id,
+            users(is_suspended)
+          )
         `
         )
         .eq('verification_status', 'APPROVED')
         .eq('is_disabled', false)
 
       if (data) {
-        setVenues(data)
-        setFilteredVenues(data)
+        const activeData = data.filter((v: any) => {
+          const isOwnerSuspended = (v.owner_profiles as any)?.users?.is_suspended === true
+          return !isOwnerSuspended && !v.is_disabled
+        })
+        setVenues(activeData)
+        setFilteredVenues(activeData)
       }
       setLoading(false)
     }

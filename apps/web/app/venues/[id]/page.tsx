@@ -260,8 +260,9 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
     const isOwner = session?.user?.id === ownerProfileData?.user_id
 
-    // If venue is not approved or is disabled, and user is not the owner, don't show it
-    if ((venueData.verification_status !== 'APPROVED' || venueData.is_disabled) && !isOwner) {
+    const isOwnerSuspended = ownerProfileData?.users?.is_suspended === true
+    // If venue is not approved, is disabled, or owner is suspended, and user is not the owner, don't show it
+    if ((venueData.verification_status !== 'APPROVED' || venueData.is_disabled || isOwnerSuspended) && !isOwner) {
       setLoading(false)
       return // Will render a not-found or access-denied state below
     }

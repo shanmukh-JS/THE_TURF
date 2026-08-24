@@ -88,14 +88,25 @@ export default async function PlayerDashboard() {
       reviews(rating),
       amenities,
       opening_time,
-      closing_time
+      closing_time,
+      is_disabled,
+      owner_profiles(
+        user_id,
+        users(is_suspended)
+      )
     `
       )
       .eq('verification_status', 'APPROVED')
       .eq('is_disabled', false)
-      .limit(6),
+      .limit(10),
     supabase.from('favorites').select('venue_id').eq('user_id', user.id),
   ])
+
+  // Filter out any venue whose owner is currently suspended or venue is disabled
+  const filteredVenues = (venuesData || []).filter((v: any) => {
+    const isOwnerSuspended = (v.owner_profiles as any)?.users?.is_suspended === true
+    return !isOwnerSuspended && !v.is_disabled
+  })
 
   const displayName =
     profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player'
@@ -180,7 +191,7 @@ export default async function PlayerDashboard() {
     .reduce((sum, b) => sum + Number(b.total_amount), 0)
 
   // Map cover images for venues and calculate dynamic slotsCount & rating
-  const mappedVenues = (venuesData || []).map((v: any) => {
+  const mappedVenues = filteredVenues.map((v: any) => {
     const coverImage =
       v.venue_images?.find((img: any) => img.is_cover)?.url ||
       v.venue_images?.[0]?.url ||

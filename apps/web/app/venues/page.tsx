@@ -79,7 +79,11 @@ export default function VenuesPage() {
           venue_pricing(price),
           venue_images(url, is_cover),
           slots(status, date, start_time),
-          reviews(rating)
+          reviews(rating),
+          owner_profiles(
+            user_id,
+            users(is_suspended)
+          )
         `
         )
         .eq('verification_status', 'APPROVED')
@@ -89,7 +93,12 @@ export default function VenuesPage() {
         const todayStr = getLocalDateString()
         const now = new Date()
 
-        const mappedVenues = data.map((v) => {
+        const activeData = data.filter((v: any) => {
+          const isOwnerSuspended = (v.owner_profiles as any)?.users?.is_suspended === true
+          return !isOwnerSuspended && !v.is_disabled
+        })
+
+        const mappedVenues = activeData.map((v) => {
           const isTrending = v.id.charCodeAt(0) % 3 === 0
 
           // Live available slots count (today only, in the future)

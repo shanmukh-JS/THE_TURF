@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
     const { data: profile } = await supabaseAdmin
       .from('owner_profiles')
-      .select('user_id, full_name, business_name')
+      .select('user_id, full_name, business_name, users(is_suspended)')
       .eq('id', ownerId)
       .maybeSingle()
 

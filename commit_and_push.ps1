@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(refunds): ensure all cancelled bookings render in refunds management with safe null handling and payment reference" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(venues): rigorously filter out suspended owners turfs from player dashboard nearby list, search, and explore pages" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
