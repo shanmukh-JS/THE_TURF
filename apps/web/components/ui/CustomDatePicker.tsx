@@ -9,6 +9,7 @@ interface CustomDatePickerProps {
   onChange: (date: string) => void
   minDate?: string // YYYY-MM-DD
   className?: string
+  position?: 'top' | 'bottom'
 }
 
 export function CustomDatePicker({
@@ -16,6 +17,7 @@ export function CustomDatePicker({
   onChange,
   minDate,
   className = '',
+  position = 'top',
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -124,7 +126,11 @@ export function CustomDatePicker({
 
       {/* Custom Floating Calendar Popover */}
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 z-[100] w-80 bg-[#090e09] border border-green-500/30 rounded-2xl p-5 shadow-2xl shadow-black backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className={`absolute ${
+            position === 'top' ? 'bottom-full mb-3' : 'top-full mt-2'
+          } left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 z-[100] w-80 bg-[#090e09] border border-green-500/30 rounded-2xl p-5 shadow-2xl shadow-black backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150`}
+        >
           {/* Header Month / Year Navigation */}
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
             <h4 className="text-sm font-extrabold text-white tracking-wide flex items-center gap-1.5">

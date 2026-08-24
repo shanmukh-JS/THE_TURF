@@ -147,17 +147,19 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center">
       {/* Hero Section */}
-      <section className="relative w-full h-[600px] flex items-center justify-center overflow-hidden">
-        {/* Background Stadium Image with CSS Boomerang Animation */}
-        <div
-          className="absolute inset-0 opacity-75 bg-cover bg-center z-0 animate-boomerang"
-          style={{
-            backgroundImage: "url('/images/stadium-bg.png')",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black z-10" />
+      <section className="relative w-full min-h-[640px] flex items-center justify-center pt-20 pb-16">
+        {/* Background Stadium Image with CSS Boomerang Animation (Clipped to background) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div
+            className="absolute inset-0 opacity-75 bg-cover bg-center z-0 animate-boomerang"
+            style={{
+              backgroundImage: "url('/images/stadium-bg.png')",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black z-10" />
+        </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center space-y-6 px-4">
+        <div className="relative z-20 flex flex-col items-center text-center space-y-6 px-4">
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white drop-shadow-xl">
             Book Your Next <span className="text-primary">Innings</span>
           </h1>
@@ -167,7 +169,7 @@ export default function HomePage() {
           </p>
 
           {/* Search Glass Panel */}
-          <div className="mt-8 p-4 glass-panel rounded-2xl w-full max-w-4xl flex flex-col md:flex-row gap-4 items-center">
+          <div className="mt-8 p-4 glass-panel rounded-2xl w-full max-w-4xl flex flex-col md:flex-row gap-4 items-center relative z-30">
             <style
               dangerouslySetInnerHTML={{
                 __html: `
@@ -205,11 +207,12 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Date */}
+            {/* Date Picker (Pops open on top cleanly) */}
             <CustomDatePicker
               value={selectedDate}
               onChange={setSelectedDate}
               minDate={minDate}
+              position="top"
             />
 
             {/* Time */}
