@@ -420,21 +420,20 @@ export default async function PlayerDashboard() {
   return (
     <PlayerDashboardClient
       displayName={displayName}
-      profileImage={profile?.profile_image_url || null}
+      profileImageUrl={profile?.profile_image_url || undefined}
+      email={user.email || ''}
+      totalBookings={totalBookings}
+      upcomingBookingsCount={upcomingBookingsCount}
+      totalFavorites={favorites.length}
+      bookingStreak={streak}
+      totalSpent={totalSpent}
+      upcomingList={upcomingList}
+      pastList={pastList}
+      recentActivityList={recentActivityList}
+      venues={mappedVenues}
       xp={profile?.xp || 0}
       level={profile?.level || 1}
       lastCelebratedLevel={profile?.last_celebrated_level || 1}
-      stats={{
-        totalBookings,
-        upcomingBookings: upcomingBookingsCount,
-        totalSpent,
-        streak,
-      }}
-      nextBooking={nextBookingDetails}
-      featuredVenues={mappedVenues.slice(0, 6)}
-      favoriteVenues={favorites}
-      pastMatchesCount={pastList.length}
-      recentActivity={recentActivityList}
     />
   )
 }
