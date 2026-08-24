@@ -146,8 +146,12 @@ export default function AdminPaymentsPage() {
     }
 
     // Status filter
-    if (statusFilter !== 'ALL') {
-      result = result.filter((p) => (p.payout_status || 'PENDING') === statusFilter)
+    if (statusFilter === 'CANCELLED') {
+      result = result.filter((p) => p.status === 'CANCELLED')
+    } else if (statusFilter !== 'ALL') {
+      result = result.filter(
+        (p) => p.status !== 'CANCELLED' && (p.payout_status || 'PENDING') === statusFilter
+      )
     }
 
     // Sorting
@@ -378,6 +382,9 @@ export default function AdminPaymentsPage() {
           <option value="HELD" className="text-black">
             Held
           </option>
+          <option value="CANCELLED" className="text-black">
+            Cancelled (No Payout)
+          </option>
         </select>
 
         <div className="relative max-w-sm w-full">
@@ -432,7 +439,8 @@ export default function AdminPaymentsPage() {
                   const gross = Number(p.total_amount)
                   const commVal = (gross * commissionPct) / 100
                   const net = gross - commVal
-                  const payoutStatus = p.payout_status || 'PENDING'
+                  const isCancelled = p.status === 'CANCELLED'
+                  const payoutStatus = isCancelled ? 'CANCELLED' : (p.payout_status || 'PENDING')
 
                   return (
                     <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
@@ -461,43 +469,51 @@ export default function AdminPaymentsPage() {
                             payoutStatus === 'RELEASED'
                               ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                               : payoutStatus === 'HELD'
-                                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : payoutStatus === 'CANCELLED'
+                                  ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                  : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                           }`}
                         >
                           {payoutStatus}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {payoutStatus !== 'RELEASED' && (
-                          <button
-                            disabled={!isApproved}
-                            onClick={() => setConfirmModal({ payment: p, action: 'RELEASE' })}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                              isApproved
-                                ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500 hover:text-black'
-                                : 'bg-gray-500/10 border-gray-500/20 text-gray-500 cursor-not-allowed'
-                            }`}
-                            title={!isApproved ? 'Owner is not verified' : 'Release payout'}
-                          >
-                            Release
-                          </button>
-                        )}
-                        {payoutStatus === 'PENDING' && (
-                          <button
-                            onClick={() => setConfirmModal({ payment: p, action: 'HOLD' })}
-                            className="ml-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs font-semibold hover:bg-red-500 hover:text-white transition-all"
-                          >
-                            Hold
-                          </button>
-                        )}
-                        {payoutStatus === 'RELEASED' && (
-                          <button
-                            onClick={() => setConfirmModal({ payment: p, action: 'REFUND' })}
-                            className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500 hover:text-black transition-all"
-                          >
-                            Refund
-                          </button>
+                        {isCancelled ? (
+                          <span className="text-xs text-gray-500 italic">No Payout (Cancelled)</span>
+                        ) : (
+                          <>
+                            {payoutStatus !== 'RELEASED' && (
+                              <button
+                                disabled={!isApproved}
+                                onClick={() => setConfirmModal({ payment: p, action: 'RELEASE' })}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                  isApproved
+                                    ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500 hover:text-black'
+                                    : 'bg-gray-500/10 border-gray-500/20 text-gray-500 cursor-not-allowed'
+                                }`}
+                                title={!isApproved ? 'Owner is not verified' : 'Release payout'}
+                              >
+                                Release
+                              </button>
+                            )}
+                            {payoutStatus === 'PENDING' && (
+                              <button
+                                onClick={() => setConfirmModal({ payment: p, action: 'HOLD' })}
+                                className="ml-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500 hover:text-black transition-all"
+                              >
+                                Hold
+                              </button>
+                            )}
+                            {payoutStatus === 'RELEASED' && (
+                              <button
+                                onClick={() => setConfirmModal({ payment: p, action: 'REFUND' })}
+                                className="px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs font-semibold hover:bg-red-500 hover:text-white transition-all"
+                              >
+                                Refund
+                              </button>
+                            )}
+                          </>
                         )}
                       </td>
                     </tr>

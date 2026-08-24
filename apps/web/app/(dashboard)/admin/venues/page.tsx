@@ -154,12 +154,11 @@ export default function AdminTurfManagementPage() {
 
     async function fetchSlots() {
       setLoadingSlots(true)
-      const dateToFetch = selectedCalendarDate || getLocalDateString()
       const { data } = await supabase
         .from('slots')
         .select('*')
         .eq('venue_id', calendarVenue.id)
-        .eq('date', dateToFetch)
+        .order('date', { ascending: true })
         .order('start_time', { ascending: true })
 
       setVenueSlots(data || [])
@@ -167,7 +166,7 @@ export default function AdminTurfManagementPage() {
     }
 
     fetchSlots()
-  }, [calendarVenue, selectedCalendarDate])
+  }, [calendarVenue])
 
   const handleConfirmAction = async () => {
     if (!confirmModal) return
@@ -621,24 +620,35 @@ export default function AdminTurfManagementPage() {
                   </h5>
                   <input
                     type="date"
-                    min={getLocalDateString()}
                     value={selectedCalendarDate}
                     onChange={(e) => setSelectedCalendarDate(e.target.value)}
                     className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-green-500"
                   />
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto pb-1 transparent-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCalendarDate('')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                      !selectedCalendarDate
+                        ? 'bg-green-500 text-black shadow-md shadow-green-500/20'
+                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    All Dates ({venueSlots.length})
+                  </button>
                   {[0, 1, 2, 3, 4, 5, 6].map((offset) => {
                     const d = new Date()
                     d.setDate(d.getDate() + offset)
                     const dStr = getLocalDateString(d)
                     const isSelected = selectedCalendarDate === dStr
+                    const matchingCount = venueSlots.filter((s) => s.date === dStr).length
                     const label =
                       offset === 0
-                        ? 'Today'
+                        ? `Today (${matchingCount})`
                         : offset === 1
-                          ? 'Tomorrow'
-                          : d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
+                          ? `Tomorrow (${matchingCount})`
+                          : `${d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })} (${matchingCount})`
 
                     return (
                       <button
@@ -659,61 +669,95 @@ export default function AdminTurfManagementPage() {
               </div>
 
               {/* Slots list */}
-              <div className="space-y-3">
-                <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Slots ({venueSlots.length})
-                </h5>
-                {loadingSlots ? (
-                  <div className="py-10 text-center text-xs text-gray-500">
-                    Loading slots details...
-                  </div>
-                ) : venueSlots.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-gray-600 bg-white/5 rounded-xl border border-white/5">
-                    No slots scheduled for {selectedCalendarDate === getLocalDateString() ? 'today' : selectedCalendarDate}.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {venueSlots.map((slot) => {
-                      const startTime = new Date(slot.start_time).toLocaleTimeString('en-US', {
-                        timeZone: 'Asia/Kolkata',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                      const endTime = new Date(slot.end_time).toLocaleTimeString('en-US', {
-                        timeZone: 'Asia/Kolkata',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
+              {(() => {
+                const displayedSlots = selectedCalendarDate
+                  ? venueSlots.filter((s) => s.date === selectedCalendarDate)
+                  : venueSlots
 
-                      return (
-                        <div
-                          key={slot.id}
-                          className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between text-xs"
-                        >
-                          <span className="font-semibold text-white">
-                            {startTime} - {endTime}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              slot.status === 'Blocked'
-                                ? 'bg-amber-500/10 text-amber-400'
-                                : slot.is_booked
-                                  ? 'bg-green-500/10 text-green-400'
-                                  : 'bg-white/5 text-gray-400'
-                            }`}
-                          >
-                            {slot.status === 'Blocked'
-                              ? 'Blocked'
-                              : slot.is_booked
-                                ? 'Booked'
-                                : 'Available'}
-                          </span>
-                        </div>
-                      )
-                    })}
+                const formatTimeDisplay = (timeStr: string) => {
+                  if (!timeStr) return ''
+                  if (timeStr.includes(':') && !timeStr.includes('T')) {
+                    const [hrStr, minStr] = timeStr.split(':')
+                    const hr = parseInt(hrStr || '0', 10)
+                    const ampm = hr >= 12 ? 'PM' : 'AM'
+                    const displayHr = hr % 12 || 12
+                    return `${displayHr}:${minStr || '00'} ${ampm}`
+                  }
+                  const t = new Date(timeStr)
+                  return isNaN(t.getTime())
+                    ? timeStr
+                    : t.toLocaleTimeString('en-US', {
+                        timeZone: 'Asia/Kolkata',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        Slots ({displayedSlots.length})
+                      </h5>
+                      <span className="text-[10px] text-gray-500">
+                        Total Created by Owner: {venueSlots.length}
+                      </span>
+                    </div>
+
+                    {loadingSlots ? (
+                      <div className="py-10 text-center text-xs text-gray-500">
+                        Loading slots details...
+                      </div>
+                    ) : displayedSlots.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-gray-600 bg-white/5 rounded-xl border border-white/5">
+                        No slots scheduled for{' '}
+                        {selectedCalendarDate === getLocalDateString()
+                          ? 'today'
+                          : selectedCalendarDate || 'the selected filter'}
+                        .
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                        {displayedSlots.map((slot) => {
+                          const startTime = formatTimeDisplay(slot.start_time)
+                          const endTime = formatTimeDisplay(slot.end_time)
+
+                          return (
+                            <div
+                              key={slot.id}
+                              className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between text-xs hover:bg-white/[0.08] transition-colors"
+                            >
+                              <div>
+                                <span className="font-semibold text-white">
+                                  {startTime} – {endTime}
+                                </span>
+                                <span className="text-[10px] text-gray-500 block mt-0.5">
+                                  Date: {slot.date} · ₹{slot.price}
+                                </span>
+                              </div>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  slot.status === 'Blocked'
+                                    ? 'bg-amber-500/10 text-amber-400'
+                                    : slot.is_booked || slot.status === 'Booked'
+                                      ? 'bg-green-500/10 text-green-400'
+                                      : 'bg-white/10 text-gray-300'
+                                }`}
+                              >
+                                {slot.status === 'Blocked'
+                                  ? 'Blocked'
+                                  : slot.is_booked || slot.status === 'Booked'
+                                    ? 'Booked'
+                                    : 'Available'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                )
+              })()}
             </div>
           </div>
         </div>
