@@ -418,7 +418,8 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       }
 
       setPaymentPhase('Reserving slot...')
-      const advanceAmount = Math.round(selectedSlot.price * 0.5)
+      const slotPrice = Number(selectedSlot.price) || 0
+      const advanceAmount = Math.round(slotPrice * 0.5)
 
       // Step 1: Lock slot + create Razorpay order
       const checkoutRes = await fetch('/api/bookings/checkout', {
@@ -427,7 +428,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({
           slotId: selectedSlot.id,
           venueId: id,
-          totalAmount: selectedSlot.price,
+          totalAmount: slotPrice,
           advancePaid: advanceAmount,
         }),
       })
@@ -456,27 +457,41 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         order_id: order.orderId,
         handler: async function (response: any) {
           try {
-            setPaymentPhase('Verifying payment...')
+            setPaymentPhase('Verifying payment & securing slot...')
 
-            // Step 3: Verify payment signature + create booking
-            const verifyRes = await fetch('/api/bookings/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                slotId: selectedSlot.id,
-                venueId: id,
-                totalAmount: selectedSlot.price,
-                advancePaid: advanceAmount,
-                checkoutId,
-              }),
-            })
+            // Step 3: Verify payment signature + create booking (with auto-retry)
+            let verifyData: any = null
+            let attempts = 0
+            while (attempts < 3) {
+              try {
+                attempts++
+                const verifyRes = await fetch('/api/bookings/verify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                    slotId: selectedSlot.id,
+                    venueId: id,
+                    totalAmount: slotPrice,
+                    advancePaid: advanceAmount,
+                    checkoutId,
+                  }),
+                })
 
-            const verifyData = await verifyRes.json()
-            if (!verifyRes.ok) {
-              throw new Error(verifyData.error || 'Payment verification failed')
+                verifyData = await verifyRes.json()
+                if (verifyRes.ok && verifyData?.success) {
+                  break
+                }
+                if (attempts === 3) {
+                  throw new Error(verifyData?.error || 'Payment verification failed')
+                }
+                await new Promise((r) => setTimeout(r, 1000))
+              } catch (e: any) {
+                if (attempts >= 3) throw e
+                await new Promise((r) => setTimeout(r, 1000))
+              }
             }
 
             // Step 4: Booking confirmed with real ID

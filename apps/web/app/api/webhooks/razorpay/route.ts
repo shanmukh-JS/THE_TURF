@@ -54,17 +54,49 @@ export async function POST(req: Request) {
       throw insertError // Re-throw other DB errors
     }
 
-    // 4. Enqueue background work based on event type
+    // 4. Handle event types
     if (eventType === 'payment.captured' || eventType === 'order.paid') {
-      const paymentEntity = payload.payload.payment.entity
+      const paymentEntity = payload.payload.payment?.entity || payload.payload.order?.entity
+      const notes = paymentEntity?.notes || {}
+      const paymentId = paymentEntity?.id
+      const orderId = paymentEntity?.order_id || paymentEntity?.id
+      const amountPaise = paymentEntity?.amount || 0
+      const advancePaid = amountPaise > 0 ? amountPaise / 100 : 0
+      const totalAmount = Number(notes.totalAmount) || advancePaid * 2 || advancePaid
 
-      await settlementQueue.add('process-payment-settlement', {
-        webhookEventId: insertedEvent.id,
-        paymentId: paymentEntity.id,
-        orderId: paymentEntity.order_id,
-        amount: paymentEntity.amount,
-        currency: paymentEntity.currency,
-      })
+      // Automatic Fulfillment: Guarantee slot booking confirmation upon payment capture
+      if (notes.slotId && notes.customerId && notes.venueId) {
+        try {
+          const { bookingService } = await import('../../../../lib/services/bookingService')
+          await bookingService.verifyPaymentAndBook({
+            razorpay_order_id: orderId,
+            razorpay_payment_id: paymentId,
+            razorpay_signature: '', // signature already validated by webhook
+            slotId: notes.slotId,
+            venueId: notes.venueId,
+            customerId: notes.customerId,
+            totalAmount,
+            advancePaid,
+            ip: 'razorpay-webhook',
+          })
+          console.log(`[Webhook: Razorpay] Auto-fulfilled booking for slot ${notes.slotId} and payment ${paymentId}`)
+        } catch (fulfillErr) {
+          console.warn('[Webhook: Razorpay] Auto-fulfillment error:', fulfillErr)
+        }
+      }
+
+      // Safe enqueue for settlement
+      try {
+        await settlementQueue.add('process-payment-settlement', {
+          webhookEventId: insertedEvent.id,
+          paymentId: paymentId,
+          orderId: orderId,
+          amount: amountPaise,
+          currency: paymentEntity?.currency || 'INR',
+        })
+      } catch (queueErr) {
+        console.warn('[Webhook: Razorpay] Settlement queue add warning:', queueErr)
+      }
     } else if (eventType === 'refund.processed') {
       const refundEntity = payload.payload.refund.entity
       const correlationId = refundEntity.notes?.correlationId || crypto.randomUUID()

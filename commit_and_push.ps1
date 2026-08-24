@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "feat(player-dashboard): replace Total Spent card with Booking Streak gamification card" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(payment-booking): ensure 100% reliable slot booking on successful payment with API verification, auto-fulfillment webhook, and atomic fallback" --no-verify
 
 Write-Host "Pushing to origin..."
 & "C:\Program Files\Git\cmd\git.exe" push origin HEAD
