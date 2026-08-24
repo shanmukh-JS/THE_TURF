@@ -32,10 +32,47 @@ export async function POST(req: Request) {
 
     // Fetch slot to verify price and prevent client-side manipulation
     const adminClient = createAdminClient()
-    const { data: slot } = await adminClient.from('slots').select('price').eq('id', slotId).single()
+    const { data: slot } = await adminClient
+      .from('slots')
+      .select('price, status, start_time, date, venues(opening_time, closing_time)')
+      .eq('id', slotId)
+      .single()
 
     if (!slot) {
       return NextResponse.json({ error: 'Slot not found.' }, { status: 404 })
+    }
+
+    if (slot.status !== 'Available') {
+      return NextResponse.json({ error: 'Slot is no longer available for booking.' }, { status: 400 })
+    }
+
+    // Check if slot start time has already passed
+    const now = new Date()
+    const slotStart = slot.start_time.includes('T')
+      ? new Date(slot.start_time)
+      : new Date(`${slot.date}T${slot.start_time}`)
+
+    if (slotStart.getTime() <= now.getTime()) {
+      return NextResponse.json(
+        { error: 'This slot has already started or passed and cannot be booked.' },
+        { status: 400 }
+      )
+    }
+
+    // Check if slot is within venue operating hours
+    const venue = slot.venues as any
+    if (venue?.opening_time && venue?.closing_time) {
+      const openParts = venue.opening_time.split(':').map(Number)
+      const closeParts = venue.closing_time.split(':').map(Number)
+      const openMin = (openParts[0] || 0) * 60 + (openParts[1] || 0)
+      const closeMin = (closeParts[0] || 0) * 60 + (closeParts[1] || 0)
+      const slotStartMin = slotStart.getHours() * 60 + slotStart.getMinutes()
+      if (slotStartMin < openMin || slotStartMin >= closeMin) {
+        return NextResponse.json(
+          { error: 'This slot is outside registered operating hours.' },
+          { status: 400 }
+        )
+      }
     }
 
     const expectedTotal = Number(slot.price)

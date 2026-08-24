@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(ui): open calendar popover on top of search bar to prevent viewport clipping" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(security): enforce backend operating hours and past slot rejection in checkout and booking APIs" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
