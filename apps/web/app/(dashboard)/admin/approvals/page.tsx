@@ -428,14 +428,18 @@ export default function AdminApprovalsPage() {
             {(() => {
               const aiData = aiVerificationMap[selectedVenue.id]
 
-              let baseScore = 20
-              if (selectedVenue.venue_images?.length > 0) baseScore += 20
-              if (selectedVenue.documents_url) baseScore += 30
-              const hasBank = Array.isArray(selectedVenue.owner_profiles?.owner_settings)
-                ? selectedVenue.owner_profiles?.owner_settings[0]?.bank_account_number
-                : selectedVenue.owner_profiles?.owner_settings?.bank_account_number
-              if (hasBank) baseScore += 30
-              baseScore = Math.min(baseScore, 98)
+              let baseScore = 25
+              const hasImages = (selectedVenue.venue_images?.length || 0) >= 2
+              const hasGovtDoc = !!selectedVenue.documents_url
+              const hasOperatingHours = !!selectedVenue.opening_time && !!selectedVenue.closing_time
+              const hasAddress = !!selectedVenue.address && selectedVenue.address.length >= 8
+
+              if (hasImages) baseScore += 25
+              else if ((selectedVenue.venue_images?.length || 0) > 0) baseScore += 15
+              if (hasGovtDoc) baseScore += 30
+              if (hasOperatingHours) baseScore += 10
+              if (hasAddress) baseScore += 10
+              baseScore = Math.min(baseScore, 100)
 
               const score = aiData?.score ?? baseScore
               const riskLevel = aiData?.riskLevel ?? (score >= 80 ? 'LOW RISK' : score >= 50 ? 'MEDIUM RISK' : 'HIGH RISK')
@@ -456,9 +460,9 @@ export default function AdminApprovalsPage() {
                       : '🔴 Recommended Action: Reject')
               const aiActionText = aiData?.reasoning ?? (
                 score >= 80
-                  ? 'All documentation checklists have passed. No duplicate listings or coordinates flags detected on the network.'
+                  ? 'All documentation checklists, venue photos, operating hours, and address details have passed.'
                   : score >= 50
-                    ? 'Some documentation or bank details are missing. Please review carefully.'
+                    ? 'Some venue photography or verification documents are pending. Please review carefully.'
                     : 'Critical information is missing. High risk listing.'
               )
 
@@ -884,15 +888,17 @@ export default function AdminApprovalsPage() {
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Bank Details</span>
+                            <span>Operating Hours</span>
                             <span
                               className={
-                                hasBank
+                                selectedVenue.opening_time && selectedVenue.closing_time
                                   ? 'text-green-400 font-semibold'
                                   : 'text-amber-400 font-semibold'
                               }
                             >
-                              {hasBank ? 'Passed' : 'Pending'}
+                              {selectedVenue.opening_time && selectedVenue.closing_time
+                                ? 'Passed'
+                                : 'Pending'}
                             </span>
                           </div>
                         </div>

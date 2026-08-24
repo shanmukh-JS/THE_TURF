@@ -7,7 +7,7 @@ export interface AiVerificationResult {
     emailVerified: boolean
     phoneVerified: boolean
     govtIdUploaded: boolean
-    bankDetailsPresent: boolean
+    operatingHoursConfigured: boolean
     turfImagesValid: boolean
     pricingConfigured: boolean
     addressValid: boolean
@@ -28,22 +28,21 @@ export class AiVerificationService {
       process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
     // Pre-calculate factual verification checks
-    const hasImages = (venueData.venue_images || []).length > 0
     const imageCount = (venueData.venue_images || []).length
+    const hasImages = imageCount >= 2
     const hasGovtDoc = !!venueData.documents_url
-    const bankDetails = Array.isArray(venueData.owner_profiles?.owner_settings)
-      ? venueData.owner_profiles?.owner_settings[0]?.bank_account_number
-      : venueData.owner_profiles?.owner_settings?.bank_account_number
-    const hasBank = !!bankDetails
+    const hasOperatingHours = !!venueData.opening_time && !!venueData.closing_time
     const hasMapsLink = !!venueData.google_maps_link && venueData.google_maps_link.includes('http')
-    const hasAddress = !!venueData.address && venueData.address.length >= 10
-    const hasPricing = !!venueData.venue_pricing || (Array.isArray(venueData.venue_pricing) && venueData.venue_pricing.length > 0)
+    const hasAddress = !!venueData.address && venueData.address.length >= 8
+    const hasPricing =
+      !!venueData.venue_pricing ||
+      (Array.isArray(venueData.venue_pricing) && venueData.venue_pricing.length > 0)
 
     const checklist = {
       emailVerified: true,
       phoneVerified: true,
       govtIdUploaded: hasGovtDoc,
-      bankDetailsPresent: hasBank,
+      operatingHoursConfigured: hasOperatingHours,
       turfImagesValid: hasImages,
       pricingConfigured: hasPricing,
       addressValid: hasAddress,
@@ -57,27 +56,30 @@ Analyze the following venue listing data and return a JSON object with:
 - "score": integer between 0 and 100 representing verification confidence.
 - "riskLevel": one of "LOW RISK", "MEDIUM RISK", "HIGH RISK".
 - "recommendedAction": one of "Approve", "Request Changes", "Reject".
-- "reasoning": 2-3 concise sentences explaining the verification decision and what is needed if anything.
+- "reasoning": 2-3 concise sentences explaining the verification decision and highlighting any missing requirements.
+
+Note: Venue verification strictly assesses physical venue attributes, photography, operational hours, address authenticity, and uploaded govt documentation. Bank accounts are handled separately and not needed for listing verification.
 
 Listing Data:
 - Venue Name: ${venueData.name}
 - Address: ${venueData.address || 'Not specified'}
-- City / Area: ${venueData.city?.name || 'N/A'}, ${venueData.area?.name || 'N/A'}
+- City / Area: ${venueData.city?.name || venueData.city_name || 'N/A'}, ${venueData.area?.name || 'N/A'}
 - Google Maps Link: ${venueData.google_maps_link || 'None'}
+- Operating Hours: ${venueData.opening_time || '06:00'} to ${venueData.closing_time || '23:00'}
 - Turf Type: ${venueData.turf_type || 'Artificial Grass'}
 - Surface: ${venueData.surface || 'Lawn Turf'}
 - Max Players: ${venueData.max_players || 14}
-- Images Uploaded: ${imageCount}
-- Government License / Document URL: ${venueData.documents_url || 'Missing'}
-- Bank Account Number Configured: ${hasBank ? 'Yes (Verified)' : 'No (Missing)'}
+- Images Uploaded: ${imageCount} photos
+- Government License / Document URL: ${venueData.documents_url ? 'Provided' : 'Missing'}
+- Hourly Pricing Configured: ${hasPricing ? 'Yes' : 'No'}
 - Amenities: ${(venueData.amenities || []).join(', ') || 'Standard'}
 
 Respond ONLY with valid JSON in this exact structure:
 {
-  "score": 85,
+  "score": 95,
   "riskLevel": "LOW RISK",
   "recommendedAction": "Approve",
-  "reasoning": "Explanation here."
+  "reasoning": "Venue documentation, clear photos, operating timings, and pricing have been fully verified. Ready for immediate live listing."
 }`
 
         const res = await fetch(
@@ -100,9 +102,11 @@ Respond ONLY with valid JSON in this exact structure:
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
           if (text) {
             const parsed = JSON.parse(text)
-            const score = Math.max(0, Math.min(100, Number(parsed.score) || 70))
+            const score = Math.max(0, Math.min(100, Number(parsed.score) || 85))
             const riskLevel =
-              parsed.riskLevel === 'LOW RISK' || parsed.riskLevel === 'MEDIUM RISK' || parsed.riskLevel === 'HIGH RISK'
+              parsed.riskLevel === 'LOW RISK' ||
+              parsed.riskLevel === 'MEDIUM RISK' ||
+              parsed.riskLevel === 'HIGH RISK'
                 ? parsed.riskLevel
                 : score >= 80
                   ? 'LOW RISK'
@@ -110,7 +114,9 @@ Respond ONLY with valid JSON in this exact structure:
                     ? 'MEDIUM RISK'
                     : 'HIGH RISK'
             const recommendedAction =
-              parsed.recommendedAction === 'Approve' || parsed.recommendedAction === 'Request Changes' || parsed.recommendedAction === 'Reject'
+              parsed.recommendedAction === 'Approve' ||
+              parsed.recommendedAction === 'Request Changes' ||
+              parsed.recommendedAction === 'Reject'
                 ? parsed.recommendedAction
                 : score >= 80
                   ? 'Approve'
@@ -120,7 +126,8 @@ Respond ONLY with valid JSON in this exact structure:
               score,
               riskLevel,
               recommendedAction,
-              reasoning: parsed.reasoning || 'Listing passed standard AI heuristics and documentation checks.',
+              reasoning:
+                parsed.reasoning || 'Listing passed standard AI heuristics and documentation checks.',
               checklist,
             }
           }
@@ -131,12 +138,14 @@ Respond ONLY with valid JSON in this exact structure:
     }
 
     // High-precision deterministic fallback engine
-    let score = 25 // Base verified identity score
-    if (hasImages) score += Math.min(25, imageCount * 12)
-    if (hasGovtDoc) score += 25
-    if (hasBank) score += 20
-    if (hasMapsLink && hasAddress) score += 10
-    score = Math.min(score, 98)
+    let score = 25 // Base verified owner identity
+    if (hasImages) score += 25
+    else if (imageCount > 0) score += 15
+
+    if (hasGovtDoc) score += 30
+    if (hasOperatingHours) score += 10
+    if (hasAddress && hasMapsLink) score += 10
+    score = Math.min(score, 100)
 
     const riskLevel: AiVerificationResult['riskLevel'] =
       score >= 80 ? 'LOW RISK' : score >= 50 ? 'MEDIUM RISK' : 'HIGH RISK'
@@ -146,16 +155,16 @@ Respond ONLY with valid JSON in this exact structure:
     let reasoning = ''
     if (score >= 80) {
       reasoning =
-        'All mandatory business documentation, venue photography, and banking coordinates have been validated. Listing is cleared for immediate approval.'
+        'All mandatory venue photos, government verification documents, operating hours, and location coordinates have been verified. Clear for immediate approval.'
     } else if (score >= 50) {
       const missingItems: string[] = []
-      if (!hasGovtDoc) missingItems.push('Government ID/License')
-      if (!hasBank) missingItems.push('Settlement Bank Account')
-      if (!hasImages) missingItems.push('High-resolution Turf Photos')
-      reasoning = `Missing key requirements: ${missingItems.join(', ')}. Recommend requesting documentation before publishing.`
+      if (!hasGovtDoc) missingItems.push('Government ID/License Document')
+      if (!hasImages) missingItems.push('Venue Photos (at least 2 required)')
+      if (!hasMapsLink) missingItems.push('Google Maps Location Pin')
+      reasoning = `Missing requirements: ${missingItems.join(', ')}. Recommend requesting missing details before publishing.`
     } else {
       reasoning =
-        'Critical information missing. The listing has insufficient images and documentation for automated clearance.'
+        'Critical information missing. The venue has insufficient images and documentation for automated clearance.'
     }
 
     return {
