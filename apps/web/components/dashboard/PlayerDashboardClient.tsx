@@ -546,8 +546,6 @@ export function PlayerDashboardClient({
                 <AnimatedNumber value={totalBookings} />
               </span>
             }
-            change="+0%"
-            trend="up"
             accent="blue"
             icon={<CalendarCheck className="w-5 h-5" />}
           />
@@ -566,8 +564,6 @@ export function PlayerDashboardClient({
                 <AnimatedNumber value={upcomingBookingsCount} />
               </span>
             }
-            change="0.0"
-            trend="up"
             accent="amber"
             icon={<Clock className="w-5 h-5" />}
           />
@@ -586,8 +582,6 @@ export function PlayerDashboardClient({
                 <AnimatedNumber value={totalFavorites} />
               </span>
             }
-            change="+0%"
-            trend="up"
             accent="purple"
             icon={<Heart className="w-5 h-5" />}
           />

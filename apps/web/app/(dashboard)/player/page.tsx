@@ -51,7 +51,7 @@ export default async function PlayerDashboard() {
     { data: profile },
     { data: bookingsData },
     { data: venuesData },
-    { count: favoritesCount },
+    { data: rawFavorites },
   ] = await Promise.all([
     supabase
       .from('customer_profiles')
@@ -93,7 +93,7 @@ export default async function PlayerDashboard() {
       .eq('verification_status', 'APPROVED')
       .eq('is_disabled', false)
       .limit(6),
-    supabase.from('favorites').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('favorites').select('venue_id').eq('user_id', user.id),
   ])
 
   const displayName =
@@ -237,7 +237,17 @@ export default async function PlayerDashboard() {
     }
   })
 
-  const totalFavorites = favoritesCount || 0
+  const favVenueIds = (rawFavorites || []).map((f: any) => f.venue_id).filter(Boolean)
+  let totalFavorites = 0
+  if (favVenueIds.length > 0) {
+    const { count } = await supabase
+      .from('venues')
+      .select('id', { count: 'exact', head: true })
+      .in('id', favVenueIds)
+      .eq('verification_status', 'APPROVED')
+      .eq('is_disabled', false)
+    totalFavorites = count || 0
+  }
 
   // Calculate Booking Streak (consecutive calendar weeks with qualifying confirmed/completed bookings)
   const bookingStreak = calculateBookingStreak(mappedBookings)

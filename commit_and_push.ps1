@@ -4,9 +4,9 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(admin-users): add secure service-role user deletion and suspension endpoints with cascading cleanup and audit logging" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(player-dashboard): sync accurate favorites count with active venues and remove fake trend percentage badges" --no-verify
 
-Write-Host "Pushing to origin..."
-& "C:\Program Files\Git\cmd\git.exe" push origin HEAD
+Write-Host "Pushing to origin main..."
+& "C:\Program Files\Git\cmd\git.exe" push origin main
 
 Write-Host "Git push complete!"
