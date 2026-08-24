@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(player-module): complete production readiness audit, streamline venue discovery queries, and add player test suite" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "chore(production): add app error boundary, instant dashboard skeleton loader, and production hardening verification" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
