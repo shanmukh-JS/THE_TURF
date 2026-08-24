@@ -50,7 +50,7 @@ export default function VenuesPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [priceFilter, setPriceFilter] = useState('ALL')
-  const [displayLocation, setDisplayLocation] = useState('Hyderabad')
+  const [displayLocation, setDisplayLocation] = useState('')
   const [allVenues, setAllVenues] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -163,9 +163,10 @@ export default function VenuesPage() {
         if (
           typeof window !== 'undefined' &&
           !localStorage.getItem('user_location') &&
-          mappedVenues.length > 0
+          mappedVenues.length > 0 &&
+          mappedVenues[0]?.city
         ) {
-          setDisplayLocation(mappedVenues[0]?.city || 'Hyderabad')
+          setDisplayLocation(mappedVenues[0].city)
         }
       }
       setLoading(false)
@@ -217,9 +218,15 @@ export default function VenuesPage() {
       {/* Hero strip */}
       <div className="bg-gradient-to-r from-green-950/20 via-black to-black border-b border-white/8 px-8 py-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_120%,rgba(34,197,94,0.05),transparent_50%)] pointer-events-none" />
-        <p className="text-xs text-green-400 font-semibold tracking-widest uppercase mb-1">
-          {displayLocation}
-        </p>
+        {displayLocation ? (
+          <p className="text-xs text-green-400 font-semibold tracking-widest uppercase mb-1">
+            {displayLocation}
+          </p>
+        ) : (
+          <p className="text-xs text-green-400 font-semibold tracking-widest uppercase mb-1">
+            ALL LOCATIONS
+          </p>
+        )}
         <h1 className="text-3xl font-extrabold tracking-tight">Cricket Boxes Near You</h1>
         <p className="text-gray-400 mt-1 text-sm">
           {filteredVenues.length} premium venues available · Updated just now

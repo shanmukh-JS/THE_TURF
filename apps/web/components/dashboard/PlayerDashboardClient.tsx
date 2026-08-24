@@ -910,7 +910,7 @@ export function PlayerDashboardClient({
                 <div>
                   <h4 className="font-bold text-white text-sm">More Venues Coming Soon</h4>
                   <p className="text-[11px] text-gray-500 max-w-[200px] mx-auto mt-1 leading-relaxed">
-                    We are onboarding more premium boxes in Hyderabad. Stay tuned!
+                    We are onboarding more premium boxes in your area. Stay tuned!
                   </p>
                 </div>
               </div>
