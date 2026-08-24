@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireRole } from '@/lib/auth/requireRole'
 
+export const dynamic = 'force-dynamic'
+
 export async function DELETE(req: Request) {
   try {
     const roleCheck = await requireRole(['ADMIN'])
@@ -74,6 +76,20 @@ export async function PATCH(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // If the user is a turf owner, automatically disable or enable all their venues
+    const { data: ownerProf } = await supabase
+      .from('owner_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (ownerProf) {
+      await supabase
+        .from('venues')
+        .update({ is_disabled: isSuspended })
+        .eq('owner_id', ownerProf.id)
     }
 
     try {

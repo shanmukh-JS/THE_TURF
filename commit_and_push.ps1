@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix: show all owner-created slots in admin calendar drawer and clearly mark cancelled bookings with disabled payouts in ledger" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(users): sync venue disabling with owner suspension and fix owner bookings query in user inspection drawer" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

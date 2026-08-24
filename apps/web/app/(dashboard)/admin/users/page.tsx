@@ -132,11 +132,12 @@ export default function AdminUsersPage() {
       `)
 
       if (isOwner) {
-        // Get owner's venues
+        // Get owner's venues using owner_profiles.id or user.id
+        const ownerProfileId = selectedUser.owner_profiles?.id || selectedUser.id
         const { data: ownerVenues } = await supabase
           .from('venues')
           .select('id')
-          .eq('owner_id', selectedUser.id) // check profile linking if needed
+          .or(`owner_id.eq.${ownerProfileId},owner_id.eq.${selectedUser.id}`)
 
         if (ownerVenues && ownerVenues.length > 0) {
           query = query.in(
