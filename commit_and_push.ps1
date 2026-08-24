@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(profile): add server-side image upload route with auto bucket provisioning and robust name editing sync" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "chore: final production readiness validation and cleanup" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
