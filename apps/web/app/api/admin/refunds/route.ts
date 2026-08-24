@@ -86,11 +86,13 @@ export async function GET(req: Request) {
           allRefunds.push({
             id: `cb_${cb.id}`,
             booking_id: cb.id,
+            payment_id: cb.refund_reference || `pay_${cb.id.slice(0, 8)}`,
             amount: Number(cb.refund_amount || cb.advance_paid || 0),
             status: cb.refund_status || (cb.refund_amount > 0 ? 'QUEUED' : 'COMPLETED'),
             cancellation_reason: cb.cancellation_reason || 'Player requested cancellation',
             cancelled_by: cb.cancelled_by || 'PLAYER',
             created_at: cb.cancelled_at || cb.created_at || new Date().toISOString(),
+            updated_at: cb.refund_completed_at || cb.cancelled_at || cb.created_at || new Date().toISOString(),
             idempotency_key: `ref_${cb.id}`,
             bookings: {
               id: cb.id,

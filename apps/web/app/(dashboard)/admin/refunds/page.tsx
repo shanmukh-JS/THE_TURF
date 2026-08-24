@@ -259,8 +259,9 @@ export default function AdminRefundsPage() {
       const q = searchQuery.toLowerCase()
       result = result.filter(
         (r) =>
-          r.id.toLowerCase().includes(q) ||
-          r.payment_id.toLowerCase().includes(q) ||
+          (r.id || '').toLowerCase().includes(q) ||
+          (r.payment_id || '').toLowerCase().includes(q) ||
+          (r.booking_id || '').toLowerCase().includes(q) ||
           (r.refund_id && r.refund_id.toLowerCase().includes(q)) ||
           r.cancellation_reason?.toLowerCase().includes(q) ||
           r.bookings?.venues?.name?.toLowerCase().includes(q)
