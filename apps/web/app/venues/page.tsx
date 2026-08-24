@@ -3,6 +3,7 @@
 
 import { MapPin, Star, Clock, Wifi, Car, Zap, Filter, Search } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 

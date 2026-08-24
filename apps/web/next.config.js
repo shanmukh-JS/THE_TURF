@@ -4,10 +4,6 @@ const nextConfig = {
     // Ensure production builds never fail due to minor type warnings
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // Ensure production builds never fail due to minor lint warnings
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       {
