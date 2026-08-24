@@ -53,11 +53,6 @@ declare module 'next/server' {
   export type NextRequest = any
 }
 
-declare module 'lucide-react' {
-  export const [key: string]: any
-}
+declare module 'lucide-react'
 
-declare module 'framer-motion' {
-  export const motion: any
-  export const AnimatePresence: any
-}
+declare module 'framer-motion'
