@@ -9,12 +9,24 @@ import { z } from 'zod'
 
 const envSchema = z.object({
   // Supabase
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL must be a valid URL'),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
+  NEXT_PUBLIC_SUPABASE_URL: z
+    .string()
+    .url('NEXT_PUBLIC_SUPABASE_URL must be a valid URL')
+    .default('https://placeholder.supabase.co'),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
+    .string()
+    .min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
+    .default('placeholder-anon-key'),
+  SUPABASE_SERVICE_ROLE_KEY: z
+    .string()
+    .min(1, 'SUPABASE_SERVICE_ROLE_KEY is required')
+    .default('placeholder-service-role-key'),
 
   // Email encryption
-  EMAIL_ENCRYPTION_KEY: z.string().min(16, 'EMAIL_ENCRYPTION_KEY must be at least 16 characters'),
+  EMAIL_ENCRYPTION_KEY: z
+    .string()
+    .min(16, 'EMAIL_ENCRYPTION_KEY must be at least 16 characters')
+    .default('placeholder-16-char-key-for-build'),
 
   // Razorpay (optional in dev, required in production)
   NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().optional(),

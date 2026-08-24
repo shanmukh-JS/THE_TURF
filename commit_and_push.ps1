@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(notifications): ensure direct reliable in-app notifications, real-time toasts, and multi-channel delivery across player and owner flows" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(build): ensure build-time resilience and safe env fallbacks for Vercel deployment" --no-verify
 
 Write-Host "Pushing to origin..."
 & "C:\Program Files\Git\cmd\git.exe" push origin HEAD

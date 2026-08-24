@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getPaymentProvider } from '../../../../lib/payments/factory'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { settlementQueue } from '../../../../workers/queues'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function POST(req: Request) {
   try {
+    const supabase = createAdminClient()
     const signature = req.headers.get('x-razorpay-signature')
     if (!signature) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 401 })
