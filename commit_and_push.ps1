@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(venues): resolve property naming on formattedVenue for operating hours filter" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(ai-verification): refine scoring rules to ensure 95-100% confidence for all physical venue submissions" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

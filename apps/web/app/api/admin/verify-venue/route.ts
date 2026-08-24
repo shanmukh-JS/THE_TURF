@@ -37,9 +37,8 @@ export async function POST(req: Request) {
             id,
             full_name,
             owner_settings (
-              bank_account_number,
-              bank_ifsc_code,
-              business_name
+              business_name,
+              business_phone
             )
           )
         `
