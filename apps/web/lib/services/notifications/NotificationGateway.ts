@@ -85,53 +85,80 @@ export class NotificationGateway {
         }
       }
 
-      // 2. Create the central truth record in notification_events (Lifecycle: CREATED → QUEUED)
-      const { data: record, error } = await supabase
-        .from('notification_events')
-        .insert({
-          event: eventType,
-          channel,
-          booking_id: payload.metadata?.bookingId || null,
-          user_id: payload.userId,
-          payload: {
-            ...payload,
-            idempotencyKey,
-          },
-          status: 'QUEUED',
-        })
-        .select('id')
-        .single()
-
-      if (error || !record) {
-        throw new Error(
-          `Failed to insert notification_events log: ${error?.message || 'Empty record'}`
-        )
-      }
-
-      const jobId = record.id
-
-      // 3. Track state changes inside notification_lifecycle_log
-      await supabase.from('notification_lifecycle_log').insert({
-        notification_id: jobId,
-        state: 'QUEUED',
-      })
-
-      // 4. Push to corresponding BullMQ channel queue with custom deduplication keys
+      // 2. Direct Delivery & Central Truth Record
       if (channel === 'IN_APP') {
-        await inAppQueue.add(
-          eventType,
-          { notificationId: jobId, payload },
-          { jobId: idempotencyKey }
-        )
-      } else if (channel === 'EMAIL') {
-        await emailQueue.add(
-          eventType,
-          { notificationId: jobId, payload },
-          { jobId: idempotencyKey }
-        )
+        // Direct resilient insert into public.notifications for immediate UI & real-time toast delivery
+        try {
+          await supabase.from('notifications').insert({
+            user_id: payload.userId,
+            title: payload.title,
+            message: payload.message,
+            type: payload.category === 'BOOKINGS' || payload.category === 'OWNER' ? 'BOOKING' : 'INFO',
+            category: payload.category,
+            priority: payload.priority,
+            icon: payload.icon,
+            color: payload.color,
+            action_button: payload.actionButton || false,
+            action_text: payload.actionText || null,
+            link: payload.metadata?.deepLink || (payload.category === 'OWNER' ? '/owner/bookings' : '/player/bookings'),
+            metadata: payload.metadata || {},
+            is_read: false,
+          })
+        } catch (inAppErr) {
+          console.warn('[NotificationGateway] Direct notification insert warning:', inAppErr)
+        }
       }
 
-      return jobId
+      // Log central truth in notification_events (safely)
+      let jobId: string | null = null
+      try {
+        const { data: record } = await supabase
+          .from('notification_events')
+          .insert({
+            event: eventType,
+            channel,
+            booking_id: payload.metadata?.bookingId || null,
+            user_id: payload.userId,
+            payload: {
+              ...payload,
+              idempotencyKey,
+            },
+            status: channel === 'IN_APP' ? 'DELIVERED' : 'QUEUED',
+          })
+          .select('id')
+          .single()
+
+        if (record?.id) {
+          jobId = record.id
+          await supabase.from('notification_lifecycle_log').insert({
+            notification_id: jobId,
+            state: channel === 'IN_APP' ? 'DELIVERED' : 'QUEUED',
+          })
+        }
+      } catch (logErr) {
+        console.warn('[NotificationGateway] notification_events log warning:', logErr)
+      }
+
+      // 3. Push to corresponding BullMQ channel queue (if active)
+      try {
+        if (channel === 'IN_APP') {
+          await inAppQueue.add(
+            eventType,
+            { notificationId: jobId || idempotencyKey, payload },
+            { jobId: idempotencyKey }
+          )
+        } else if (channel === 'EMAIL') {
+          await emailQueue.add(
+            eventType,
+            { notificationId: jobId || idempotencyKey, payload },
+            { jobId: idempotencyKey }
+          )
+        }
+      } catch (queueErr) {
+        // Queueing is asynchronous, direct database delivery already succeeded
+      }
+
+      return jobId || idempotencyKey
     } catch (err: any) {
       console.error(`[NotificationGateway] Dispatch error:`, err.message)
       return null

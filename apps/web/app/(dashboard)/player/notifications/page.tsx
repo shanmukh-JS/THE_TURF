@@ -57,14 +57,14 @@ export default async function CustomerNotificationsPage() {
       const venue = Array.isArray(b.venues) ? b.venues[0] : b.venues
       const venueName = venue?.name || 'Truf'
 
-      // Check if notification already exists
+      // Check if notification for this venue match already exists
       const { count } = await adminSupabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .ilike('title', '%Match Completed%')
+        .like('message', `%${venueName}%`)
 
-      if (count === 0) {
+      if ((count || 0) === 0) {
         await adminSupabase.from('notifications').insert({
           user_id: user.id,
           title: '🎉 Match Completed!',
