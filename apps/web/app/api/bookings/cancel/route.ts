@@ -52,6 +52,17 @@ export async function POST(req: Request) {
     }
 
     const result = rpcResult as any
+
+    // Ensure payout_status is marked as VOIDED in bookings table
+    try {
+      await adminClient
+        .from('bookings')
+        .update({ payout_status: 'VOIDED' })
+        .eq('id', bookingId)
+    } catch (updateErr) {
+      console.warn('[API: Cancel Booking] Failed to set payout_status VOIDED:', updateErr)
+    }
+
     const { emitBookingCancelRequestedEvent, emitRefundRequestedEvent, emitBookingCancelledEvent } =
       await import('@/lib/events/handlers')
 

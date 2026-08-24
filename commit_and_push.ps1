@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(payments): default ledger to active payable bookings and display strikethrough refunded / voided ₹0 payouts for cancelled bookings" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(payments): add api/admin/payments route with adminClient and ensure voided status synchronization for cancelled bookings" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

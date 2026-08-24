@@ -45,6 +45,20 @@ export default function AdminPaymentsPage() {
 
   const fetchPayments = async () => {
     setLoading(true)
+    try {
+      const res = await fetch('/api/admin/payments')
+      if (res.ok) {
+        const json = await res.json()
+        if (json.payments) {
+          setPayments(json.payments)
+          setLoading(false)
+          return
+        }
+      }
+    } catch (e) {
+      console.warn('API /api/admin/payments failed, falling back to client supabase:', e)
+    }
+
     const { data } = await supabase
       .from('bookings')
       .select(
@@ -98,36 +112,51 @@ export default function AdminPaymentsPage() {
     if (action === 'HOLD') newStatus = 'HELD'
     if (action === 'REFUND') newStatus = 'REFUNDED'
 
-    if (action === 'RELEASE' && payment.venues?.verification_status !== 'APPROVED') {
-      alert('Payout release rejected: The owner / venue is not verified!')
+    try {
+      const res = await fetch('/api/admin/payments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId: payment.id, action }),
+      })
+      if (res.ok) {
+        setPayments((prev) =>
+          prev.map((p) => (p.id === payment.id ? { ...p, payout_status: newStatus } : p))
+        )
+      } else {
+        if (action === 'RELEASE' && payment.venues?.verification_status !== 'APPROVED') {
+          alert('Payout release rejected: The owner / venue is not verified!')
+          setActionLoading(false)
+          setConfirmModal(null)
+          return
+        }
+
+        // Perform status update in Supabase
+        const updatePayload: any = {}
+        if (action === 'REFUND') {
+          updatePayload.status = 'REFUNDED'
+        }
+
+        // We can save/log the settlement status payout_status
+        updatePayload.payout_status = newStatus
+
+        const { error } = await supabase.from('bookings').update(updatePayload).eq('id', payment.id)
+
+        if (!error) {
+          await logAdminAction(
+            `Payout status: ${newStatus}`,
+            'bookings',
+            payment.id,
+            `Settlement state modified to ${newStatus}`
+          )
+          fetchPayments()
+        }
+      }
+    } catch (err) {
+      console.error('Error updating payout:', err)
+    } finally {
       setActionLoading(false)
       setConfirmModal(null)
-      return
     }
-
-    // Perform status update in Supabase
-    const updatePayload: any = {}
-    if (action === 'REFUND') {
-      updatePayload.status = 'REFUNDED'
-    }
-
-    // We can save/log the settlement status payout_status
-    updatePayload.payout_status = newStatus
-
-    const { error } = await supabase.from('bookings').update(updatePayload).eq('id', payment.id)
-
-    if (!error) {
-      await logAdminAction(
-        `Payout status: ${newStatus}`,
-        'bookings',
-        payment.id,
-        `Settlement state modified to ${newStatus}`
-      )
-      fetchPayments()
-    }
-
-    setActionLoading(false)
-    setConfirmModal(null)
   }
 
   // Filter & Sort
