@@ -809,10 +809,12 @@ export function PlayerDashboardClient({
               // Map live details
               const rating = v.rating
               const distance = (1.2 + (v.id.charCodeAt(1) % 4) * 0.5).toFixed(1)
-              const slotsCount = v.slotsCount || 0
-              const price = Array.isArray(v.venue_pricing)
-                ? v.venue_pricing[0]?.price
-                : v.venue_pricing?.price || 1000
+              const price = Number(
+                v.price ??
+                (Array.isArray(v.venue_pricing) ? v.venue_pricing[0]?.price : v.venue_pricing?.price) ??
+                v.slots?.[0]?.price ??
+                0
+              )
 
               return (
                 <div

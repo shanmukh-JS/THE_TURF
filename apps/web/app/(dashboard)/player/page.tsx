@@ -299,13 +299,18 @@ export default async function PlayerDashboard() {
         ? reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length
         : 0
 
+    const pricingObj = Array.isArray(v.venue_pricing) ? v.venue_pricing[0] : v.venue_pricing
+    const slotPrice = v.slots?.[0]?.price
+    const calculatedPrice = Number(pricingObj?.price ?? slotPrice ?? 0)
+
     return {
       id: v.id,
       name: v.name,
       address: v.address,
       area: v.areas?.name || 'Local Area',
       city: v.cities?.name || 'City',
-      price: v.venue_pricing?.price || 0,
+      price: calculatedPrice,
+      venue_pricing: v.venue_pricing,
       image: coverImage,
       slotsCount: availableSlots.length,
       rating: Number(avgRating.toFixed(1)),
