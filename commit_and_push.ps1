@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix: resolve timezone slot counts, admin refunds visibility, booking list queries and configure Gemini API key" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix: enforce venue operating hours, hide past slots, improve calendar picker and photo previews" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

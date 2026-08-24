@@ -85,12 +85,16 @@ export default function HomePage() {
         .select(
           `
           *,
+          city:cities(name),
+          area:areas(name),
           venue_pricing(price),
           venue_images(url),
-          reviews(rating)
+          reviews(rating),
+          slots(id, date, start_time, status)
         `
         )
         .eq('verification_status', 'APPROVED')
+        .eq('is_disabled', false)
 
       if (data) {
         setVenues(data)
@@ -112,11 +116,32 @@ export default function HomePage() {
         (v) =>
           v.name?.toLowerCase().includes(lowerTerm) ||
           v.address?.toLowerCase().includes(lowerTerm) ||
+          v.city?.name?.toLowerCase().includes(lowerTerm) ||
+          v.area?.name?.toLowerCase().includes(lowerTerm) ||
           v.city_name?.toLowerCase().includes(lowerTerm)
       )
     }
 
+    if (selectedTime) {
+      result = result.filter((v) => {
+        const slots = v.slots || []
+        return slots.some((s: any) => {
+          if (s.status !== 'Available') return false
+          const hr = parseInt(s.start_time?.split(':')[0] || '0', 10)
+          if (selectedTime === 'morning') return hr >= 6 && hr < 12
+          if (selectedTime === 'evening') return hr >= 16 && hr < 22
+          return true
+        })
+      })
+    }
+
     setFilteredVenues(result)
+
+    // Smooth scroll to results
+    const el = document.getElementById('boxes-section')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
   }
 
   return (
@@ -220,7 +245,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured Venues Section */}
-      <section className="w-full max-w-7xl px-4 py-20">
+      <section id="boxes-section" className="w-full max-w-7xl px-4 py-20">
         <h2 className="text-3xl font-bold mb-8 text-white">
           {searchedLocation ? `${searchedLocation} Boxes Near You` : 'Top Rated Boxes Near You'}
         </h2>

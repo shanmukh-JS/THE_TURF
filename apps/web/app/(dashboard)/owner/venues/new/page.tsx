@@ -66,7 +66,12 @@ export default function NewVenuePage() {
     documents: [] as string[],
   })
 
+  const [coverImgError, setCoverImgError] = useState(false)
+  const [additionalImgError, setAdditionalImgError] = useState(false)
+
   const updateField = (field: string, value: any) => {
+    if (field === 'coverImage') setCoverImgError(false)
+    if (field === 'additionalImage') setAdditionalImgError(false)
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -841,8 +846,19 @@ export default function NewVenuePage() {
                   >
                     {uploading === 'cover' ? (
                       <Loader2 className="w-6 h-6 text-green-400 animate-spin" />
-                    ) : formData.coverImage ? (
-                      <img src={formData.coverImage} className="w-full h-full object-cover" />
+                    ) : formData.coverImage && !coverImgError ? (
+                      <img
+                        src={formData.coverImage}
+                        onError={() => setCoverImgError(true)}
+                        alt="Cover Photo Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : coverImgError ? (
+                      <div className="text-center p-3 text-red-400 text-xs">
+                        <AlertTriangle className="w-6 h-6 mx-auto mb-1 text-red-400" />
+                        <span className="font-semibold block">Invalid Image URL</span>
+                        <span className="text-[10px] text-gray-400 block mt-0.5">Please check link or upload file</span>
+                      </div>
                     ) : (
                       <div className="text-center p-4">
                         <Upload className="w-6 h-6 mx-auto mb-2 text-green-500/80" />
@@ -875,8 +891,19 @@ export default function NewVenuePage() {
                   >
                     {uploading === 'additional' ? (
                       <Loader2 className="w-6 h-6 text-green-400 animate-spin" />
-                    ) : formData.additionalImage ? (
-                      <img src={formData.additionalImage} className="w-full h-full object-cover" />
+                    ) : formData.additionalImage && !additionalImgError ? (
+                      <img
+                        src={formData.additionalImage}
+                        onError={() => setAdditionalImgError(true)}
+                        alt="Additional Photo Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : additionalImgError ? (
+                      <div className="text-center p-3 text-red-400 text-xs">
+                        <AlertTriangle className="w-6 h-6 mx-auto mb-1 text-red-400" />
+                        <span className="font-semibold block">Invalid Image URL</span>
+                        <span className="text-[10px] text-gray-400 block mt-0.5">Please check link or upload file</span>
+                      </div>
                     ) : (
                       <div className="text-center p-4">
                         <Upload className="w-6 h-6 mx-auto mb-2 text-green-500/80" />

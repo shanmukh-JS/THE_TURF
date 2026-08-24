@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getLocalDateString } from '@/lib/utils'
 
 interface CustomDatePickerProps {
   value: string // YYYY-MM-DD
@@ -19,14 +20,12 @@ export function CustomDatePicker({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Current today reference
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  // Exact local today reference
+  const todayStr = getLocalDateString()
   const effectiveMinStr = minDate || todayStr
 
   // Selected date or today
-  const parsedValue = value ? new Date(value + 'T00:00:00') : today
+  const parsedValue = value ? new Date(value + 'T00:00:00') : new Date()
   const [viewYear, setViewYear] = useState(parsedValue.getFullYear())
   const [viewMonth, setViewMonth] = useState(parsedValue.getMonth()) // 0-indexed
 
@@ -58,10 +57,10 @@ export function CustomDatePicker({
     'December',
   ]
 
+  const todayObj = new Date()
   const prevMonth = () => {
-    // Prevent navigating to months entirely in the past
     const currentMonthFirst = new Date(viewYear, viewMonth, 1)
-    const todayFirst = new Date(today.getFullYear(), today.getMonth(), 1)
+    const todayFirst = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1)
     if (currentMonthFirst <= todayFirst) return
 
     if (viewMonth === 0) {
@@ -90,7 +89,7 @@ export function CustomDatePicker({
 
   const isPrevDisabled = () => {
     const currentMonthFirst = new Date(viewYear, viewMonth, 1)
-    const todayFirst = new Date(today.getFullYear(), today.getMonth(), 1)
+    const todayFirst = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1)
     return currentMonthFirst <= todayFirst
   }
 
@@ -115,7 +114,7 @@ export function CustomDatePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full bg-black/40 hover:bg-black/60 rounded-lg px-4 py-3 border border-white/10 text-white transition-all text-left group"
+        className="flex items-center justify-between w-full bg-black/50 hover:bg-black/70 rounded-lg px-4 py-3 border border-white/15 text-white transition-all text-left group focus:border-green-500"
       >
         <span className="font-semibold text-sm tracking-wide text-white">
           {formatDisplay(value || todayStr)}
@@ -125,20 +124,20 @@ export function CustomDatePicker({
 
       {/* Custom Floating Calendar Popover */}
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 z-50 w-72 bg-[#0d140d] border border-white/15 rounded-2xl p-4 shadow-2xl shadow-black/80 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute top-full mt-2 left-0 z-[100] w-80 bg-[#090e09] border border-green-500/30 rounded-2xl p-5 shadow-2xl shadow-black backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
           {/* Header Month / Year Navigation */}
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/8">
-            <h4 className="text-sm font-bold text-white tracking-wide">
-              {monthNames[viewMonth]} {viewYear}
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+            <h4 className="text-sm font-extrabold text-white tracking-wide flex items-center gap-1.5">
+              <span className="text-green-400">{monthNames[viewMonth]}</span> {viewYear}
             </h4>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={prevMonth}
                 disabled={isPrevDisabled()}
                 className={`p-1.5 rounded-lg border border-white/10 text-gray-300 transition-colors ${
                   isPrevDisabled()
-                    ? 'opacity-30 cursor-not-allowed'
+                    ? 'opacity-20 cursor-not-allowed'
                     : 'hover:bg-white/10 hover:text-white'
                 }`}
                 title="Previous Month"
@@ -157,7 +156,7 @@ export function CustomDatePicker({
           </div>
 
           {/* Weekday Labels */}
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2.5">
             <span>Su</span>
             <span>Mo</span>
             <span>Tu</span>
@@ -168,9 +167,9 @@ export function CustomDatePicker({
           </div>
 
           {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-1.5">
             {paddingArray.map((p) => (
-              <div key={`pad-${p}`} className="h-8" />
+              <div key={`pad-${p}`} className="h-9" />
             ))}
 
             {daysArray.map((day) => {
@@ -185,14 +184,14 @@ export function CustomDatePicker({
                   type="button"
                   disabled={isPast}
                   onClick={() => handleSelectDay(day)}
-                  className={`h-8 w-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all ${
+                  className={`h-9 w-9 rounded-xl text-xs font-bold flex items-center justify-center transition-all ${
                     isSelected
-                      ? 'bg-green-500 text-black font-extrabold shadow-md shadow-green-500/30'
+                      ? 'bg-green-500 text-black font-black shadow-lg shadow-green-500/40 scale-105'
                       : isPast
-                        ? 'text-gray-600 opacity-30 cursor-not-allowed line-through'
+                        ? 'text-gray-600 opacity-20 cursor-not-allowed line-through'
                         : isToday
-                          ? 'border border-green-500/60 text-green-400 hover:bg-green-500/20'
-                          : 'text-gray-200 hover:bg-white/10 hover:text-white'
+                          ? 'border-2 border-green-500 text-green-400 hover:bg-green-500/20 font-extrabold'
+                          : 'text-white hover:bg-white/15 hover:text-green-300'
                   }`}
                 >
                   {day}
@@ -202,31 +201,32 @@ export function CustomDatePicker({
           </div>
 
           {/* Quick Action Footer */}
-          <div className="flex items-center justify-between pt-3 mt-3 border-t border-white/8 text-[11px] font-bold">
+          <div className="flex items-center justify-between pt-3.5 mt-3.5 border-t border-white/10 text-xs font-bold">
             <button
               type="button"
               onClick={() => {
                 onChange(todayStr)
-                setViewYear(today.getFullYear())
-                setViewMonth(today.getMonth())
+                const tObj = new Date()
+                setViewYear(tObj.getFullYear())
+                setViewMonth(tObj.getMonth())
                 setIsOpen(false)
               }}
-              className="text-green-400 hover:text-green-300 transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 transition-all"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => {
-                const tomorrow = new Date(today)
+                const tomorrow = new Date()
                 tomorrow.setDate(tomorrow.getDate() + 1)
-                const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+                const tomorrowStr = getLocalDateString(tomorrow)
                 onChange(tomorrowStr)
                 setViewYear(tomorrow.getFullYear())
                 setViewMonth(tomorrow.getMonth())
                 setIsOpen(false)
               }}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10 transition-all"
             >
               Tomorrow
             </button>

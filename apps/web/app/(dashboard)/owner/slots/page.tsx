@@ -149,7 +149,7 @@ export default function ManageSlotsPage() {
       // Fetch venues
       const { data: venuesData } = await supabase
         .from('venues')
-        .select('id, name, verification_status, venue_pricing(price)')
+        .select('id, name, verification_status, opening_time, closing_time, venue_pricing(price)')
         .eq('owner_id', ownerProfileId)
         .eq('is_disabled', false)
 
@@ -158,16 +158,21 @@ export default function ManageSlotsPage() {
           id: v.id,
           name: v.name,
           verification_status: v.verification_status,
+          openingTime: v.opening_time || '06:00:00',
+          closingTime: v.closing_time || '23:00:00',
           price: Array.isArray(v.venue_pricing)
             ? (v.venue_pricing[0] as any)?.price
             : (v.venue_pricing as any)?.price || 1000,
         }))
         setVenues(mappedVenues)
         if (mappedVenues.length > 0) {
+          const firstV = mappedVenues[0]
           setFormData((prev) => ({
             ...prev,
-            venueId: mappedVenues[0]?.id || '',
-            price: mappedVenues[0]?.price?.toString() || '1000',
+            venueId: firstV?.id || '',
+            price: firstV?.price?.toString() || '1000',
+            startTime: firstV?.openingTime?.slice(0, 5) || '06:00',
+            endTime: firstV?.closingTime?.slice(0, 5) || '23:00',
           }))
         }
       }
@@ -322,6 +327,12 @@ export default function ManageSlotsPage() {
       return
     }
 
+    // Operating hours check
+    const openingMin = parseTimeToMinutes(selectedV.openingTime || '06:00')
+    const closingMin = parseTimeToMinutes(selectedV.closingTime || '23:00')
+    const opDisplay = formatTimeStr(`2000-01-01T${selectedV.openingTime || '06:00:00'}`)
+    const clDisplay = formatTimeStr(`2000-01-01T${selectedV.closingTime || '23:00:00'}`)
+
     setSubmitting(true)
 
     // Duration numeric parse
@@ -339,6 +350,17 @@ export default function ManageSlotsPage() {
       const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
 
       if (!isBulk) {
+        const slotStartMin = parseTimeToMinutes(formData.startTime)
+        const slotEndMin = slotStartMin + durationMins
+        if (slotStartMin < openingMin || slotEndMin > closingMin) {
+          setToast({
+            message: `Slot time (${formData.startTime}) is outside operating hours (${opDisplay} – ${clDisplay}). Business is closed.`,
+            type: 'error',
+          })
+          setSubmitting(false)
+          return
+        }
+
         // Single slot creation
         const startDate = new Date(`${dateStr}T${formData.startTime}:00`)
 
@@ -385,6 +407,15 @@ export default function ManageSlotsPage() {
 
         if (endMinutes <= startMinutes) {
           setToast({ message: 'End time must be after start time.', type: 'error' })
+          setSubmitting(false)
+          return
+        }
+
+        if (startMinutes < openingMin || endMinutes > closingMin) {
+          setToast({
+            message: `Bulk range must be within operating hours (${opDisplay} – ${clDisplay}). Business is closed outside this window.`,
+            type: 'error',
+          })
           setSubmitting(false)
           return
         }
@@ -971,7 +1002,7 @@ export default function ManageSlotsPage() {
                   </select>
 
                   {formData.venueId && (
-                    <div className="mt-2 text-xs">
+                    <div className="mt-2 text-xs space-y-1.5">
                       {venues.find((v) => v.id === formData.venueId)?.verification_status ===
                       'APPROVED' ? (
                         <span className="text-green-400 font-semibold flex items-center gap-1">
@@ -988,6 +1019,15 @@ export default function ManageSlotsPage() {
                               'PENDING'}
                             . Slots cannot be generated until the venue is approved.
                           </p>
+                        </div>
+                      )}
+
+                      {venues.find((v) => v.id === formData.venueId) && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-[11px] text-green-300 font-semibold">
+                          <Clock className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                          <span>
+                            Operating Window: {formatTimeStr(`2000-01-01T${venues.find((v) => v.id === formData.venueId)?.openingTime || '06:00:00'}`)} – {formatTimeStr(`2000-01-01T${venues.find((v) => v.id === formData.venueId)?.closingTime || '23:00:00'}`)}
+                          </span>
                         </div>
                       )}
                     </div>

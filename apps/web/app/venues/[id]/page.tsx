@@ -338,7 +338,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     if (slotsData) {
       let activeSlots = slotsData
 
-      // Apply buffer time and filter out past slots
+      // Apply buffer time, operating hours, and filter out past slots
       const now = new Date()
       let bufferMs = 0
       if (ownerSettingsData?.booking_buffer_time) {
@@ -349,12 +349,35 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
       const thresholdTime = now.getTime() + bufferMs
 
+      // Operating hours minutes
+      const parseTimeToMin = (tStr?: string) => {
+        if (!tStr) return null
+        const parts = tStr.split(':')
+        return parseInt(parts[0] || '0', 10) * 60 + parseInt(parts[1] || '0', 10)
+      }
+      const openMin = parseTimeToMin(formattedVenue.opening_time)
+      const closeMin = parseTimeToMin(formattedVenue.closing_time)
+
       activeSlots = activeSlots.filter((slot: any) => {
         // Create date obj supporting both full ISO timestamps and legacy timezone-less time strings
-        const slotStart = slot.start_time.includes('T')
+        const slotStart = slot.start_time?.includes('T')
           ? new Date(slot.start_time)
           : new Date(`${slot.date}T${slot.start_time}`)
-        return slotStart.getTime() >= thresholdTime
+
+        // 1. Hide slots immediately once their start time has passed or reached
+        if (slotStart.getTime() <= thresholdTime) {
+          return false
+        }
+
+        // 2. Hide slots that fall outside venue operating hours (e.g. 11 PM to 6 AM)
+        if (openMin !== null && closeMin !== null) {
+          const slotStartMin = slotStart.getHours() * 60 + slotStart.getMinutes()
+          if (slotStartMin < openMin || slotStartMin >= closeMin) {
+            return false
+          }
+        }
+
+        return true
       })
 
       setSlots(activeSlots)
