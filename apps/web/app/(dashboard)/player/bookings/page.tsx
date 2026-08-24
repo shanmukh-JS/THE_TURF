@@ -6,6 +6,8 @@ import {
 } from '@/components/ui/DashboardAnimationWrapper'
 import { BookingListClient } from '@/components/dashboard/BookingListClient'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: 'My Bookings | TURF GAMING',
 }

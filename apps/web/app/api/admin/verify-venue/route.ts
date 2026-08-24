@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AiVerificationService } from '@/lib/services/ai/AiVerificationService'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient()

@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix: remove bank details requirement from AI verification checklist and focus on venue attributes" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(vercel): add force-dynamic to API routes and server pages to prevent static build prerendering errors" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
