@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(venues): rigorously filter out suspended owners turfs from player dashboard nearby list, search, and explore pages" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(venues): resolve property naming on formattedVenue for operating hours filter" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

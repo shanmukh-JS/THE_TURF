@@ -356,8 +356,8 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         const parts = tStr.split(':')
         return parseInt(parts[0] || '0', 10) * 60 + parseInt(parts[1] || '0', 10)
       }
-      const openMin = parseTimeToMin(formattedVenue.opening_time)
-      const closeMin = parseTimeToMin(formattedVenue.closing_time)
+      const openMin = parseTimeToMin(formattedVenue.openingTime)
+      const closeMin = parseTimeToMin(formattedVenue.closingTime)
 
       activeSlots = activeSlots.filter((slot: any) => {
         // Create date obj supporting both full ISO timestamps and legacy timezone-less time strings
