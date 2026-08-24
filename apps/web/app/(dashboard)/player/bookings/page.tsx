@@ -41,12 +41,14 @@ export default async function CustomerBookingsPage() {
       refund_amount,
       refund_reference,
       refund_completed_at,
-      slots!inner(date, start_time, end_time),
-      venues!inner(id, name, address, owner_id, areas(name), venue_images(url, is_cover)),
+      created_at,
+      slots(date, start_time, end_time),
+      venues(id, name, address, owner_id, areas(name), venue_images(url, is_cover)),
       booking_reviews(rating, feedback, ground_quality, lighting, cleanliness, staff_behaviour, value_for_money)
     `
     )
     .eq('customer_id', user.id)
+    .order('created_at', { ascending: false })
 
   // Fetch owner settings to get cancellation policies
   const ownerIds = Array.from(
@@ -75,27 +77,46 @@ export default async function CustomerBookingsPage() {
   // Transform raw data into the UI shape
   const bookings = (rawBookings || []).map((b: any) => {
     // Format Date (e.g. "Jul 10, 2026")
-    const dateObj = new Date(b.slots.date)
-    const formattedDate = dateObj.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-
-    // Format Time (e.g. "7:00 PM - 8:00 PM")
-    const formatTime = (timeStr: string) => {
-      const t = new Date(timeStr)
-      return t.toLocaleTimeString('en-US', {
-        timeZone: 'Asia/Kolkata',
-        hour: 'numeric',
-        minute: '2-digit',
+    const rawDateStr = b.slots?.date || (b.created_at ? b.created_at.split('T')[0] : null)
+    let formattedDate = 'N/A'
+    if (rawDateStr) {
+      const dateObj = new Date(rawDateStr + 'T00:00:00')
+      formattedDate = dateObj.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
       })
     }
-    const formattedTime = `${formatTime(b.slots.start_time)} – ${formatTime(b.slots.end_time)}`
+
+    // Format Time (e.g. "7:00 PM - 8:00 PM")
+    const formatTime = (timeStr?: string) => {
+      if (!timeStr) return ''
+      if (timeStr.includes(':') && !timeStr.includes('T')) {
+        const [hrStr, minStr] = timeStr.split(':')
+        const hr = parseInt(hrStr || '0', 10)
+        const ampm = hr >= 12 ? 'PM' : 'AM'
+        const displayHr = hr % 12 || 12
+        return `${displayHr}:${minStr || '00'} ${ampm}`
+      }
+      const t = new Date(timeStr)
+      return isNaN(t.getTime())
+        ? timeStr
+        : t.toLocaleTimeString('en-US', {
+            timeZone: 'Asia/Kolkata',
+            hour: 'numeric',
+            minute: '2-digit',
+          })
+    }
+    const startTimeFormatted = formatTime(b.slots?.start_time)
+    const endTimeFormatted = formatTime(b.slots?.end_time)
+    const formattedTime = startTimeFormatted && endTimeFormatted ? `${startTimeFormatted} – ${endTimeFormatted}` : 'Custom Slot'
 
     // Automatically mark past confirmed bookings as completed
     const now = new Date()
-    const isPast = new Date(b.slots.end_time) < now
+    const isPast = b.slots?.end_time
+      ? (b.slots.end_time.includes('T') ? new Date(b.slots.end_time) : new Date(`${b.slots.date}T${b.slots.end_time}`)) < now
+      : false
+
     let derivedStatus = b.status
     let derivedReviewStatus = b.review_status
 
@@ -137,13 +158,13 @@ export default async function CustomerBookingsPage() {
 
     return {
       id: b.id,
-      venueId: b.venues.id,
-      venue: b.venues.name,
-      area: b.venues.areas?.name || b.venues.address?.split(',')[0]?.trim() || 'Unknown',
+      venueId: b.venues?.id || '',
+      venue: b.venues?.name || 'Turf Arena',
+      area: b.venues?.areas?.name || b.venues?.address?.split(',')[0]?.trim() || 'Unknown',
       date: formattedDate,
       time: formattedTime,
-      amount: b.total_amount,
-      advance: b.advance_paid,
+      amount: Number(b.total_amount || 0),
+      advance: Number(b.advance_paid || 0),
       status: derivedStatus,
       reviewStatus: derivedReviewStatus,
       hiddenFromPlayer: b.hidden_from_player,
@@ -159,9 +180,9 @@ export default async function CustomerBookingsPage() {
           }
         : null,
       image: coverImage,
-      rawStartTime: b.slots.start_time,
-      rawEndTime: b.slots.end_time,
-      rawDate: b.slots.date,
+      rawStartTime: b.slots?.start_time || '',
+      rawEndTime: b.slots?.end_time || '',
+      rawDate: b.slots?.date || '',
       cancellationPolicy: ownerSettingsMap.get(b.venues?.owner_id) || 'flexible',
       qrCode: b.qr_code,
       checkInStatus: b.check_in_status,
@@ -170,7 +191,7 @@ export default async function CustomerBookingsPage() {
       cancelledBy: b.cancelled_by,
       cancelledAt: b.cancelled_at,
       refundStatus: b.refund_status || 'NOT_REQUESTED',
-      refundAmount: b.refund_amount,
+      refundAmount: b.refund_amount ? Number(b.refund_amount) : undefined,
       refundReference: b.refund_reference,
       refundCompletedAt: b.refund_completed_at,
     }

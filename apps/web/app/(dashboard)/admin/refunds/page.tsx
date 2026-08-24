@@ -50,29 +50,41 @@ export default function AdminRefundsPage() {
 
   const fetchRefunds = async () => {
     setLoading(true)
-    // Query refunds table, joining bookings and related venue/user details
-    const { data, error } = await supabase
-      .from('refunds')
-      .select(
-        `
-        *,
-        bookings(
-          customer_id,
-          total_amount,
-          advance_paid,
-          venues(name)
-        )
-      `
-      )
-      .order('created_at', { ascending: false })
+    try {
+      const res = await fetch('/api/admin/refunds')
+      const json = await res.json()
+      if (res.ok && json.refunds) {
+        setRefunds(json.refunds)
+      } else {
+        // Fallback to direct supabase query
+        const { data, error } = await supabase
+          .from('refunds')
+          .select(
+            `
+            *,
+            bookings(
+              customer_id,
+              total_amount,
+              advance_paid,
+              venues(name)
+            )
+          `
+          )
+          .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching refunds:', error)
+        if (error) {
+          console.error('Error fetching refunds:', error)
+          setToast({ message: 'Failed to load refunds records.', type: 'error' })
+        } else {
+          setRefunds(data || [])
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to load refunds:', err)
       setToast({ message: 'Failed to load refunds records.', type: 'error' })
-    } else {
-      setRefunds(data || [])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   // Fetch refund events for selected refund

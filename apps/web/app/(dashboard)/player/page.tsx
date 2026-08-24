@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PlayerDashboardClient } from '@/components/dashboard/PlayerDashboardClient'
 import { calculateBookingStreak } from '@/lib/utils/streak'
+import { getLocalDateString } from '@/lib/utils'
 
 function formatTimeStr(timeStr: string | null) {
   if (!timeStr) return null
@@ -187,11 +188,17 @@ export default async function PlayerDashboard() {
 
     // Calculate live available slots count
     const now = new Date()
-    const todayStr = now.toISOString().split('T')[0] || ''
+    const todayStr = getLocalDateString()
     const availableSlots = (v.slots || []).filter((s: any) => {
-      if (s.status !== 'Available' || s.date < todayStr) return false
-      const slotStart = new Date(s.start_time)
-      return slotStart.getTime() >= now.getTime()
+      if (s.status !== 'Available') return false
+      if (s.date < todayStr) return false
+      if (s.date === todayStr) {
+        const slotStart = s.start_time?.includes('T')
+          ? new Date(s.start_time)
+          : new Date(`${s.date}T${s.start_time}`)
+        return slotStart.getTime() >= now.getTime()
+      }
+      return true
     })
     const slotsCount = availableSlots.length
 

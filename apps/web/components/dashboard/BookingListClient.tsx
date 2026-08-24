@@ -446,7 +446,7 @@ export function BookingListClient({
             <div className="text-4xl">🏏</div>
             <div>
               <p className="text-sm font-bold text-white">
-                No {activeTab.toLowerCase()} bookings found
+                {activeTab === 'All' ? 'No bookings found' : `No ${activeTab.toLowerCase()} bookings found`}
               </p>
               <p className="text-xs text-gray-500 mt-1">Ready for your first innings?</p>
             </div>

@@ -21,6 +21,7 @@ import {
   DashboardAnimationWrapper,
   DashboardAnimationItem,
 } from '@/components/ui/DashboardAnimationWrapper'
+import { getLocalDateString } from '@/lib/utils'
 
 export default function AdminTurfManagementPage() {
   const [venues, setVenues] = useState<any[]>([])
@@ -39,6 +40,7 @@ export default function AdminTurfManagementPage() {
 
   // Calendar Drawer
   const [calendarVenue, setCalendarVenue] = useState<any | null>(null)
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(getLocalDateString())
   const [venueSlots, setVenueSlots] = useState<any[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
 
@@ -152,12 +154,12 @@ export default function AdminTurfManagementPage() {
 
     async function fetchSlots() {
       setLoadingSlots(true)
-      const todayStr = new Date().toISOString().split('T')[0]
+      const dateToFetch = selectedCalendarDate || getLocalDateString()
       const { data } = await supabase
         .from('slots')
         .select('*')
         .eq('venue_id', calendarVenue.id)
-        .eq('date', todayStr)
+        .eq('date', dateToFetch)
         .order('start_time', { ascending: true })
 
       setVenueSlots(data || [])
@@ -165,7 +167,7 @@ export default function AdminTurfManagementPage() {
     }
 
     fetchSlots()
-  }, [calendarVenue])
+  }, [calendarVenue, selectedCalendarDate])
 
   const handleConfirmAction = async () => {
     if (!confirmModal) return
@@ -611,10 +613,55 @@ export default function AdminTurfManagementPage() {
                 </p>
               </div>
 
-              {/* Today's slots list */}
+              {/* Date Selector Tabs */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Select Date
+                  </h5>
+                  <input
+                    type="date"
+                    min={getLocalDateString()}
+                    value={selectedCalendarDate}
+                    onChange={(e) => setSelectedCalendarDate(e.target.value)}
+                    className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-green-500"
+                  />
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 transparent-scrollbar">
+                  {[0, 1, 2, 3, 4, 5, 6].map((offset) => {
+                    const d = new Date()
+                    d.setDate(d.getDate() + offset)
+                    const dStr = getLocalDateString(d)
+                    const isSelected = selectedCalendarDate === dStr
+                    const label =
+                      offset === 0
+                        ? 'Today'
+                        : offset === 1
+                          ? 'Tomorrow'
+                          : d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
+
+                    return (
+                      <button
+                        key={dStr}
+                        type="button"
+                        onClick={() => setSelectedCalendarDate(dStr)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                          isSelected
+                            ? 'bg-green-500 text-black shadow-md shadow-green-500/20'
+                            : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Slots list */}
               <div className="space-y-3">
                 <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Today&apos;s Slots
+                  Slots ({venueSlots.length})
                 </h5>
                 {loadingSlots ? (
                   <div className="py-10 text-center text-xs text-gray-500">
@@ -622,7 +669,7 @@ export default function AdminTurfManagementPage() {
                   </div>
                 ) : venueSlots.length === 0 ? (
                   <div className="p-6 text-center text-xs text-gray-600 bg-white/5 rounded-xl border border-white/5">
-                    No slots scheduled for today.
+                    No slots scheduled for {selectedCalendarDate === getLocalDateString() ? 'today' : selectedCalendarDate}.
                   </div>
                 ) : (
                   <div className="space-y-2">

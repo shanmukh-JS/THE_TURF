@@ -47,6 +47,7 @@ function isOpenNow(openingTime: string | null, closingTime: string | null) {
 
 export default function VenuesPage() {
   const supabase = createClient()
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [priceFilter, setPriceFilter] = useState('ALL')
@@ -83,7 +84,7 @@ export default function VenuesPage() {
         .eq('is_disabled', false)
 
       if (!error && data) {
-        const todayStr = new Date().toISOString().split('T')[0]
+        const todayStr = getLocalDateString()
         const now = new Date()
 
         const mappedVenues = data.map((v) => {

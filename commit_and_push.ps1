@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "feat(ai): integrate Google Gemini AI Verification engine for turf approvals with live reasoning and interactive audit" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix: resolve timezone slot counts, admin refunds visibility, booking list queries and configure Gemini API key" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

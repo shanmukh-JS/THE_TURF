@@ -23,6 +23,7 @@ import {
   DashboardAnimationWrapper,
   DashboardAnimationItem,
 } from '@/components/ui/DashboardAnimationWrapper'
+import { getLocalDateString } from '@/lib/utils'
 
 // Default values for fields not stored in DB
 const defaultAmenities = ['Parking', 'WiFi', 'Floodlights', 'Changing Rooms', 'Water Dispenser']
@@ -324,7 +325,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     setOwnerSettings(ownerSettingsData)
 
     // Fetch available future slots
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = getLocalDateString()
     const { data: slotsData } = await supabase
       .from('slots')
       .select('*')
