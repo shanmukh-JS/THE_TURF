@@ -70,19 +70,48 @@ export async function POST(req: Request) {
       )
     }
 
-    // Check if slot is within venue operating hours
+    // Check if slot is within venue operating hours (evaluated in Asia/Kolkata timezone)
     const venue = slot.venues as any
     if (venue?.opening_time && venue?.closing_time) {
       const openParts = venue.opening_time.split(':').map(Number)
       const closeParts = venue.closing_time.split(':').map(Number)
       const openMin = (openParts[0] || 0) * 60 + (openParts[1] || 0)
       const closeMin = (closeParts[0] || 0) * 60 + (closeParts[1] || 0)
-      const slotStartMin = slotStart.getHours() * 60 + slotStart.getMinutes()
-      if (slotStartMin < openMin || slotStartMin >= closeMin) {
-        return NextResponse.json(
-          { error: 'This slot is outside registered operating hours.' },
-          { status: 400 }
-        )
+
+      let slotStartMin = 0
+      try {
+        const istTimeStr = slotStart.toLocaleTimeString('en-GB', {
+          timeZone: 'Asia/Kolkata',
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        const [h, m] = istTimeStr.split(':').map(Number)
+        slotStartMin = (h || 0) * 60 + (m || 0)
+      } catch {
+        slotStartMin = slotStart.getHours() * 60 + slotStart.getMinutes()
+      }
+
+      const is24Hours =
+        openMin === closeMin || (openMin === 0 && (closeMin === 0 || closeMin === 1440))
+      if (!is24Hours) {
+        if (closeMin > openMin) {
+          // Standard day operating window (e.g. 06:00 to 23:00)
+          if (slotStartMin < openMin || slotStartMin >= closeMin) {
+            return NextResponse.json(
+              { error: 'This slot is outside registered operating hours.' },
+              { status: 400 }
+            )
+          }
+        } else {
+          // Overnight operating window (e.g. 06:00 to 02:00 next day)
+          if (slotStartMin < openMin && slotStartMin >= closeMin) {
+            return NextResponse.json(
+              { error: 'This slot is outside registered operating hours.' },
+              { status: 400 }
+            )
+          }
+        }
       }
     }
 
