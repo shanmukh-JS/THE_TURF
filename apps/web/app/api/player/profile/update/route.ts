@@ -46,7 +46,9 @@ export async function POST(req: Request) {
       .maybeSingle()
 
     const updatedFullName =
-      fullName !== undefined ? fullName.trim() : existingProfile?.full_name || user.user_metadata?.full_name || 'Player'
+      fullName !== undefined && fullName.trim() !== ''
+        ? fullName.trim()
+        : existingProfile?.full_name || user.user_metadata?.full_name || 'Player'
     const updatedProfileImage =
       profileImageUrl !== undefined ? profileImageUrl : existingProfile?.profile_image_url || null
     const updatedBannerImage =
@@ -69,7 +71,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 })
     }
 
-    // 4. Update auth user metadata
+    // 4. Update auth user metadata via admin client to ensure persistence across all sessions
+    try {
+      await adminSupabase.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          ...user.user_metadata,
+          full_name: updatedFullName,
+          avatar_url: updatedProfileImage,
+        },
+      })
+    } catch (metaErr) {
+      console.warn('Failed to update auth user metadata via admin:', metaErr)
+    }
+
+    // 5. Also update user session metadata if available
     try {
       await supabase.auth.updateUser({
         data: {
@@ -77,8 +92,8 @@ export async function POST(req: Request) {
           avatar_url: updatedProfileImage,
         },
       })
-    } catch (metaErr) {
-      console.warn('Failed to update auth user metadata:', metaErr)
+    } catch {
+      // Non-blocking fallback
     }
 
     return NextResponse.json({

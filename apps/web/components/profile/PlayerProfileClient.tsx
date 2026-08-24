@@ -132,35 +132,21 @@ export function PlayerProfileClient({
     setToast(null)
 
     try {
-      const fileExt = croppedFile.name.split('.').pop()
-      const filePath = `${user.id}/${target}_${Math.random()}.${fileExt}`
+      const formData = new FormData()
+      formData.append('file', croppedFile)
+      formData.append('target', target || 'profile')
 
-      const { error: uploadError } = await supabase.storage
-        .from('player_profiles')
-        .upload(filePath, croppedFile, { upsert: true })
-
-      if (uploadError) throw uploadError
-
-      const { data } = supabase.storage.from('player_profiles').getPublicUrl(filePath)
-      const uploadedUrl = data.publicUrl
-
-      const updatePayload: any = {}
-      if (target === 'profile') {
-        updatePayload.profileImageUrl = uploadedUrl
-      } else {
-        updatePayload.bannerImageUrl = uploadedUrl
-      }
-
-      const res = await fetch('/api/player/profile/update', {
+      const res = await fetch('/api/player/profile/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatePayload),
+        body: formData,
       })
 
       const resData = await res.json()
       if (!res.ok || !resData.success) {
-        throw new Error(resData.error || 'Failed to update profile')
+        throw new Error(resData.error || 'Failed to upload image')
       }
+
+      const uploadedUrl = resData.url
 
       if (target === 'profile') {
         setProfileImageUrl(uploadedUrl)
