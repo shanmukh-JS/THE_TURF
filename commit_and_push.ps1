@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(build): ensure build-time resilience and safe env fallbacks for Vercel deployment" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(types): guard non-null bookingId in bookingService for strict TypeScript CI build" --no-verify
 
 Write-Host "Pushing to origin..."
 & "C:\Program Files\Git\cmd\git.exe" push origin HEAD

@@ -287,6 +287,10 @@ export class BookingService {
       }
     }
 
+    if (!bookingId) {
+      throw new Error('Failed to confirm booking: Could not obtain booking ID.')
+    }
+
     const qrToken = crypto
       .createHash('sha256')
       .update(`${bookingId}_${params.customerId}_salt`)
