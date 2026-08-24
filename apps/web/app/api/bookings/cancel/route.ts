@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { refundQueue } from '@/workers/queues'
-
 import { rateLimitGuard } from '@/lib/utils/rateLimiter'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   const rateLimitResponse = await rateLimitGuard(req, 'booking_mutation')
