@@ -24,7 +24,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ payments: bookings || [] })
+    // Automatically normalize any cancelled bookings to have payout_status = 'VOIDED'
+    const normalized = (bookings || []).map((b: any) => {
+      if (b.status === 'CANCELLED') {
+        return { ...b, payout_status: 'VOIDED' }
+      }
+      return b
+    })
+
+    return NextResponse.json({ payments: normalized })
   } catch (err: any) {
     console.error('GET /api/admin/payments error:', err)
     return NextResponse.json({ error: err.message || 'Failed to fetch payments' }, { status: 500 })

@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(bookings): remove invalid areas relation embed so player bookings and cancellations load cleanly" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(payments): ensure server API normalizes all cancelled bookings to VOIDED payout status" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
