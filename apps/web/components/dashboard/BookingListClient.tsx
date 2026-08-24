@@ -406,7 +406,16 @@ export function BookingListClient({
   }
 
   const filteredBookings = bookings.filter((b) => {
-    const isPast = b.rawEndTime ? new Date(b.rawEndTime) < new Date() : false
+    let isPast = false
+    if (b.rawEndTime) {
+      if (b.rawEndTime.includes('T')) {
+        isPast = new Date(b.rawEndTime).getTime() < Date.now()
+      } else if (b.rawDate) {
+        isPast = new Date(`${b.rawDate}T${b.rawEndTime}`).getTime() < Date.now()
+      }
+    }
+
+    const st = (b.status || 'CONFIRMED').toUpperCase()
 
     if (b.hiddenFromPlayer) {
       return activeTab === 'Archived'
@@ -416,15 +425,16 @@ export function BookingListClient({
     }
 
     if (activeTab === 'Upcoming') {
-      return (b.status === 'CONFIRMED' || b.status === 'PENDING') && !isPast
+      return (st === 'CONFIRMED' || st === 'PENDING' || st === 'BOOKED' || st === 'PAID') && !isPast
     }
     if (activeTab === 'Completed') {
       return (
-        b.status === 'COMPLETED' || ((b.status === 'CONFIRMED' || b.status === 'PENDING') && isPast)
+        st === 'COMPLETED' ||
+        ((st === 'CONFIRMED' || st === 'PENDING' || st === 'BOOKED' || st === 'PAID') && isPast)
       )
     }
     if (activeTab === 'Cancelled') {
-      return b.status === 'CANCELLED'
+      return st === 'CANCELLED' || st === 'REFUNDED'
     }
     return true
   })

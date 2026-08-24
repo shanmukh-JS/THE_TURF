@@ -16,37 +16,101 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Query bookings with slots and venues using adminClient to ensure no RLS joins fail
-    const { data: bookingsData, error } = await adminClient
+    // Resolve all possible IDs associated with this user
+    const customerIds = [user.id]
+    try {
+      const { data: customerProfile } = await adminClient
+        .from('customer_profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (customerProfile?.id && !customerIds.includes(customerProfile.id)) {
+        customerIds.push(customerProfile.id)
+      }
+    } catch {}
+
+    // Query bookings directly with adminClient
+    let bookingsData: any[] = []
+    
+    // Try with joins first
+    const { data: joinedData, error: joinError } = await adminClient
       .from('bookings')
       .select(
         `
-        id,
-        total_amount,
-        advance_paid,
-        status,
-        qr_code,
-        check_in_status,
-        review_status,
-        hidden_from_player,
-        booking_version,
-        cancellation_reason,
-        cancelled_by,
-        cancelled_at,
-        refund_status,
-        refund_amount,
-        refund_reference,
-        refund_completed_at,
-        created_at,
-        slots(date, start_time, end_time),
-        venues(id, name, address, owner_id, venue_images(url, is_cover))
+        *,
+        slots(id, date, start_time, end_time, price),
+        venues(id, name, address, owner_id)
       `
       )
-      .eq('customer_id', user.id)
+      .in('customer_id', customerIds)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!joinError && joinedData) {
+      bookingsData = joinedData
+    } else {
+      // Fallback: simple direct query if relational join schema differs
+      const { data: directData } = await adminClient
+        .from('bookings')
+        .select('*')
+        .in('customer_id', customerIds)
+        .order('created_at', { ascending: false })
+      bookingsData = directData || []
+    }
+
+    // Collect missing slot IDs and venue IDs to fill in details reliably
+    const missingSlotIds = bookingsData
+      .filter((b: any) => !b.slots && b.slot_id)
+      .map((b: any) => b.slot_id)
+    const missingVenueIds = bookingsData
+      .filter((b: any) => !b.venues && b.venue_id)
+      .map((b: any) => b.venue_id)
+    const allVenueIds = Array.from(
+      new Set(
+        bookingsData
+          .map((b: any) => {
+            const v = Array.isArray(b.venues) ? b.venues[0] : b.venues
+            return v?.id || b.venue_id
+          })
+          .filter(Boolean)
+      )
+    )
+
+    let slotsMap = new Map<string, any>()
+    let venuesMap = new Map<string, any>()
+    let venueImagesMap = new Map<string, string>()
+
+    if (missingSlotIds.length > 0) {
+      try {
+        const { data: slotsList } = await adminClient
+          .from('slots')
+          .select('id, date, start_time, end_time, price')
+          .in('id', missingSlotIds)
+        slotsList?.forEach((s: any) => slotsMap.set(s.id, s))
+      } catch {}
+    }
+
+    if (missingVenueIds.length > 0) {
+      try {
+        const { data: venuesList } = await adminClient
+          .from('venues')
+          .select('id, name, address, owner_id')
+          .in('id', missingVenueIds)
+        venuesList?.forEach((v: any) => venuesMap.set(v.id, v))
+      } catch {}
+    }
+
+    if (allVenueIds.length > 0) {
+      try {
+        const { data: imagesList } = await adminClient
+          .from('venue_images')
+          .select('venue_id, url, is_cover')
+          .in('venue_id', allVenueIds)
+        imagesList?.forEach((img: any) => {
+          if (img.is_cover || !venueImagesMap.has(img.venue_id)) {
+            venueImagesMap.set(img.venue_id, img.url)
+          }
+        })
+      } catch {}
     }
 
     const formatTime = (timeStr?: string) => {
@@ -70,9 +134,10 @@ export async function GET(req: Request) {
 
     const now = new Date()
 
-    const formattedBookings = (bookingsData || []).map((b: any) => {
-      const slotObj = Array.isArray(b.slots) ? b.slots[0] : b.slots
-      const venueObj = Array.isArray(b.venues) ? b.venues[0] : b.venues
+    const formattedBookings = bookingsData.map((b: any) => {
+      const slotObj = (Array.isArray(b.slots) ? b.slots[0] : b.slots) || slotsMap.get(b.slot_id)
+      const venueObj = (Array.isArray(b.venues) ? b.venues[0] : b.venues) || venuesMap.get(b.venue_id)
+      const venueId = venueObj?.id || b.venue_id || ''
 
       const rawDateStr = slotObj?.date || (b.created_at ? b.created_at.split('T')[0] : null)
       let formattedDate = 'N/A'
@@ -90,39 +155,43 @@ export async function GET(req: Request) {
       const formattedTime =
         startTimeFormatted && endTimeFormatted
           ? `${startTimeFormatted} – ${endTimeFormatted}`
-          : 'Custom Slot'
+          : startTimeFormatted || 'Booked Slot'
 
-      const isPast = slotObj?.end_time
-        ? (slotObj.end_time.includes('T')
-            ? new Date(slotObj.end_time)
-            : new Date(`${slotObj.date}T${slotObj.end_time}`)) < now
-        : false
-
-      let derivedStatus = b.status
-      let derivedReviewStatus = b.review_status
-      if (derivedStatus === 'CONFIRMED' && isPast) {
-        derivedStatus = 'COMPLETED'
-        derivedReviewStatus = 'PENDING'
+      let isPast = false
+      if (slotObj?.end_time) {
+        if (slotObj.end_time.includes('T')) {
+          isPast = new Date(slotObj.end_time).getTime() < now.getTime()
+        } else if (slotObj?.date) {
+          isPast = new Date(`${slotObj.date}T${slotObj.end_time}`).getTime() < now.getTime()
+        }
       }
 
-      const venueImages = venueObj?.venue_images || []
+      const rawStatus = (b.status || 'CONFIRMED').toUpperCase()
+      let derivedStatus = rawStatus
+      let derivedReviewStatus = b.review_status || 'PENDING'
+      if (
+        (derivedStatus === 'CONFIRMED' || derivedStatus === 'BOOKED' || derivedStatus === 'PAID') &&
+        isPast
+      ) {
+        derivedStatus = 'COMPLETED'
+      }
+
       const coverImage =
-        venueImages.find((img: any) => img.is_cover)?.url ||
-        venueImages[0]?.url ||
+        venueImagesMap.get(venueId) ||
         'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
 
       return {
         id: b.id,
-        venueId: venueObj?.id || '',
+        venueId: venueId,
         venue: venueObj?.name || 'Turf Arena',
-        area: venueObj?.address?.split(',')[0]?.trim() || 'Unknown Area',
+        area: venueObj?.address?.split(',')[0]?.trim() || 'Sports Complex',
         date: formattedDate,
         time: formattedTime,
         amount: Number(b.total_amount || 0),
         advance: Number(b.advance_paid || 0),
         status: derivedStatus,
         reviewStatus: derivedReviewStatus,
-        hiddenFromPlayer: b.hidden_from_player,
+        hiddenFromPlayer: !!b.hidden_from_player,
         review: null,
         image: coverImage,
         rawStartTime: slotObj?.start_time || '',
@@ -130,7 +199,7 @@ export async function GET(req: Request) {
         rawDate: slotObj?.date || '',
         cancellationPolicy: 'flexible',
         qrCode: b.qr_code,
-        checkInStatus: b.check_in_status,
+        checkInStatus: b.check_in_status || 'PENDING',
         bookingVersion: b.booking_version || 1,
         cancellationReason: b.cancellation_reason,
         cancelledBy: b.cancelled_by,
@@ -143,8 +212,8 @@ export async function GET(req: Request) {
     })
 
     return NextResponse.json({ bookings: formattedBookings })
-  } catch (err: any) {
-    console.error('GET /api/player/bookings error:', err)
-    return NextResponse.json({ error: err.message || 'Failed to fetch bookings' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Error fetching player bookings:', error)
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
   }
 }

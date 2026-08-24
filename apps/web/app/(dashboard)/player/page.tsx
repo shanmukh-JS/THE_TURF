@@ -7,12 +7,22 @@ import { getLocalDateString } from '@/lib/utils'
 
 function formatTimeStr(timeStr: string | null) {
   if (!timeStr) return null
-  const [hours, minutes] = timeStr.split(':')
-  if (!hours) return null
-  const hr = parseInt(hours, 10)
-  const ampm = hr >= 12 ? 'PM' : 'AM'
-  const displayHr = hr % 12 || 12
-  return `${displayHr}:${minutes || '00'} ${ampm}`
+  if (timeStr.includes(':') && !timeStr.includes('T')) {
+    const [hours, minutes] = timeStr.split(':')
+    if (!hours) return null
+    const hr = parseInt(hours, 10)
+    const ampm = hr >= 12 ? 'PM' : 'AM'
+    const displayHr = hr % 12 || 12
+    return `${displayHr}:${minutes || '00'} ${ampm}`
+  }
+  const t = new Date(timeStr)
+  return isNaN(t.getTime())
+    ? timeStr
+    : t.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
 }
 
 function isOpenNow(openingTime: string | null, closingTime: string | null) {
@@ -49,10 +59,23 @@ export default async function PlayerDashboard() {
     redirect('/auth/login')
   }
 
+  // Resolve user IDs
+  const customerIds = [user.id]
+  try {
+    const { data: customerProfile } = await adminClient
+      .from('customer_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (customerProfile?.id && !customerIds.includes(customerProfile.id)) {
+      customerIds.push(customerProfile.id)
+    }
+  } catch {}
+
   // Fetch everything in parallel
   const [
     { data: profile },
-    { data: bookingsData },
+    { data: joinedBookings, error: bookingsError },
     { data: venuesData },
     { data: rawFavorites },
   ] = await Promise.all([
@@ -61,20 +84,17 @@ export default async function PlayerDashboard() {
       .select('full_name, profile_image_url, xp, level, last_celebrated_level')
       .eq('user_id', user.id)
       .maybeSingle(),
-    supabase
+    adminClient
       .from('bookings')
       .select(
         `
-      id,
-      total_amount,
-      status,
-      review_status,
-      hidden_from_player,
-      slots(date, start_time, end_time),
-      venues(id, name, address, venue_pricing(price), venue_images(url, is_cover))
-    `
+        *,
+        slots(id, date, start_time, end_time, price),
+        venues(id, name, address, venue_pricing(price), venue_images(url, is_cover))
+      `
       )
-      .eq('customer_id', user.id),
+      .in('customer_id', customerIds)
+      .order('created_at', { ascending: false }),
     adminClient
       .from('venues')
       .select(
@@ -105,6 +125,43 @@ export default async function PlayerDashboard() {
     supabase.from('favorites').select('venue_id').eq('user_id', user.id),
   ])
 
+  let rawBookings = joinedBookings || []
+  if (bookingsError || !joinedBookings) {
+    const { data: fallbackBookings } = await adminClient
+      .from('bookings')
+      .select('*')
+      .in('customer_id', customerIds)
+      .order('created_at', { ascending: false })
+    rawBookings = fallbackBookings || []
+  }
+
+  // Missing slots/venues lookup for robust rendering
+  const missingSlotIds = rawBookings.filter((b: any) => !b.slots && b.slot_id).map((b: any) => b.slot_id)
+  const missingVenueIds = rawBookings.filter((b: any) => !b.venues && b.venue_id).map((b: any) => b.venue_id)
+
+  let slotsMap = new Map<string, any>()
+  let venuesMap = new Map<string, any>()
+
+  if (missingSlotIds.length > 0) {
+    try {
+      const { data: slotsList } = await adminClient
+        .from('slots')
+        .select('id, date, start_time, end_time, price')
+        .in('id', missingSlotIds)
+      slotsList?.forEach((s: any) => slotsMap.set(s.id, s))
+    } catch {}
+  }
+
+  if (missingVenueIds.length > 0) {
+    try {
+      const { data: venuesList } = await adminClient
+        .from('venues')
+        .select('id, name, address')
+        .in('id', missingVenueIds)
+      venuesList?.forEach((v: any) => venuesMap.set(v.id, v))
+    } catch {}
+  }
+
   // Filter out any venue whose owner is currently suspended or venue is disabled/unapproved
   const filteredVenues = (venuesData || []).filter((v: any) => {
     const rawUsers = (v.owner_profiles as any)?.users
@@ -120,51 +177,42 @@ export default async function PlayerDashboard() {
 
   const displayName =
     profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Player'
-  const bookings = bookingsData || []
+  const bookings = rawBookings
 
   // Calculations
   const totalBookings = bookings.length
-
   const now = new Date()
 
   // Map raw bookings to include derived statuses and persist completions
   const mappedBookings = bookings.map((b: any) => {
-    const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
-    const isPast = slot ? new Date(slot.end_time) < now : false
-    let derivedStatus = b.status
-    let derivedReviewStatus = b.review_status
+    const slot = (Array.isArray(b.slots) ? b.slots[0] : b.slots) || slotsMap.get(b.slot_id)
+    const venue = (Array.isArray(b.venues) ? b.venues[0] : b.venues) || venuesMap.get(b.venue_id)
 
-    if (derivedStatus === 'CONFIRMED' && isPast) {
+    let isPast = false
+    if (slot?.end_time) {
+      if (slot.end_time.includes('T')) {
+        isPast = new Date(slot.end_time).getTime() < now.getTime()
+      } else if (slot.date) {
+        isPast = new Date(`${slot.date}T${slot.end_time}`).getTime() < now.getTime()
+      }
+    }
+
+    const rawStatus = (b.status || 'CONFIRMED').toUpperCase()
+    let derivedStatus = rawStatus
+    let derivedReviewStatus = b.review_status || 'PENDING'
+
+    if (
+      (derivedStatus === 'CONFIRMED' || derivedStatus === 'BOOKED' || derivedStatus === 'PAID') &&
+      isPast
+    ) {
       derivedStatus = 'COMPLETED'
       derivedReviewStatus = 'PENDING'
-      // Persist update in DB
-      supabase
-        .from('bookings')
-        .update({ status: 'COMPLETED', review_status: 'PENDING' })
-        .eq('id', b.id)
-        .then(async () => {
-          const { count } = await supabase
-            .from('notifications')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('title', '🎉 Match Completed!')
-            .like('message', `%${b.venues?.name || 'Truf'}%`)
-
-          if (count === 0) {
-            await supabase.from('notifications').insert({
-              user_id: user.id,
-              title: '🎉 Match Completed!',
-              message: `Your game at ${b.venues?.name || 'Truf'} has ended. Rate your experience and earn up to +50 XP.`,
-              type: 'BOOKING',
-              link: '/player/bookings',
-              is_read: false,
-            })
-          }
-        })
     }
 
     return {
       ...b,
+      slots: slot,
+      venues: venue,
       status: derivedStatus,
       review_status: derivedReviewStatus,
     }
@@ -172,33 +220,57 @@ export default async function PlayerDashboard() {
 
   const upcomingList = mappedBookings
     .filter((b: any) => {
-      const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
-      if (b.status !== 'CONFIRMED' || !slot || b.hidden_from_player) return false
-      return new Date(slot.end_time) >= now
+      const slot = b.slots
+      const st = (b.status || '').toUpperCase()
+      if ((st !== 'CONFIRMED' && st !== 'PENDING' && st !== 'BOOKED') || b.hidden_from_player) return false
+      if (!slot) return true
+      let isPast = false
+      if (slot.end_time) {
+        if (slot.end_time.includes('T')) {
+          isPast = new Date(slot.end_time).getTime() < now.getTime()
+        } else if (slot.date) {
+          isPast = new Date(`${slot.date}T${slot.end_time}`).getTime() < now.getTime()
+        }
+      }
+      return !isPast
     })
     .sort((a: any, b: any) => {
-      const slotA = Array.isArray(a.slots) ? a.slots[0] : a.slots
-      const slotB = Array.isArray(b.slots) ? b.slots[0] : b.slots
-      return new Date(slotA?.date || 0).getTime() - new Date(slotB?.date || 0).getTime()
+      const slotA = a.slots
+      const slotB = b.slots
+      return new Date(slotA?.date || a.created_at || 0).getTime() - new Date(slotB?.date || b.created_at || 0).getTime()
     })
 
   const pastList = mappedBookings
     .filter((b: any) => {
-      const slot = Array.isArray(b.slots) ? b.slots[0] : b.slots
-      if (!slot || b.hidden_from_player) return false
-      return new Date(slot.end_time) < now
+      const slot = b.slots
+      const st = (b.status || '').toUpperCase()
+      if (st === 'CANCELLED' || b.hidden_from_player) return false
+      if (st === 'COMPLETED') return true
+      if (!slot) return false
+      let isPast = false
+      if (slot.end_time) {
+        if (slot.end_time.includes('T')) {
+          isPast = new Date(slot.end_time).getTime() < now.getTime()
+        } else if (slot.date) {
+          isPast = new Date(`${slot.date}T${slot.end_time}`).getTime() < now.getTime()
+        }
+      }
+      return isPast
     })
     .sort((a: any, b: any) => {
-      const slotA = Array.isArray(a.slots) ? a.slots[0] : a.slots
-      const slotB = Array.isArray(b.slots) ? b.slots[0] : b.slots
-      return new Date(slotB?.date || 0).getTime() - new Date(slotA?.date || 0).getTime()
+      const slotA = a.slots
+      const slotB = b.slots
+      return new Date(slotB?.date || b.created_at || 0).getTime() - new Date(slotA?.date || a.created_at || 0).getTime()
     })
 
   const upcomingBookingsCount = upcomingList.length
 
   const totalSpent = mappedBookings
-    .filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
-    .reduce((sum: number, b: any) => sum + Number(b.total_amount), 0)
+    .filter((b: any) => {
+      const st = (b.status || '').toUpperCase()
+      return st === 'CONFIRMED' || st === 'COMPLETED' || st === 'BOOKED' || st === 'PAID'
+    })
+    .reduce((sum: number, b: any) => sum + Number(b.total_amount || 0), 0)
 
   // Map cover images for venues and calculate dynamic slotsCount & rating
   const mappedVenues = filteredVenues.map((v: any) => {
@@ -208,7 +280,6 @@ export default async function PlayerDashboard() {
       'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
 
     // Calculate live available slots count
-    const now = new Date()
     const todayStr = getLocalDateString()
     const availableSlots = (v.slots || []).filter((s: any) => {
       if (s.status !== 'Available') return false
@@ -221,104 +292,149 @@ export default async function PlayerDashboard() {
       }
       return true
     })
-    const slotsCount = availableSlots.length
 
-    // Calculate rating
-    const reviewsList = v.reviews || []
-    const reviewsCount = reviewsList.length
-    const rating =
-      reviewsList.length > 0
-        ? (
-            reviewsList.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
-            reviewsList.length
-          ).toFixed(1)
-        : null
-
-    const openStr = formatTimeStr(v.opening_time)
-    const closeStr = formatTimeStr(v.closing_time)
-    const timings = openStr && closeStr ? `${openStr} – ${closeStr}` : '06:00 AM – 11:00 PM'
-    const openStatus = isOpenNow(v.opening_time, v.closing_time)
+    const reviews = v.reviews || []
+    const avgRating =
+      reviews.length > 0
+        ? reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length
+        : 0
 
     return {
-      ...v,
+      id: v.id,
+      name: v.name,
+      address: v.address,
+      area: v.areas?.name || 'Local Area',
+      city: v.cities?.name || 'City',
+      price: v.venue_pricing?.price || 0,
       image: coverImage,
-      slotsCount,
-      rating,
-      reviewsCount,
-      timings,
-      isOpen: openStatus,
+      slotsCount: availableSlots.length,
+      rating: Number(avgRating.toFixed(1)),
+      reviewCount: reviews.length,
+      amenities: Array.isArray(v.amenities) ? v.amenities : [],
+      openingTime: formatTimeStr(v.opening_time),
+      closingTime: formatTimeStr(v.closing_time),
+      isOpen: isOpenNow(v.opening_time, v.closing_time),
     }
   })
 
-  // Format past bookings with cover images too
-  const formattedPastList = pastList.map((b: any) => {
-    const coverImage =
-      b.venues?.venue_images?.find((img: any) => img.is_cover)?.url ||
-      b.venues?.venue_images?.[0]?.url ||
+  // Next upcoming booking detail
+  const nextBooking = upcomingList[0] || null
+  let nextBookingDetails = null
+  if (nextBooking) {
+    const slot = nextBooking.slots
+    const venue = nextBooking.venues
+    const venueImg =
+      venue?.venue_images?.find((img: any) => img.is_cover)?.url ||
+      venue?.venue_images?.[0]?.url ||
       'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
-    return {
-      ...b,
-      venues: {
-        ...b.venues,
-        image: coverImage,
-      },
-    }
-  })
 
-  const favVenueIds = (rawFavorites || []).map((f: any) => f.venue_id).filter(Boolean)
-  let totalFavorites = 0
-  if (favVenueIds.length > 0) {
-    const { count } = await supabase
-      .from('venues')
-      .select('id', { count: 'exact', head: true })
-      .in('id', favVenueIds)
-      .eq('verification_status', 'APPROVED')
-      .eq('is_disabled', false)
-    totalFavorites = count || 0
+    const startTimeFormatted = formatTimeStr(slot?.start_time)
+    const endTimeFormatted = formatTimeStr(slot?.end_time)
+    const formattedTime =
+      startTimeFormatted && endTimeFormatted
+        ? `${startTimeFormatted} – ${endTimeFormatted}`
+        : startTimeFormatted || 'Reserved Slot'
+
+    let formattedDate = 'Upcoming'
+    if (slot?.date) {
+      const dateObj = new Date(slot.date + 'T00:00:00')
+      formattedDate = dateObj.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    }
+
+    nextBookingDetails = {
+      id: nextBooking.id,
+      venueName: venue?.name || 'Turf Arena',
+      address: venue?.address || 'Sports Complex',
+      date: formattedDate,
+      time: formattedTime,
+      rawStartTime: slot?.start_time || '',
+      rawDate: slot?.date || '',
+      price: nextBooking.total_amount,
+      advancePaid: nextBooking.advance_paid,
+      status: nextBooking.status,
+      image: venueImg,
+    }
   }
 
-  // Calculate Booking Streak (consecutive calendar weeks with qualifying confirmed/completed bookings)
-  const bookingStreak = calculateBookingStreak(mappedBookings)
+  // Favorite venues
+  const favoriteVenueIds = (rawFavorites || []).map((f: any) => f.venue_id)
+  const favorites = mappedVenues.filter((v: any) => favoriteVenueIds.includes(v.id))
 
-  // Unified recent activity list: all player actions (new bookings, played matches, cancellations) sorted by most recent
-  const recentActivityList = [...mappedBookings]
-    .filter((b: any) => !b.hidden_from_player)
-    .sort((a: any, b: any) => {
-      const timeA = new Date(a.created_at || a.slots?.date || 0).getTime()
-      const timeB = new Date(b.created_at || b.slots?.date || 0).getTime()
-      return timeB - timeA
-    })
+  // Calculate booking streak from mappedBookings
+  const streak = calculateBookingStreak(mappedBookings)
+
+  // Build unified Recent Activity Timeline
+  const recentActivityList = mappedBookings
+    .slice(0, 10)
     .map((b: any) => {
-      const coverImage =
-        b.venues?.venue_images?.find((img: any) => img.is_cover)?.url ||
-        b.venues?.venue_images?.[0]?.url ||
-        'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop'
+      const slot = b.slots
+      const venue = b.venues
+      const venueName = venue?.name || 'Turf Arena'
+      const st = (b.status || 'CONFIRMED').toUpperCase()
+
+      let timeFormatted = 'Reserved Slot'
+      if (slot?.start_time && slot?.end_time) {
+        const sTime = formatTimeStr(slot.start_time)
+        const eTime = formatTimeStr(slot.end_time)
+        if (sTime && eTime) timeFormatted = `${sTime} – ${eTime}`
+      }
+
+      let dateFormatted = 'Recent'
+      const rawDateStr = slot?.date || (b.created_at ? b.created_at.split('T')[0] : null)
+      if (rawDateStr) {
+        const d = new Date(rawDateStr + 'T00:00:00')
+        dateFormatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      }
+
+      let type: 'BOOKING_CREATED' | 'MATCH_PLAYED' | 'BOOKING_CANCELLED' = 'BOOKING_CREATED'
+      let title = `Booked slot at ${venueName}`
+      let description = `${dateFormatted} • ${timeFormatted} • ₹${b.total_amount || 0}`
+      let statusColor = 'text-green-400'
+
+      if (st === 'COMPLETED') {
+        type = 'MATCH_PLAYED'
+        title = `Match played at ${venueName}`
+        description = `${dateFormatted} • Completed • ₹${b.total_amount || 0}`
+        statusColor = 'text-blue-400'
+      } else if (st === 'CANCELLED') {
+        type = 'BOOKING_CANCELLED'
+        title = `Cancelled reservation at ${venueName}`
+        description = `${dateFormatted} • Cancelled • Refund: ₹${b.refund_amount || 0}`
+        statusColor = 'text-red-400'
+      }
+
       return {
-        ...b,
-        venues: {
-          ...b.venues,
-          image: coverImage,
-        },
+        id: b.id,
+        type,
+        title,
+        description,
+        timestamp: b.created_at || new Date().toISOString(),
+        statusColor,
       }
     })
 
   return (
     <PlayerDashboardClient
       displayName={displayName}
-      profileImageUrl={profile?.profile_image_url}
-      email={user.email || ''}
-      totalBookings={totalBookings}
-      upcomingBookingsCount={upcomingBookingsCount}
-      totalFavorites={totalFavorites}
-      bookingStreak={bookingStreak}
-      totalSpent={totalSpent}
-      upcomingList={upcomingList}
-      pastList={formattedPastList}
-      recentActivityList={recentActivityList}
-      venues={mappedVenues}
-      xp={profile?.xp ?? 0}
-      level={profile?.level ?? 1}
-      lastCelebratedLevel={profile?.last_celebrated_level ?? 1}
+      profileImage={profile?.profile_image_url || null}
+      xp={profile?.xp || 0}
+      level={profile?.level || 1}
+      lastCelebratedLevel={profile?.last_celebrated_level || 1}
+      stats={{
+        totalBookings,
+        upcomingBookings: upcomingBookingsCount,
+        totalSpent,
+        streak,
+      }}
+      nextBooking={nextBookingDetails}
+      featuredVenues={mappedVenues.slice(0, 6)}
+      favoriteVenues={favorites}
+      pastMatchesCount={pastList.length}
+      recentActivity={recentActivityList}
     />
   )
 }
