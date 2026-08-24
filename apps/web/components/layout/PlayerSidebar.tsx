@@ -82,8 +82,8 @@ export function PlayerSidebar() {
     <>
       {/* Mobile Toggle Bar (Only visible on small screens) */}
       <div className="md:hidden flex items-center justify-between px-6 py-4 bg-[#0a0f0a] border-b border-white/8 sticky top-16 z-30 shadow-md shadow-black/50">
-        <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="TURF GAMING" className="w-5 h-5 object-contain" />
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="TURF GAMING" className="w-6 h-6 object-contain drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
           <span className="font-bold text-white text-sm tracking-wide">Player Dashboard</span>
         </div>
         <button

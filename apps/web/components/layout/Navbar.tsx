@@ -68,13 +68,13 @@ export function Navbar() {
       >
         <div className="w-full px-4 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
+          <Link href="/" className="flex items-center gap-3 flex-shrink-0 group">
             <img
               src="/logo.png"
               alt="TURF GAMING"
-              className="w-9 h-9 object-contain drop-shadow-[0_0_12px_rgba(34,197,94,0.4)] transition-transform duration-200 group-hover:scale-105"
+              className="h-10 w-10 object-contain drop-shadow-[0_0_14px_rgba(34,197,94,0.55)] transition-transform duration-200 group-hover:scale-105"
             />
-            <span className="font-bold text-white tracking-wide text-sm">TURF GAMING</span>
+            <span className="font-extrabold text-white tracking-wide text-base">TURF GAMING</span>
           </Link>
 
           {/* Desktop Nav */}
