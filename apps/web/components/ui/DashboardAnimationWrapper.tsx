@@ -23,7 +23,7 @@ export function DashboardAnimationWrapper({
   children,
   className,
 }: {
-  children: ReactNode
+  children?: ReactNode
   className?: string
 }) {
   return (
@@ -37,7 +37,7 @@ export function DashboardAnimationItem({
   children,
   className,
 }: {
-  children: ReactNode
+  children?: ReactNode
   className?: string
 }) {
   return (
