@@ -99,7 +99,7 @@ export default async function CustomerBookingsPage({
     }
   })
 
-  const filteredBookings = bookings.filter((b) => {
+  const filteredBookings = bookings.filter((b: any) => {
     if (activeTab === 'Upcoming') return b.status === 'CONFIRMED'
     if (activeTab === 'Completed') return b.status === 'COMPLETED'
     if (activeTab === 'Cancelled') return b.status === 'CANCELLED'
@@ -115,7 +115,7 @@ export default async function CustomerBookingsPage({
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 bg-white/5 rounded-xl p-1 border border-white/8 w-full sm:w-fit">
-        {['All', 'Upcoming', 'Completed', 'Cancelled'].map((t) => (
+        {['All', 'Upcoming', 'Completed', 'Cancelled'].map((t: string) => (
           <Link
             key={t}
             href={`/profile/bookings?tab=${t}`}
@@ -133,9 +133,9 @@ export default async function CustomerBookingsPage({
             <p className="text-gray-400">No {activeTab.toLowerCase()} bookings found.</p>
           </div>
         ) : (
-          filteredBookings.map((b) => {
+          filteredBookings.map((b: any) => {
             const s = statusMap[b.status as keyof typeof statusMap]
-            const Icon = s.icon
+            const Icon = s?.icon || AlertCircle
             return (
               <div
                 key={b.id}

@@ -93,7 +93,7 @@ export default async function CustomerBookingsPage() {
       .in('owner_id', ownerIds as string[])
 
     if (settingsData) {
-      settingsData.forEach((s) => ownerSettingsMap.set(s.owner_id, s.cancellation_policy))
+      settingsData.forEach((s: any) => ownerSettingsMap.set(s.owner_id, s.cancellation_policy))
     }
   }
 

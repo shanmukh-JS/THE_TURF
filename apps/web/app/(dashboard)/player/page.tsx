@@ -198,7 +198,7 @@ export default async function PlayerDashboard() {
 
   const totalSpent = mappedBookings
     .filter((b: any) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
-    .reduce((sum, b) => sum + Number(b.total_amount), 0)
+    .reduce((sum: number, b: any) => sum + Number(b.total_amount), 0)
 
   // Map cover images for venues and calculate dynamic slotsCount & rating
   const mappedVenues = filteredVenues.map((v: any) => {
