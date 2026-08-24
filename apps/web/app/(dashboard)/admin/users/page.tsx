@@ -167,38 +167,48 @@ export default function AdminUsersPage() {
 
     const { user, action } = confirmModal
 
-    if (action === 'delete') {
-      const { error } = await supabase.from('users').delete().eq('id', user.id)
-      if (!error) {
-        await logAdminAction('User Deleted', 'users', user.id, `User account deleted`)
-        setUsers((prev) => prev.filter((u) => u.id !== user.id))
-        if (selectedUser?.id === user.id) setSelectedUser(null)
-      }
-    } else {
-      const shouldSuspend = action === 'suspend'
-      const { error } = await supabase
-        .from('users')
-        .update({ is_suspended: shouldSuspend })
-        .eq('id', user.id)
+    try {
+      if (action === 'delete') {
+        const res = await fetch('/api/admin/users', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        })
 
-      if (!error) {
-        await logAdminAction(
-          shouldSuspend ? 'User Suspended' : 'User Activated',
-          'users',
-          user.id,
-          `Suspended state updated to ${shouldSuspend}`
-        )
-        setUsers((prev) =>
-          prev.map((u) => (u.id === user.id ? { ...u, is_suspended: shouldSuspend } : u))
-        )
-        if (selectedUser?.id === user.id) {
-          setSelectedUser((prev: any) => (prev ? { ...prev, is_suspended: shouldSuspend } : null))
+        const data = await res.json()
+        if (res.ok && data.success) {
+          setUsers((prev) => prev.filter((u) => u.id !== user.id))
+          if (selectedUser?.id === user.id) setSelectedUser(null)
+        } else {
+          alert(`Failed to delete user: ${data.error || 'Unknown error'}`)
+        }
+      } else {
+        const shouldSuspend = action === 'suspend'
+        const res = await fetch('/api/admin/users', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, isSuspended: shouldSuspend }),
+        })
+
+        const data = await res.json()
+        if (res.ok && data.success) {
+          setUsers((prev) =>
+            prev.map((u) => (u.id === user.id ? { ...u, is_suspended: shouldSuspend } : u))
+          )
+          if (selectedUser?.id === user.id) {
+            setSelectedUser((prev: any) => (prev ? { ...prev, is_suspended: shouldSuspend } : null))
+          }
+        } else {
+          alert(`Failed to update user status: ${data.error || 'Unknown error'}`)
         }
       }
+    } catch (err: any) {
+      console.error('Error executing admin user action:', err)
+      alert(`An error occurred: ${err.message || 'Network error'}`)
+    } finally {
+      setActionLoading(false)
+      setConfirmModal(null)
     }
-
-    setActionLoading(false)
-    setConfirmModal(null)
   }
 
   // Get cities for filtering

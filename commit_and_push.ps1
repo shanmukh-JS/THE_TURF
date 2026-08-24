@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(venues): remove hardcoded Hyderabad location badge, display dynamic city or ALL LOCATIONS" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(admin-users): add secure service-role user deletion and suspension endpoints with cascading cleanup and audit logging" --no-verify
 
 Write-Host "Pushing to origin..."
 & "C:\Program Files\Git\cmd\git.exe" push origin HEAD
