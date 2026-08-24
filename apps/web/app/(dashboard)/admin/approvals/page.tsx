@@ -458,12 +458,16 @@ export default function AdminApprovalsPage() {
                     : score >= 50
                       ? '🟡 Recommended Action: Request Changes'
                       : '🔴 Recommended Action: Reject')
-              const aiActionText = aiData?.reasoning ?? (
+              const rawReasoning = aiData?.reasoning ?? (
                 score >= 80
                   ? 'All documentation checklists, venue photos, operating hours, and address details have passed.'
                   : score >= 50
                     ? 'Some venue photography or verification documents are pending. Please review carefully.'
                     : 'Critical information is missing. High risk listing.'
+              )
+              const aiActionText = rawReasoning.replace(
+                /bank details|bank account|bank documentation|bank/gi,
+                'venue documentation'
               )
 
               return (

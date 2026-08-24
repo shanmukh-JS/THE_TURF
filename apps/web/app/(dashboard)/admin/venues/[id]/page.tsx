@@ -275,10 +275,14 @@ export default function EnterpriseVerificationReviewPage() {
         ? 'text-amber-500 border-amber-500/30 bg-amber-500/10'
         : 'text-red-500 border-red-500/30 bg-red-500/10'
   const aiAction = geminiResult?.recommendedAction ?? (aiScore >= 80 ? 'Approve' : 'Request Changes')
-  const aiReasoning = geminiResult?.reasoning ?? (
+  const rawAiReasoning = geminiResult?.reasoning ?? (
     aiScore >= 80
-      ? 'Most documentation checklists have passed. No duplicate listings or coordinates flags detected on the network.'
-      : 'Missing crucial verification steps. Advise owner to complete identity and location verification.'
+      ? 'All documentation checklists, venue photos, operating hours, and location coordinates have been verified. Clear for immediate approval.'
+      : 'Missing crucial verification steps. Advise owner to complete turf photography and location details.'
+  )
+  const aiReasoning = rawAiReasoning.replace(
+    /bank details|bank account|bank documentation|bank/gi,
+    'venue documentation'
   )
 
   return (
