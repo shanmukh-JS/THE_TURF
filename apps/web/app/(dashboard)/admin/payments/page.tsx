@@ -25,7 +25,7 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [commissionPct, setCommissionPct] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('ACTIVE')
 
   const [confirmModal, setConfirmModal] = useState<{
     payment: any
@@ -146,7 +146,9 @@ export default function AdminPaymentsPage() {
     }
 
     // Status filter
-    if (statusFilter === 'CANCELLED') {
+    if (statusFilter === 'ACTIVE') {
+      result = result.filter((p) => p.status !== 'CANCELLED')
+    } else if (statusFilter === 'CANCELLED') {
       result = result.filter((p) => p.status === 'CANCELLED')
     } else if (statusFilter !== 'ALL') {
       result = result.filter(
@@ -370,20 +372,23 @@ export default function AdminPaymentsPage() {
           }}
           className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-green-500/50"
         >
+          <option value="ACTIVE" className="text-black">
+            Active Bookings (Payable)
+          </option>
           <option value="ALL" className="text-black">
-            All Payout Statuses
+            All Transactions (Including Voided)
           </option>
           <option value="PENDING" className="text-black">
-            Pending
+            Pending Settlements
           </option>
           <option value="RELEASED" className="text-black">
-            Released
+            Released Settlements
           </option>
           <option value="HELD" className="text-black">
             Held
           </option>
           <option value="CANCELLED" className="text-black">
-            Cancelled (No Payout)
+            Cancelled &amp; Voided (Refunded)
           </option>
         </select>
 
@@ -436,11 +441,12 @@ export default function AdminPaymentsPage() {
               <tbody className="divide-y divide-white/5 text-sm text-gray-200">
                 {paginatedPayments.map((p) => {
                   const isApproved = p.venues?.verification_status === 'APPROVED'
-                  const gross = Number(p.total_amount)
-                  const commVal = (gross * commissionPct) / 100
-                  const net = gross - commVal
                   const isCancelled = p.status === 'CANCELLED'
-                  const payoutStatus = isCancelled ? 'CANCELLED' : (p.payout_status || 'PENDING')
+                  const rawGross = Number(p.total_amount)
+                  const gross = isCancelled ? 0 : rawGross
+                  const commVal = isCancelled ? 0 : (rawGross * commissionPct) / 100
+                  const net = isCancelled ? 0 : rawGross - commVal
+                  const payoutStatus = isCancelled ? 'VOIDED' : (p.payout_status || 'PENDING')
 
                   return (
                     <tr key={p.id} className="hover:bg-white/[0.01] transition-colors">
@@ -455,13 +461,24 @@ export default function AdminPaymentsPage() {
                         <p className="text-xs text-gray-500 mt-0.5">{p.venues?.name || 'N/A'}</p>
                       </td>
                       <td className="px-6 py-4 text-white font-semibold">
-                        ₹{gross.toLocaleString('en-IN')}
+                        {isCancelled ? (
+                          <div>
+                            <span className="text-gray-400 line-through">₹{rawGross.toLocaleString('en-IN')}</span>
+                            <span className="text-[10px] text-amber-400 block font-normal">Refunded</span>
+                          </div>
+                        ) : (
+                          `₹${gross.toLocaleString('en-IN')}`
+                        )}
                       </td>
                       <td className="px-6 py-4 text-green-400">
                         ₹{commVal.toLocaleString('en-IN')}
                       </td>
-                      <td className="px-6 py-4 text-white font-bold">
-                        ₹{net.toLocaleString('en-IN')}
+                      <td className="px-6 py-4 font-bold">
+                        {isCancelled ? (
+                          <span className="text-gray-500">₹0 <span className="text-[10px] text-red-400 font-normal block">Voided</span></span>
+                        ) : (
+                          <span className="text-white">₹{net.toLocaleString('en-IN')}</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -470,7 +487,7 @@ export default function AdminPaymentsPage() {
                               ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                               : payoutStatus === 'HELD'
                                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : payoutStatus === 'CANCELLED'
+                                : payoutStatus === 'VOIDED'
                                   ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                                   : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                           }`}
@@ -480,7 +497,7 @@ export default function AdminPaymentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         {isCancelled ? (
-                          <span className="text-xs text-gray-500 italic">No Payout (Cancelled)</span>
+                          <span className="text-xs text-gray-500 italic">No Payout (Cancelled &amp; Refunded)</span>
                         ) : (
                           <>
                             {payoutStatus !== 'RELEASED' && (

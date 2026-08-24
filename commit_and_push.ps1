@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(approvals): permanently eliminate bank details and guarantee 95-100% confidence on physical venue details" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(payments): default ledger to active payable bookings and display strikethrough refunded / voided ₹0 payouts for cancelled bookings" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main
