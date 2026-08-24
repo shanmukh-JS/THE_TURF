@@ -4,7 +4,7 @@ Write-Host "Staging files..."
 & "C:\Program Files\Git\cmd\git.exe" add .
 
 Write-Host "Committing..."
-& "C:\Program Files\Git\cmd\git.exe" commit -m "fix(vercel): add missing useRouter import to venues page and clean next.config.js" --no-verify
+& "C:\Program Files\Git\cmd\git.exe" commit -m "fix: import getLocalDateString helper in venues page" --no-verify
 
 Write-Host "Pushing to origin main..."
 & "C:\Program Files\Git\cmd\git.exe" push origin main

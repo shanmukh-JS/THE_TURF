@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getLocalDateString } from '@/lib/utils'
 
 const amenityIcons: Record<string, React.ElementType> = {
   Parking: Car,
