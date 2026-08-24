@@ -83,7 +83,6 @@ export async function POST(req: Request) {
     const updatePayload: any = {
       user_id: user.id,
       full_name: currentProfile?.full_name || user.user_metadata?.full_name || 'Player',
-      updated_at: new Date().toISOString(),
     }
 
     if (target === 'profile') {

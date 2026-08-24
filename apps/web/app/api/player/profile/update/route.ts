@@ -61,7 +61,6 @@ export async function POST(req: Request) {
         full_name: updatedFullName,
         profile_image_url: updatedProfileImage,
         banner_image_url: updatedBannerImage,
-        updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id' }
     )
