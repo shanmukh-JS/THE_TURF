@@ -176,7 +176,7 @@ export function PlayerDashboardClient({
   lastCelebratedLevel,
 }: PlayerDashboardClientProps) {
   const [greeting, setGreeting] = useState('Good evening')
-  const [draftBooking, setDraftBooking] = useState<any | null>(null)
+  const [draftBooking, setDraftBooking] = useState(null as any)
   const [dismissedDraft, setDismissedDraft] = useState(false)
 
   const router = useRouter()
@@ -234,7 +234,7 @@ export function PlayerDashboardClient({
   const [currentLevel, setCurrentLevel] = useState(initialLevel)
   const [currentLastCelebratedLevel, setCurrentLastCelebratedLevel] = useState(lastCelebratedLevel)
   const [showCelebration, setShowCelebration] = useState(false)
-  const [activeReviewBooking, setActiveReviewBooking] = useState<any | null>(null)
+  const [activeReviewBooking, setActiveReviewBooking] = useState(null as any)
   const [dismissedNotification, setDismissedNotification] = useState(false)
 
   useEffect(() => {
@@ -809,6 +809,7 @@ export function PlayerDashboardClient({
               // Map live details
               const rating = v.rating
               const distance = (1.2 + (v.id.charCodeAt(1) % 4) * 0.5).toFixed(1)
+              const slotsCount = v.slotsCount || 0
               const price = Number(
                 v.price ??
                 (Array.isArray(v.venue_pricing) ? v.venue_pricing[0]?.price : v.venue_pricing?.price) ??
