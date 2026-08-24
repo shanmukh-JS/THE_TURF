@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { OTPVerification } from '@/components/auth/OTPVerification'
 import {
   DashboardAnimationWrapper,
@@ -22,6 +23,13 @@ export default function WhatsAppLoginPage() {
       <div className="relative z-10 w-full px-4">
         <DashboardAnimationWrapper className="flex flex-col items-center justify-center">
           <DashboardAnimationItem className="mb-12 text-center">
+            <Link href="/" className="inline-block mb-3 group">
+              <img
+                src="/logo.png"
+                alt="TURF GAMING"
+                className="w-20 h-20 object-contain mx-auto drop-shadow-[0_0_25px_rgba(34,197,94,0.5)] transition-transform duration-200 group-hover:scale-105"
+              />
+            </Link>
             <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600 mb-4 tracking-tight">
               TURF GAMING
             </h1>

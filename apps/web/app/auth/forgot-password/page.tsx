@@ -197,9 +197,13 @@ export default function ForgotPasswordPage() {
     <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center mx-auto shadow-xl shadow-green-900/40">
-            <Zap className="w-6 h-6 text-white" />
-          </div>
+          <Link href="/" className="inline-block group">
+            <img
+              src="/logo.png"
+              alt="TURF GAMING"
+              className="w-16 h-16 object-contain mx-auto drop-shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-transform duration-200 group-hover:scale-105"
+            />
+          </Link>
           <h1 className="text-2xl font-bold text-white">
             {step === 1 && 'Reset Password'}
             {step === 2 && 'Verify Your Identity'}

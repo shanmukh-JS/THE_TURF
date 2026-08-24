@@ -68,10 +68,12 @@ export function Navbar() {
       >
         <div className="w-full px-4 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-900/40">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
+          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
+            <img
+              src="/logo.png"
+              alt="TURF GAMING"
+              className="w-9 h-9 object-contain drop-shadow-[0_0_12px_rgba(34,197,94,0.4)] transition-transform duration-200 group-hover:scale-105"
+            />
             <span className="font-bold text-white tracking-wide text-sm">TURF GAMING</span>
           </Link>
 

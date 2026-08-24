@@ -42,3 +42,7 @@ packages/database/node_modules/.prisma
 
 # Test coverage
 coverage/
+
+# Local scripts / tooling wrappers
+powershell.cmd
+powershell.bat

@@ -68,15 +68,23 @@ export async function POST(req: Request) {
       .in('status', ['CHECKOUT_INITIATED', 'ORDER_CREATED', 'PAYMENT_PENDING'])
       .maybeSingle()
 
+    const keyId =
+      process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
+      process.env.RAZORPAY_KEY_ID ||
+      'rzp_test_TCI3ClZqEjTuvq'
+
     if (existingAudit?.razorpay_order_id) {
       // Return the existing order instead of creating a new one
       console.log(`Idempotent checkout: returning existing order for ${checkoutId}`)
       return NextResponse.json({
+        keyId,
         order: {
           orderId: existingAudit.razorpay_order_id,
           amount: Number(advancePaid) * 100,
           currency: 'INR',
+          key: keyId,
         },
+        checkoutId,
       })
     }
 
@@ -110,7 +118,14 @@ export async function POST(req: Request) {
       })
       .eq('checkout_id', checkoutId)
 
-    return NextResponse.json({ order, checkoutId })
+    return NextResponse.json({
+      order: {
+        ...order,
+        key: keyId,
+      },
+      keyId,
+      checkoutId,
+    })
   } catch (error: any) {
     console.error('Checkout error:', error)
     const message = error.message || error.error?.description || 'Internal Server Error'

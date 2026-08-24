@@ -24,8 +24,13 @@ export function verifyRazorpayWebhook(payload: string, signature: string): boole
 
     const expectedSignature = crypto.createHmac('sha256', secret).update(payload).digest('hex')
 
-    // Use timingSafeEqual to prevent timing attacks
-    return crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(signature))
+    const expectedBuffer = Buffer.from(expectedSignature)
+    const signatureBuffer = Buffer.from(signature || '')
+
+    return (
+      expectedBuffer.length === signatureBuffer.length &&
+      crypto.timingSafeEqual(expectedBuffer, signatureBuffer)
+    )
   } catch (err) {
     console.error('Webhook signature verification error:', err)
     return false

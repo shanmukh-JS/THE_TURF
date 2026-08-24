@@ -1,4 +1,6 @@
 import PDFDocument from 'pdfkit'
+import fs from 'fs'
+import path from 'path'
 
 export interface ReceiptData {
   receiptNumber: string
@@ -35,9 +37,20 @@ export const generatePDFReceipt = async (data: ReceiptData): Promise<Buffer> => 
         resolve(Buffer.concat(buffers))
       })
 
+      // Header Logo
+      try {
+        const logoPath = path.join(process.cwd(), 'public', 'logo.png')
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, doc.page.width / 2 - 25, 35, { width: 50 })
+          doc.y = 95
+        }
+      } catch {
+        // Fallback without image
+      }
+
       // Header
       doc.fontSize(24).font('Helvetica-Bold').text('TRUF GAMING', { align: 'center' })
-      doc.moveDown()
+      doc.moveDown(0.5)
       doc.fontSize(16).text('Booking Receipt', { align: 'center' })
       doc.moveDown(2)
 

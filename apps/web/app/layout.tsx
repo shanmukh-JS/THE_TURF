@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: 'TURF GAMING | Premium Cricket Box Booking',
   description:
     'Book the best cricket boxes in your city instantly. Browse venues, compare prices, and reserve your slot in minutes.',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
   openGraph: {
     title: 'TURF GAMING — Book Cricket Boxes Instantly',
     description: "India's premier Cricket Box booking marketplace.",

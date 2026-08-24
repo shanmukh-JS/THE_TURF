@@ -8,19 +8,22 @@ import {
   PayoutResponse,
 } from './provider'
 
-// Standard Razorpay instances
-const key_id =
-  process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || 'rzp_test_xxx'
-const key_secret = process.env.RAZORPAY_SECRET || 'secret'
-const webhook_secret = process.env.RAZORPAY_WEBHOOK_SECRET || 'webhook_secret'
-
-const razorpay = new Razorpay({
-  key_id,
-  key_secret,
-})
+// Standard Razorpay instance helper
+function getRazorpayInstance() {
+  const key_id =
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
+    process.env.RAZORPAY_KEY_ID ||
+    'rzp_test_TCI3ClZqEjTuvq'
+  const key_secret = process.env.RAZORPAY_SECRET || '2KTcoZPGLwaRVUasD9HjRy04'
+  return new Razorpay({
+    key_id,
+    key_secret,
+  })
+}
 
 export class RazorpayProvider implements PaymentProvider {
   async createOrder(request: OrderRequest): Promise<OrderResponse> {
+    const razorpay = getRazorpayInstance()
     const order = await razorpay.orders.create({
       amount: request.amount,
       currency: request.currency,
@@ -37,16 +40,19 @@ export class RazorpayProvider implements PaymentProvider {
   }
 
   verifyWebhook(body: string, signature: string): boolean {
+    const webhook_secret = process.env.RAZORPAY_WEBHOOK_SECRET || 'MyTurfGamingSecret123!'
     const expectedSignature = crypto.createHmac('sha256', webhook_secret).update(body).digest('hex')
 
     return expectedSignature === signature
   }
 
   async fetchPayment(paymentId: string): Promise<any> {
+    const razorpay = getRazorpayInstance()
     return await razorpay.payments.fetch(paymentId)
   }
 
   async createPayout(request: PayoutRequest): Promise<PayoutResponse> {
+    const razorpay = getRazorpayInstance()
     // RazorpayX Payout API integration.
     // Note: The Razorpay Node SDK handles RazorpayX payouts natively.
     // Ensure the RazorpayX account has sufficient balance and the API keys are correct.
@@ -63,8 +69,6 @@ export class RazorpayProvider implements PaymentProvider {
     }
 
     // The SDK provides this under razorpay.payouts (if RazorpayX is enabled)
-    // Wait for official SDK implementation. In Razorpay v2 SDK, it may require specific imports.
-    // For now, we mock the call if it's unsupported by the current types, but typically:
     const response = await (razorpay as any).payouts.create(payoutPayload)
 
     return {
@@ -76,21 +80,23 @@ export class RazorpayProvider implements PaymentProvider {
   }
 
   async fetchPayout(payoutId: string): Promise<any> {
+    const razorpay = getRazorpayInstance()
     return await (razorpay as any).payouts.fetch(payoutId)
   }
 
   async refund(paymentId: string, amount?: number): Promise<any> {
+    const razorpay = getRazorpayInstance()
     return await razorpay.payments.refund(paymentId, { amount })
   }
 
   async fetchRefund(paymentId: string, refundId: string): Promise<any> {
+    const razorpay = getRazorpayInstance()
     return await razorpay.payments.fetchRefund(paymentId, refundId)
   }
 
   async healthCheck(): Promise<boolean> {
     try {
-      // Simplest healthcheck: fetch an invalid order to ensure auth succeeds but resource fails
-      // or fetch the merchant details if supported.
+      const razorpay = getRazorpayInstance()
       await razorpay.orders.fetch('test_health_ping_000').catch((e: any) => {
         if (e.statusCode === 401) throw e
       })

@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import ScrollExpandMedia from '@/components/ui/scroll-expansion-hero'
 
+import { AuthSuccessSplash } from '@/components/auth/AuthSuccessSplash'
+
 export default function LoginPage() {
   const supabase = createClient()
   const [showPass, setShowPass] = useState(false)
@@ -58,39 +60,8 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-[calc(100vh-64px)] bg-[#060d06] flex items-center justify-center px-4 py-8 relative">
-      {/* Cinematic Transition Overlay */}
-      <AnimatePresence>
-        {isTransitioning && (
-          <motion.div
-            className="fixed inset-0 left-0 top-0 w-screen h-screen z-[9999] bg-[#060d06] flex flex-col items-center justify-center px-4 text-center overflow-hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <motion.div
-              animate={{
-                scale: [0.9, 1, 1, 0.8],
-                opacity: [0, 1, 1, 0],
-              }}
-              transition={{
-                duration: 2.2,
-                times: [0, 0.35, 0.75, 1],
-                ease: 'easeInOut',
-              }}
-              onAnimationComplete={handleAnimationComplete}
-              className="flex flex-col items-center justify-center gap-5 text-center w-full"
-            >
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[2rem] bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-[0_0_50px_rgba(74,222,128,0.3)]">
-                <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-              </div>
-              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-widest uppercase text-center w-full block select-none">
-                TURF GAMING
-              </h1>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Cinematic Transition Overlay with Logo Banner Zoom In & Out */}
+      <AuthSuccessSplash show={isTransitioning} onComplete={handleAnimationComplete} />
 
       <motion.div
         className="w-full max-w-md space-y-6 relative z-10"
@@ -104,9 +75,13 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center mx-auto shadow-xl shadow-green-900/40">
-            <Zap className="w-6 h-6 text-white" />
-          </div>
+          <Link href="/" className="inline-block group">
+            <img
+              src="/logo.png"
+              alt="TURF GAMING"
+              className="w-16 h-16 object-contain mx-auto drop-shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-transform duration-200 group-hover:scale-105"
+            />
+          </Link>
           <h1 className="text-2xl font-bold text-white">Welcome back</h1>
           <p className="text-gray-400 text-sm">Sign in to your TURF GAMING account</p>
         </div>

@@ -47,6 +47,7 @@ export const getConfirmationEmailHTML = (data: {
 <body>
   <div class="container">
     <div class="header">
+      <img src="https://trufgaming.com/logo.png" alt="TRUF GAMING" style="width: 54px; height: 54px; object-fit: contain; margin-bottom: 8px;" />
       <h1 class="title">✅ Booking Confirmed</h1>
     </div>
     
@@ -138,6 +139,7 @@ export const getReminderEmailHTML = (data: {
 <body>
   <div class="container">
     <div class="header">
+      <img src="https://trufgaming.com/logo.png" alt="TRUF GAMING" style="width: 54px; height: 54px; object-fit: contain; margin-bottom: 8px;" />
       <h1 class="title">⏰ Your game starts in 10 minutes!</h1>
     </div>
     

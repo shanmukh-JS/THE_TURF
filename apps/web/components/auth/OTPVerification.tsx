@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowRight, MessageCircle, ShieldCheck, Loader2 } from 'lucide-react'
+import { AuthSuccessSplash } from '@/components/auth/AuthSuccessSplash'
 
 export function OTPVerification() {
   const router = useRouter()
@@ -13,6 +14,7 @@ export function OTPVerification() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
   const supabase = createClient()
 
@@ -74,9 +76,7 @@ export function OTPVerification() {
 
       if (sessionError) throw sessionError
 
-      // Redirect based on role (could be enhanced)
-      router.push('/profile')
-      router.refresh()
+      setIsTransitioning(true)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -85,7 +85,15 @@ export function OTPVerification() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 rounded-2xl bg-black/40 border border-green-500/20 backdrop-blur-md shadow-2xl">
+    <>
+      <AuthSuccessSplash
+        show={isTransitioning}
+        onComplete={() => {
+          router.push('/profile')
+          router.refresh()
+        }}
+      />
+      <div className="w-full max-w-md mx-auto p-8 rounded-2xl bg-black/40 border border-green-500/20 backdrop-blur-md shadow-2xl">
       <div className="flex justify-center mb-6">
         <div className="p-3 bg-green-500/10 rounded-full border border-green-500/30">
           <MessageCircle className="w-8 h-8 text-green-400" />
@@ -168,5 +176,6 @@ export function OTPVerification() {
         </form>
       )}
     </div>
+    </>
   )
 }

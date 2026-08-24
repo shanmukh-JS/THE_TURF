@@ -91,7 +91,10 @@ function getBaseLayout(title: string, bodyContent: string): string {
 <body>
   <div class="container">
     <div class="header">
-      <a href="https://trufgaming.com" class="logo">⚡ TURF GAMING</a>
+      <a href="https://trufgaming.com" class="logo" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;">
+        <img src="https://trufgaming.com/logo.png" alt="TURF GAMING" width="36" height="36" style="vertical-align:middle;margin-right:8px;" />
+        <span>TURF GAMING</span>
+      </a>
     </div>
     <div class="content">
       <h2 class="title">${title}</h2>

@@ -157,15 +157,29 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  // Load Razorpay checkout script
+  // Helper to ensure Razorpay checkout script is loaded
+  const loadRazorpayScript = () => {
+    return new Promise<boolean>((resolve) => {
+      if (typeof window === 'undefined') return resolve(false)
+      if ((window as any).Razorpay) return resolve(true)
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve(true))
+        existingScript.addEventListener('error', () => resolve(false))
+        return
+      }
+      const script = document.createElement('script')
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+      script.async = true
+      script.onload = () => resolve(true)
+      script.onerror = () => resolve(false)
+      document.body.appendChild(script)
+    })
+  }
+
+  // Pre-load Razorpay checkout script on mount
   useEffect(() => {
-    const script = document.createElement('script')
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-    script.async = true
-    document.body.appendChild(script)
-    return () => {
-      document.body.removeChild(script)
-    }
+    loadRazorpayScript()
   }, [])
 
   const handleSelectSlot = (slot: any) => {
@@ -392,9 +406,18 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
     if (!selectedSlot || !venue) return
 
     setBookingLoading(true)
-    setPaymentPhase('Reserving slot...')
+    setPaymentPhase('Checking payment gateway...')
 
     try {
+      // Ensure Razorpay SDK is ready
+      const isSdkLoaded = await loadRazorpayScript()
+      if (!isSdkLoaded || typeof (window as any).Razorpay === 'undefined') {
+        throw new Error(
+          'Payment gateway failed to load. Please check your internet connection and disable ad-blockers, then retry.'
+        )
+      }
+
+      setPaymentPhase('Reserving slot...')
       const advanceAmount = Math.round(selectedSlot.price * 0.5)
 
       // Step 1: Lock slot + create Razorpay order
@@ -415,13 +438,19 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       }
 
       const { order, checkoutId } = checkoutData
+      const razorpayKey =
+        checkoutData.keyId ||
+        order.key ||
+        process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
+        'rzp_test_TCI3ClZqEjTuvq'
+
       setPaymentPhase('Opening payment...')
 
       // Step 2: Open Razorpay checkout modal
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: razorpayKey,
         amount: order.amount,
-        currency: order.currency,
+        currency: order.currency || 'INR',
         name: 'TRUF GAMING',
         description: `Advance for ${venue.name}`,
         order_id: order.orderId,
@@ -459,13 +488,13 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
             setBookingLoading(false)
             setPaymentPhase('')
             setToast({
-              message: `Booking confirmed! ID: ${verifyData.bookingId?.substring(0, 8).toUpperCase()}`,
+              message: `Booking confirmed! ID: ${(verifyData.bookingId || '').substring(0, 8).toUpperCase()}`,
               type: 'success',
             })
 
             setTimeout(() => {
               router.push('/player/bookings')
-            }, 2000)
+            }, 1500)
           } catch (verifyErr: any) {
             setToast({ message: verifyErr.message || 'Verification failed', type: 'error' })
             setBookingLoading(false)
@@ -476,6 +505,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         prefill: {
           name: currentUser.user_metadata?.full_name || '',
           contact: currentUser.phone || '',
+          email: currentUser.email || '',
         },
         theme: { color: '#22c55e' },
         modal: {
@@ -494,7 +524,10 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rzp = new (window as any).Razorpay(options)
       rzp.on('payment.failed', function (response: any) {
-        setToast({ message: `Payment failed: ${response.error.description}`, type: 'error' })
+        setToast({
+          message: `Payment failed: ${response.error?.description || 'Transaction declined'}`,
+          type: 'error',
+        })
         setBookingLoading(false)
         setPaymentPhase('')
         fetchData()

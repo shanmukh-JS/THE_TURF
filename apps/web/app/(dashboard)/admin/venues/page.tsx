@@ -319,7 +319,7 @@ export default function AdminTurfManagementPage() {
         </head>
         <body>
           <div class="header">
-            <div class="logo">TURF GAMING</div>
+            <div class="logo" style="display:flex;align-items:center;gap:8px;"><img src="/logo.png" style="width:28px;height:28px;object-fit:contain;" /> TURF GAMING</div>
             <div class="title">Turf Directory Report</div>
           </div>
           <p style="font-size: 12px; color: #666; margin-bottom: 20px;">
