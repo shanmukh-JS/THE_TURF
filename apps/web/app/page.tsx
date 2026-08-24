@@ -80,34 +80,42 @@ export default function HomePage() {
     }
 
     const fetchVenues = async () => {
-      const { data } = await supabase
-        .from('venues')
-        .select(
-          `
-          *,
-          city:cities(name),
-          area:areas(name),
-          venue_pricing(price),
-          venue_images(url),
-          reviews(rating),
-          slots(id, date, start_time, status),
-          owner_profiles(
-            user_id,
-            users(is_suspended)
-          )
-        `
-        )
-        .eq('verification_status', 'APPROVED')
-        .eq('is_disabled', false)
+      let activeData: any[] = []
 
-      if (data) {
-        const activeData = data.filter((v: any) => {
-          const isOwnerSuspended = (v.owner_profiles as any)?.users?.is_suspended === true
-          return !isOwnerSuspended && !v.is_disabled
-        })
-        setVenues(activeData)
-        setFilteredVenues(activeData)
+      try {
+        const res = await fetch('/api/public/venues')
+        if (res.ok) {
+          const json = await res.json()
+          if (json.venues) {
+            activeData = json.venues
+          }
+        }
+      } catch (e) {
+        console.warn('API /api/public/venues failed on homepage, falling back to Supabase client:', e)
       }
+
+      if (activeData.length === 0) {
+        const { data } = await supabase
+          .from('venues')
+          .select(
+            `
+            *,
+            city:cities(name),
+            area:areas(name),
+            venue_pricing(price),
+            venue_images(url),
+            reviews(rating),
+            slots(id, date, start_time, status)
+          `
+          )
+          .eq('verification_status', 'APPROVED')
+          .eq('is_disabled', false)
+
+        activeData = (data || []).filter((v: any) => !v.is_disabled && v.verification_status === 'APPROVED')
+      }
+
+      setVenues(activeData)
+      setFilteredVenues(activeData)
       setLoading(false)
     }
     fetchVenues()

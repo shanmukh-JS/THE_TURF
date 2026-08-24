@@ -79,17 +79,20 @@ export async function PATCH(req: Request) {
     }
 
     // If the user is a turf owner, automatically disable or enable all their venues
-    const { data: ownerProf } = await supabase
+    const { data: ownerProfiles } = await supabase
       .from('owner_profiles')
       .select('id')
       .eq('user_id', userId)
-      .maybeSingle()
 
-    if (ownerProf) {
+    if (ownerProfiles && ownerProfiles.length > 0) {
+      const ownerIds = ownerProfiles.map((p) => p.id)
       await supabase
         .from('venues')
-        .update({ is_disabled: isSuspended })
-        .eq('owner_id', ownerProf.id)
+        .update({
+          is_disabled: isSuspended,
+          verification_status: isSuspended ? 'SUSPENDED' : 'APPROVED',
+        })
+        .in('owner_id', ownerIds)
     }
 
     try {

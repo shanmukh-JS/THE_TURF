@@ -153,7 +153,9 @@ export default async function CustomerBookingsPage({
                   <div className="flex flex-col items-end gap-3 flex-shrink-0">
                     <div className="text-right">
                       <p className="text-lg font-bold text-white">₹{b.amount.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">₹{b.advance} advance paid</p>
+                      <p className="text-xs text-green-400/90 font-medium">
+                        {b.advance >= b.amount ? 'Paid in full' : `₹${b.advance} paid`}
+                      </p>
                     </div>
                     {b.status === 'CONFIRMED' && (
                       <button className="px-4 py-1.5 rounded-lg border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-colors">

@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const { data: slot } = await adminClient.from('slots').select('price').eq('id', slotId).maybeSingle()
 
     const verifiedTotal = slot && Number(slot.price) > 0 ? Number(slot.price) : Number(totalAmount) || 0
-    const verifiedAdvance = Number(advancePaid) > 0 ? Number(advancePaid) : Math.round(verifiedTotal * 0.5)
+    const verifiedAdvance = Number(advancePaid) > 0 ? Number(advancePaid) : verifiedTotal
 
     // Log payment success in audit trail
     await adminClient.from('payment_audit').insert({

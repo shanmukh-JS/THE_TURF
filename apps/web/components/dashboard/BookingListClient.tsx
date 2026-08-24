@@ -524,8 +524,8 @@ export function BookingListClient({
                       <p className="text-sm font-extrabold text-white">
                         ₹{b.amount.toLocaleString()}
                       </p>
-                      <p className="text-[10px] text-gray-500 font-medium">
-                        ₹{b.advance} advance paid
+                      <p className="text-[10px] text-green-400/90 font-medium">
+                        {b.advance >= b.amount ? 'Paid in full' : `₹${b.advance} paid`}
                       </p>
                     </div>
 
@@ -679,13 +679,15 @@ export function BookingListClient({
                     <span>₹{selectedBooking.amount}</span>
                   </div>
                   <div className="flex justify-between text-[11px] text-green-400">
-                    <span className="uppercase font-sans">Advance Paid</span>
-                    <span>-₹{selectedBooking.advance}</span>
+                    <span className="uppercase font-sans">Amount Paid</span>
+                    <span>₹{selectedBooking.advance}</span>
                   </div>
-                  <div className="flex justify-between text-[11px] text-gray-500">
-                    <span className="uppercase font-sans">Balance Due</span>
-                    <span>₹{selectedBooking.amount - selectedBooking.advance}</span>
-                  </div>
+                  {selectedBooking.amount > selectedBooking.advance && (
+                    <div className="flex justify-between text-[11px] text-amber-400">
+                      <span className="uppercase font-sans">Balance Due</span>
+                      <span>₹{selectedBooking.amount - selectedBooking.advance}</span>
+                    </div>
+                  )}
                   {selectedBooking.qrCode && (
                     <div className="border-t border-white/5 pt-3 space-y-2 text-center">
                       <span className="text-[9px] text-gray-500 uppercase tracking-widest block font-bold">

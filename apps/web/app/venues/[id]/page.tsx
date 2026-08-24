@@ -260,7 +260,10 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
     const isOwner = session?.user?.id === ownerProfileData?.user_id
 
-    const isOwnerSuspended = ownerProfileData?.users?.is_suspended === true
+    const rawUsers = ownerProfileData?.users
+    const isOwnerSuspended =
+      rawUsers?.is_suspended === true ||
+      (Array.isArray(rawUsers) && rawUsers[0]?.is_suspended === true)
     // If venue is not approved, is disabled, or owner is suspended, and user is not the owner, don't show it
     if ((venueData.verification_status !== 'APPROVED' || venueData.is_disabled || isOwnerSuspended) && !isOwner) {
       setLoading(false)
@@ -444,7 +447,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
       setPaymentPhase('Reserving slot...')
       const slotPrice = Number(selectedSlot.price) || 0
-      const advanceAmount = Math.round(slotPrice * 0.5)
+      const totalAmount = slotPrice
 
       // Step 1: Lock slot + create Razorpay order
       const checkoutRes = await fetch('/api/bookings/checkout', {
@@ -454,7 +457,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
           slotId: selectedSlot.id,
           venueId: id,
           totalAmount: slotPrice,
-          advancePaid: advanceAmount,
+          advancePaid: totalAmount,
         }),
       })
 
@@ -478,7 +481,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
         amount: order.amount,
         currency: order.currency || 'INR',
         name: 'TRUF GAMING',
-        description: `Advance for ${venue.name}`,
+        description: `Booking for ${venue.name}`,
         order_id: order.orderId,
         handler: async function (response: any) {
           try {
@@ -500,7 +503,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                     slotId: selectedSlot.id,
                     venueId: id,
                     totalAmount: slotPrice,
-                    advancePaid: advanceAmount,
+                    advancePaid: totalAmount,
                     checkoutId,
                   }),
                 })
@@ -1042,19 +1045,9 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
 
               {/* Price Details */}
               <div className="border-t border-white/8 pt-4 space-y-2 text-sm">
-                <div className="flex justify-between text-gray-400">
-                  <span>Price</span>
-                  <span>₹{selectedSlot.price.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-gray-400">
-                  <span>Advance Paid (50%)</span>
-                  <span className="text-green-400">
-                    ₹{Math.round(selectedSlot.price * 0.5).toLocaleString()} due now
-                  </span>
-                </div>
-                <div className="flex justify-between font-bold text-white border-t border-white/8 pt-2 mt-2 text-base">
+                <div className="flex justify-between font-bold text-white text-base">
                   <span>Total Booking Cost</span>
-                  <span>₹{selectedSlot.price.toLocaleString()}</span>
+                  <span className="text-green-400">₹{selectedSlot.price.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -1074,7 +1067,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                 >
                   {bookingLoading
                     ? paymentPhase || 'Processing...'
-                    : `Pay ₹${Math.round(selectedSlot.price * 0.5).toLocaleString()} & Book`}
+                    : `Pay ₹${selectedSlot.price.toLocaleString()} & Book`}
                 </button>
               </div>
             </div>

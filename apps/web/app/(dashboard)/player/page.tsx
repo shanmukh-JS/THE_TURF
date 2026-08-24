@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { PlayerDashboardClient } from '@/components/dashboard/PlayerDashboardClient'
 import { calculateBookingStreak } from '@/lib/utils/streak'
@@ -39,6 +40,7 @@ function isOpenNow(openingTime: string | null, closingTime: string | null) {
 
 export default async function PlayerDashboard() {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -73,7 +75,7 @@ export default async function PlayerDashboard() {
     `
       )
       .eq('customer_id', user.id),
-    supabase
+    adminClient
       .from('venues')
       .select(
         `
@@ -90,6 +92,7 @@ export default async function PlayerDashboard() {
       opening_time,
       closing_time,
       is_disabled,
+      verification_status,
       owner_profiles(
         user_id,
         users(is_suspended)
@@ -102,10 +105,17 @@ export default async function PlayerDashboard() {
     supabase.from('favorites').select('venue_id').eq('user_id', user.id),
   ])
 
-  // Filter out any venue whose owner is currently suspended or venue is disabled
+  // Filter out any venue whose owner is currently suspended or venue is disabled/unapproved
   const filteredVenues = (venuesData || []).filter((v: any) => {
-    const isOwnerSuspended = (v.owner_profiles as any)?.users?.is_suspended === true
-    return !isOwnerSuspended && !v.is_disabled
+    const rawUsers = (v.owner_profiles as any)?.users
+    const isOwnerSuspended =
+      rawUsers?.is_suspended === true ||
+      (Array.isArray(rawUsers) && rawUsers[0]?.is_suspended === true)
+    return (
+      !isOwnerSuspended &&
+      !v.is_disabled &&
+      v.verification_status === 'APPROVED'
+    )
   })
 
   const displayName =

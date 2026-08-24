@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       if (!venueId) return NextResponse.json({ error: 'Missing venueId' }, { status: 400 })
       const { error } = await supabase
         .from('venues')
-        .update({ is_disabled: true, verification_status: 'REJECTED' })
+        .update({ is_disabled: true, verification_status: 'SUSPENDED' })
         .eq('id', venueId)
       if (error) throw error
 
@@ -48,8 +48,22 @@ export async function POST(req: Request) {
         .eq('id', ownerId)
       if (error) throw error
 
+      // Disable all venues owned by this owner
+      const { data: ownerProfiles } = await supabase
+        .from('owner_profiles')
+        .select('id')
+        .eq('user_id', ownerId)
+
+      if (ownerProfiles && ownerProfiles.length > 0) {
+        const ownerIds = ownerProfiles.map((p) => p.id)
+        await supabase
+          .from('venues')
+          .update({ is_disabled: true, verification_status: 'SUSPENDED' })
+          .in('owner_id', ownerIds)
+      }
+
       await supabase.from('reports').update({ status: 'RESOLVED' }).eq('id', reportId)
-      detailsText = `Owner suspended following report review`
+      detailsText = `Owner suspended and all associated turfs disabled following report review`
     } else if (action === 'unsuspend_turf') {
       if (!venueId) return NextResponse.json({ error: 'Missing venueId' }, { status: 400 })
       const { error } = await supabase
@@ -65,7 +79,22 @@ export async function POST(req: Request) {
         .update({ is_suspended: false })
         .eq('id', ownerId)
       if (error) throw error
-      detailsText = `Owner unsuspended following report review`
+
+      // Re-enable all venues owned by this owner
+      const { data: ownerProfiles } = await supabase
+        .from('owner_profiles')
+        .select('id')
+        .eq('user_id', ownerId)
+
+      if (ownerProfiles && ownerProfiles.length > 0) {
+        const ownerIds = ownerProfiles.map((p) => p.id)
+        await supabase
+          .from('venues')
+          .update({ is_disabled: false, verification_status: 'APPROVED' })
+          .in('owner_id', ownerIds)
+      }
+
+      detailsText = `Owner unsuspended and associated turfs re-activated following report review`
     } else if (action === 'delete') {
       const { error } = await supabase.from('reports').delete().eq('id', reportId)
       if (error) throw error

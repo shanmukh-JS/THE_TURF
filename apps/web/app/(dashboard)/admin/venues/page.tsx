@@ -190,7 +190,10 @@ export default function AdminTurfManagementPage() {
       const shouldDisable = action === 'disable'
       const { error } = await supabase
         .from('venues')
-        .update({ is_disabled: shouldDisable })
+        .update({
+          is_disabled: shouldDisable,
+          verification_status: shouldDisable ? 'SUSPENDED' : 'APPROVED',
+        })
         .eq('id', venue.id)
 
       if (!error) {

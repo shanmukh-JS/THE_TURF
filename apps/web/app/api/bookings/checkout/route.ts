@@ -83,9 +83,12 @@ export async function POST(req: Request) {
       )
     }
 
-    const expectedAdvance = Math.round(expectedTotal * 0.5)
-    if (Math.abs(Number(advancePaid) - expectedAdvance) > 1) {
-      return NextResponse.json({ error: 'Advance payment amount mismatch.' }, { status: 400 })
+    const paidAmount = Number(advancePaid)
+    if (
+      Math.abs(paidAmount - expectedTotal) > 1 &&
+      Math.abs(paidAmount - Math.round(expectedTotal * 0.5)) > 1
+    ) {
+      return NextResponse.json({ error: 'Payment amount mismatch.' }, { status: 400 })
     }
 
     // Idempotency: generate a deterministic checkout ID from user + slot + timestamp window

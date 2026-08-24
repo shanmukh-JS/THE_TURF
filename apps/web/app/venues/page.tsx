@@ -69,110 +69,119 @@ export default function VenuesPage() {
   useEffect(() => {
     const fetchVenues = async () => {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('venues')
-        .select(
-          `
-          *,
-          city:cities(name),
-          area:areas(name),
-          venue_pricing(price),
-          venue_images(url, is_cover),
-          slots(status, date, start_time),
-          reviews(rating),
-          owner_profiles(
-            user_id,
-            users(is_suspended)
-          )
-        `
-        )
-        .eq('verification_status', 'APPROVED')
-        .eq('is_disabled', false)
+      let activeData: any[] = []
 
-      if (!error && data) {
-        const todayStr = getLocalDateString()
-        const now = new Date()
-
-        const activeData = data.filter((v: any) => {
-          const isOwnerSuspended = (v.owner_profiles as any)?.users?.is_suspended === true
-          return !isOwnerSuspended && !v.is_disabled
-        })
-
-        const mappedVenues = activeData.map((v) => {
-          const isTrending = v.id.charCodeAt(0) % 3 === 0
-
-          // Live available slots count (today only, in the future)
-          const availableSlots = v.slots || []
-          const slotsCount = availableSlots.filter((s: any) => {
-            if (s.status !== 'Available') return false
-            if (s.date !== todayStr) return false
-
-            const slotStart = s.start_time.includes('T')
-              ? new Date(s.start_time)
-              : new Date(`${s.date}T${s.start_time}`)
-            return slotStart.getTime() > now.getTime()
-          }).length
-
-          // Live ratings calculation from reviews table
-          const venueReviews = v.reviews || []
-          const hasReviews = venueReviews.length > 0
-          const rating = hasReviews
-            ? (
-                venueReviews.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
-                venueReviews.length
-              ).toFixed(1)
-            : null
-          const reviewsCount = venueReviews.length
-
-          // Live amenities list
-          const amenities = v.amenities || []
-
-          // Live operating hours and open status
-          const openStr = formatTimeStr(v.opening_time)
-          const closeStr = formatTimeStr(v.closing_time)
-          const timings = openStr && closeStr ? `${openStr} – ${closeStr}` : '06:00 AM – 11:00 PM'
-          const openStatus = isOpenNow(v.opening_time, v.closing_time)
-
-          return {
-            id: v.id,
-            name: v.name,
-            area:
-              v.area?.name ||
-              v.address?.split(',')[4]?.trim() ||
-              v.address?.split(',')[0] ||
-              'Unknown Area',
-            city: v.city?.name || v.address?.split(',')[4]?.trim() || 'Unknown City',
-            rating,
-            reviews: reviewsCount,
-            price: Array.isArray(v.venue_pricing)
-              ? v.venue_pricing[0]?.price
-              : v.venue_pricing?.price || 1000,
-            pitches: v.pitches,
-            amenities,
-            image:
-              v.venue_images?.find((img: any) => img.is_cover)?.url ||
-              v.venue_images?.[0]?.url ||
-              'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop',
-            badge: isTrending ? 'Trending' : null,
-            isIndoor: v.is_indoor,
-            distance: null, // Only show real distance if GPS coordinate matches are implemented
-            slotsCount,
-            friendPlayed: false,
-            timings,
-            isOpen: openStatus,
-            ownerLogo: null,
-            ownerName: 'Owner',
+      try {
+        const res = await fetch('/api/public/venues')
+        if (res.ok) {
+          const json = await res.json()
+          if (json.venues) {
+            activeData = json.venues
           }
-        })
-        setAllVenues(mappedVenues)
-        if (
-          typeof window !== 'undefined' &&
-          !localStorage.getItem('user_location') &&
-          mappedVenues.length > 0 &&
-          mappedVenues[0]?.city
-        ) {
-          setDisplayLocation(mappedVenues[0].city)
         }
+      } catch (e) {
+        console.warn('API /api/public/venues failed, falling back to Supabase client:', e)
+      }
+
+      if (activeData.length === 0) {
+        const { data } = await supabase
+          .from('venues')
+          .select(
+            `
+            *,
+            city:cities(name),
+            area:areas(name),
+            venue_pricing(price),
+            venue_images(url, is_cover),
+            slots(status, date, start_time),
+            reviews(rating)
+          `
+          )
+          .eq('verification_status', 'APPROVED')
+          .eq('is_disabled', false)
+
+        activeData = (data || []).filter(
+          (v: any) => !v.is_disabled && v.verification_status === 'APPROVED'
+        )
+      }
+
+      const todayStr = getLocalDateString()
+      const now = new Date()
+
+      const mappedVenues = activeData.map((v) => {
+        const isTrending = v.id.charCodeAt(0) % 3 === 0
+
+        // Live available slots count (today only, in the future)
+        const availableSlots = v.slots || []
+        const slotsCount = availableSlots.filter((s: any) => {
+          if (s.status !== 'Available') return false
+          if (s.date !== todayStr) return false
+
+          const slotStart = s.start_time.includes('T')
+            ? new Date(s.start_time)
+            : new Date(`${s.date}T${s.start_time}`)
+          return slotStart.getTime() > now.getTime()
+        }).length
+
+        // Live ratings calculation from reviews table
+        const venueReviews = v.reviews || []
+        const hasReviews = venueReviews.length > 0
+        const rating = hasReviews
+          ? (
+              venueReviews.reduce((sum: number, r: any) => sum + Number(r.rating), 0) /
+              venueReviews.length
+            ).toFixed(1)
+          : null
+        const reviewsCount = venueReviews.length
+
+        // Live amenities list
+        const amenities = v.amenities || []
+
+        // Live operating hours and open status
+        const openStr = formatTimeStr(v.opening_time)
+        const closeStr = formatTimeStr(v.closing_time)
+        const timings = openStr && closeStr ? `${openStr} – ${closeStr}` : '06:00 AM – 11:00 PM'
+        const openStatus = isOpenNow(v.opening_time, v.closing_time)
+
+        return {
+          id: v.id,
+          name: v.name,
+          area:
+            v.area?.name ||
+            v.address?.split(',')[4]?.trim() ||
+            v.address?.split(',')[0] ||
+            'Unknown Area',
+          city: v.city?.name || v.address?.split(',')[4]?.trim() || 'Unknown City',
+          rating,
+          reviews: reviewsCount,
+          price: Array.isArray(v.venue_pricing)
+            ? v.venue_pricing[0]?.price
+            : v.venue_pricing?.price || 1000,
+          pitches: v.pitches,
+          amenities,
+          image:
+            v.venue_images?.find((img: any) => img.is_cover)?.url ||
+            v.venue_images?.[0]?.url ||
+            'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2005&auto=format&fit=crop',
+          badge: isTrending ? 'Trending' : null,
+          isIndoor: v.is_indoor,
+          distance: null, // Only show real distance if GPS coordinate matches are implemented
+          slotsCount,
+          friendPlayed: false,
+          timings,
+          isOpen: openStatus,
+          ownerLogo: null,
+          ownerName: 'Owner',
+        }
+      })
+      setAllVenues(mappedVenues)
+      if (
+        typeof window !== 'undefined' &&
+        !localStorage.getItem('user_location') &&
+        mappedVenues.length > 0 &&
+        mappedVenues[0]?.city
+      ) {
+        setDisplayLocation(mappedVenues[0].city)
       }
       setLoading(false)
     }
